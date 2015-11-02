@@ -1,0 +1,14 @@
+#Boundaries configuration file for wave2d.bound
+#----------------------------------------------
+
+Density:
+	Ymin: ACCRETIONDENSINNER    #KEPLERIAN2DDENS
+	Ymax: ACCRETIONDENSOUTER    #KEPLERIAN2DDENS
+
+Vx:
+	Ymin:	KEPLERIAN2DVAZIM
+	Ymax:   KEPLERIAN2DVAZIM
+
+Vy:
+	Ymin:	ACCRETIONVRADINNER
+	Ymax:   ACCRETIONVRADOUTER
