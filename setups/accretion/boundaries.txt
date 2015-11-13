@@ -106,13 +106,40 @@ KEPLERIAN3DSPHVAZIMCOL:
     Centered: |'MDOT'/(3*pi*'ALPHAVISCOSITY'*'ASPECTRATIO'*'ASPECTRATIO' * pow(Ymed(jgh),0.5+2*'FLARINGINDEX'))|ds|
 
 ACCRETIONDENSOUTER:
-     Centered: |'MDOT'/(3*pi*'ALPHAVISCOSITY'*'ASPECTRATIO'*'ASPECTRATIO' * pow(Ymed(jgh),0.5+2*'FLARINGINDEX'))|ds|
+#     Centered: |'MDOT'/(3*pi*'ALPHAVISCOSITY'*'ASPECTRATIO'*'ASPECTRATIO' * pow(Ymed(jgh),0.5+2*'FLARINGINDEX'))|ds|
+     Centered: |'MDOT'/(-2*pi*Ymed(jgh)*vy[lghs])|active|
 
 ACCRETIONVRADINNER:
 #   Staggered: |a|a|a|
-   Staggered: | -1.5* 'ALPHAVISCOSITY'*'ASPECTRATIO'*'ASPECTRATIO'*pow(Ymed(jgh),-0.5+2*'FLARINGINDEX') | -1.5*'ALPHAVISCOSITY'*'ASPECTRATIO'*'ASPECTRATIO'*pow(Ymed(jgh),-0.5+2*'FLARINGINDEX') |active|
+   Staggered: | -1.5* 'ALPHAVISCOSITY'*'ASPECTRATIO'*'ASPECTRATIO'*pow(Ymed(jgh),-0.5+2*'FLARINGINDEX') | -1.5*'ALPHAVISCOSITY'*'ASPECTRATIO'*'ASPECTRATIO'*pow(Ymin(jact),-0.5+2*'FLARINGINDEX') |active|
     
-ACCRETIONVRADOUTER:
+ACCRETIONVRADOUT:
 #  Staggered: |a|a|a|
-   Staggered: | -1.5*'ALPHAVISCOSITY'*'ASPECTRATIO'*'ASPECTRATIO'*pow(Ymed(jgh),-0.5+2*'FLARINGINDEX') | -1.5*'ALPHAVISCOSITY'*'ASPECTRATIO'*'ASPECTRATIO'*pow(Ymed(jgh),-0.5+2*'FLARINGINDEX') |active|
- 
+  Staggered:  |-3*'ALPHAVISCOSITY'*'ASPECTRATIO'*'ASPECTRATIO'*pow(Ymin(jgh),-0.5+2*'FLARINGINDEX')*(1+2*'FLARINGINDEX' + log(density[lghs]/density[lacts])/log(Ymed(jgh)/Ymed(jact)))|-3*'ALPHAVISCOSITY'*'ASPECTRATIO'*'ASPECTRATIO'*pow(Ymin(jgh),-0.5+2*'FLARINGINDEX')*(1+2*'FLARINGINDEX' + log(density[lghs]/density[lacts])/log(Ymed(jgh)/Ymed(jact)))|active|
+  
+
+
+VRADARBITRARY:
+  Staggered: |1000.0|a|a|
+
+ ZERODENS:
+    Centered: |'SIGFLOOR'|a|
+
+FIXEDDENSIN:
+    Centered: |'SIGMAIN'|active|
+
+FIXEDDENSOUT:
+    Centered: |'SIGMAOUT'|active|
+
+
+FLOWOUT:
+  Staggered: |-fabs(active)|(active-fabs(active))/2.0|active|
+
+WALL:
+  Centered: |a|a|
+  Staggered: |-a|0|a|
+
+ANGMOMVRADOUT:
+  Staggered:|0|-6*pi*'ALPHAVISCOSITY'*'ASPECTRATIO'*'ASPECTRATIO'*pow(Ymin(jgh),1.5+2*'FLARINGINDEX')*((1+2*'FLARINGINDEX')*(density[lghs]+density[lacts])/(2*Ymin(jgh)) + (density[lghs]-density[lacts])/(2*(Ymed(jgh)-Ymed(jact))))|active|
+
+

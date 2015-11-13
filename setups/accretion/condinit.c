@@ -4,9 +4,10 @@ void InitDensPlanet() {
  printf("%lg\t%lg\n",MDOT0,MDOT);
   int i,j,k;
   real *field;
-
+  real viscosity,fac1,fac2,fac3,nuind,nu0,r;
   field = Density->field_cpu;
-    
+  nuind = 0.5+2*FLARINGINDEX;
+  nu0 = ASPECTRATIO*ASPECTRATIO*ALPHAVISCOSITY;
   boolean GhostInclude = TRUE;
   
   int begin_k =(GhostInclude ? 0 : NGHZ);
@@ -15,13 +16,20 @@ void InitDensPlanet() {
   int end_j = Ny+2*NGHY-begin_j;
   int begin_i = (GhostInclude ? 0 : NGHX);
   int end_i = Nx+2*NGHX-begin_i;
-
-  for (k = begin_k; k<end_k; k++) {
+   for (k = begin_k; k<end_k; k++) {
     for (j = begin_j; j<end_j; j++) {
+        r = Ymed(j);
+        viscosity = nu0*pow(r,nuind);
+        fac1=pow(YMAX,.5-nuind)*YMIN*SIGMAIN-pow(YMIN,.5-nuind)*YMAX*SIGMAOUT;
+        fac2=-pow(YMAX,1-nuind)*YMIN*SIGMAIN+pow(YMIN,1-nuind)*YMAX*SIGMAOUT;
+        fac3 = pow(YMIN,1-nuind)*pow(YMAX,0.5-nuind)-pow(YMAX,1-nuind)*pow(YMIN,0.5-nuind);
+        fac1 *= pow(r,-nuind);
+        fac2 *= pow(r,-.5*-nuind);
       for (i = begin_i; i<end_i; i++) {
-//        field[l] = 3;
-                field[l] = MDOT0/(3*pi*ALPHAVISCOSITY*ASPECTRATIO*ASPECTRATIO)*pow(Ymed(j),-SIGMASLOPE);
-	//field[l] = SIGMA0*pow((Ymed(j)/R0),-SIGMASLOPE)*(1.0+NOISE*(drand48()-.5));
+          //
+          //
+//         field[l] = SIGFLOOR + SIGMA0 * exp( - (Ymed(j)-1.8)*(Ymed(j)-1.8)/.01);
+        field[l]= (fac1-fac2)/fac3;
       }
     }
   }
@@ -75,13 +83,18 @@ void InitVazimPlanet() {
   real vt, omega;
   real *vr;
   real *cs;
-
+  real mdot_init,nuind,nu0; 
+  real vr0, fac1, fac2;
   field = Vx->field_cpu;
   vr = Vy->field_cpu;
   cs = Energy->field_cpu;
     
   boolean GhostInclude = TRUE;
+  nuind = 0.5+2*FLARINGINDEX;
+  nu0 = ALPHAVISCOSITY*ASPECTRATIO*ASPECTRATIO;
   
+
+
   int begin_k =(GhostInclude ? 0 : NGHZ);
   int end_k = Nz+2*NGHZ-begin_k;
   int begin_j =(GhostInclude ? 0 : NGHY);
@@ -91,8 +104,13 @@ void InitVazimPlanet() {
 
   for (k = begin_k; k<end_k; k++) {
     for (j = begin_j; j<end_j; j++) {
+       r = Ymed(j); 
+        vr0=-1.5*nu0*pow(r,nuind);
+        fac1 = pow(YMAX,.5-nuind)*SIGMAIN*YMIN-pow(YMIN,.5-nuind)*SIGMAOUT*YMAX;
+        fac2 = fac1 + (-pow(YMAX,1-nuind)*SIGMAIN*YMIN+pow(YMIN,1-nuind)*SIGMAOUT*YMAX)/sqrt(r);
+
       for (i = begin_i; i<end_i; i++) {
-	r = Ymed(j);
+	
 	omega = sqrt(G*MSTAR/r/r/r);
 	vt = omega*r*sqrt(1.0+pow(ASPECTRATIO,2)*pow(r/R0,2*FLARINGINDEX)*
 			  (2.0*FLARINGINDEX - 1.0 - SIGMASLOPE));
@@ -101,7 +119,8 @@ void InitVazimPlanet() {
 
 	field[l] = vt*(1.+ASPECTRATIO*NOISE*(drand48()-.5));
 	//vr[l] = r*omega*ASPECTRATIO*NOISE*(drand48()-.5);
-    vr[l] = -1.5*ALPHAVISCOSITY*ASPECTRATIO*ASPECTRATIO*pow(r,-0.5+2*FLARINGINDEX);
+//    vr[l] = -1.5*ALPHAVISCOSITY*ASPECTRATIO*ASPECTRATIO*pow(r,-0.5+2*FLARINGINDEX);
+    vr[l] = vr0*fac1/fac2;
       }
     }
   }    

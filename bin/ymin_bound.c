@@ -52,11 +52,8 @@ OUTPUT(Vy);
   int pitch  = Pitch_cpu;
   int stride = Stride_cpu;
   real dx = Dx;
-  real mdot = MDOT;
-  real flaringindex = FLARINGINDEX;
   real omegaframe = OMEGAFRAME;
-  real aspectratio = ASPECTRATIO;
-  real alphaviscosity = ALPHAVISCOSITY;
+  real sigmain = SIGMAIN;
 //<\EXTERNAL>
 
 //<CONSTANT>
@@ -88,10 +85,10 @@ OUTPUT(Vy);
 	jgh = j;
 	jact = (2*nghy-j-1);
 
-	density[lgh] = mdot/(3*pi*alphaviscosity*aspectratio*aspectratio * pow(ymed(jgh),0.5+2*flaringindex));
+	density[lgh] = sigmain;
 	vx[lgh] = (vx[lact]+ymed(jact)*omegaframe)*sqrt(ymed(jact)/ymed(jgh))-ymed(jgh)*omegaframe;
-	vy[lghs] =  -1.5* alphaviscosity*aspectratio*aspectratio*pow(ymed(jgh),-0.5+2*flaringindex) ;
-	vy[lacts_null] =  -1.5*alphaviscosity*aspectratio*aspectratio*pow(ymed(jgh),-0.5+2*flaringindex) ;
+	vy[lghs] = -fabs(vy[lacts]);
+	vy[lacts_null] = (vy[lacts]-fabs(vy[lacts]))/2.0;
 //<\#>
 #ifdef X
       }

@@ -122,16 +122,16 @@ CXXPARA_LINUX = mpic++ -stdlib=libstdc++
 #FARGO_ARCH must be set to MACOSX
 CC_MACOSX      = gcc-4.9
 SEQOPT_MACOSX  = -O3 -ffast-math -fopenmp
-PARAOPT_MACOSX = ${SEQOPT_MACOSX}
+PARAOPT_MACOSX = -O3 -ffast-math 
 PARACC_MACOSX  = mpicc
-LIBS_MACOSX    = -lm -lgomp
-INC_MACOSX     = 
+LIBS_MACOSX    = -lm  -L/usr/local/lib/
+INC_MACOSX     = -I/usr/local/include/ 
 NVCC_MACOSX    = nvcc
 CUDAOPT_MACOSX = -O3 -arch=sm_20 -w
 PARAINC_MACOSX = -I/usr/local/include/
-PARALIB_MACOSX = -L/usr/local/include/
-CUDAINC_MACOSX = -I${CUDA}/include/
-CUDALIB_MACOSX = -L${CUDA}/lib64/  -lcudart
+PARALIB_MACOSX = -L/usr/local/lib/
+CUDAINC_MACOSX =  #-I${CUDA}/include/
+CUDALIB_MACOSX = #-L${CUDA}/lib64/  -lcudart
 CXX_MACOSX     = g++ -stdlib=libstdc++
 CXXPARA_MACOSX = mpic++ -stdlib=libstdc++
 #---------------------------------------------------------------------
