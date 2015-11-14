@@ -19,24 +19,24 @@ MONITOR_Y_RAW  = TORQ
 FARGO_OPT +=  -DX #X --> PHI
 FARGO_OPT +=  -DY #Y --> R
 
-#Equation of State			# ONLY ONE OF THEM
-FARGO_OPT +=  -DISOTHERMAL		# ISOTHERMAL EQUATION OF STATE
+#Equation of State# ONLY ONE OF T           HEM
+FARGO_OPT +=  -DISOTHERMAL # ISOTHERMAL EQUATION OF STATE
 
-#Coordinate System.
-FARGO_OPT +=  -DCYLINDRICAL		# COORDINATE SYSTEM. IN FARGO SETUP, ALWAYS IS 
-	      				# CYLINDRICAL
+#Coordi     nate System.
+FARGO_OPT +=  -DCYLINDRICAL # COORDINATE SYSTEM. IN FARGO         SETUP, ALWAYS IS 
+                        # CYLINDRICAL
 #Transport Algorithm
-#FARGO_OPT += -DSTANDARD		# YOU CAN USE THIS OPTION IF YOU WANT TO COMPARE THE 
-	      		 		# SPEEDUP OF THE FARGO ALGORITHM RESPECT TO THE
-	      		 		# STANDARD ADVECTION ALGORITHM.
-FARGO_OPT += -DLEGACY
+#FARGO_OPT += -DSTANDARD# YOU CAN USE THIS OPTION IF YOU WANT TO COMPARE THE 
+                                                        # SPEEDUP OF THE FARGO ALGORITHM RESPECT TO THE
+                                                                                # STANDARD ADVECTION ALGORITHM.
+                                                                                FARGO_OPT += -DLEGACY
 
 
-#FARGO_OPT += -DDONOR			
+#FARGO_OPT += -DDONOR
 
 
 #Algorithms
-#FARGO_OPT += -DNOSUBSTEP2		# DISABLES ARTIFICIAL VISCOSITY.
+#F          ARGO_OPT += -DNOSUBSTEP2# DISABLES ARTIFICIAL VISCOSITY.
 
 #Gravity
 FARGO_OPT += -DPOTENTIAL
