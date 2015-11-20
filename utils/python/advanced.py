@@ -383,3 +383,69 @@ def plot_random_streams(streams, cartesian=False, **kargs):
                 ax.plot(sub_stream[1]*cos(sub_stream[0]),sub_stream[1]*sin(sub_stream[0]),**kargs)
             else:
                 ax.plot(sub_stream[0],sub_stream[1],**kargs)
+
+
+class Sim():
+	def __init__(self,i,p=0):
+		self.dens = Field('gasdens{0:d}.dat'.format(i))
+		self.vp = Field('gasvx{0:d}.dat'.format(i))
+		self.vr = Field('gasvy{0:d}.dat'.format(i))
+		self.r  = self.dens.y
+		self.phi = self.dens.x
+		self.dbar = self.dens.data.mean(axis=1)
+		self.vrbar = self.vr.data.mean(axis=1)
+		self.vpbar = self.vp.data.mean(axis=1)
+		self.mdot = -2*pi*self.r*self.vrbar*self.dbar
+		_,self.px,self.py,self.pz,self.pvx,self.pvy,self.pvz,self.mp,self.t,self.omf  = loadtxt('planet{0:d}.dat'.format(p))[i,:]	
+		self.a = sqrt(self.px**2  + self.py**2)		
+	def summary(self):
+		fig,(axd,axm,axv) = subplots(3,1,sharex='col')
+		lined, = axd.loglog(self.r,self.dbar,linewidth=3)
+		linev, = axv.semilogx(self.r,self.vrbar,linewidth=3)
+		linem, = axm.semilogx(self.r,self.mdot,linewidth=3)
+		axv.set_xlabel('$r$',fontsize=20)
+		axv.set_ylabel('$v_r$',fontsize=20)
+		axd.set_ylabel('$\\Sigma$',fontsize=20)
+		axm.set_ylabel('$\\dot{M}$',fontsize=20)
+		axm.set_yscale('symlog',linthreshy=1e-7)
+		axv.set_ylim(-.001,.001)
+		axd.set_title('t = %.1f = %.1f P' % (self.t,self.t/(2*pi*self.a**(1.5)))) 
+
+	def animate(self,irange):
+		fig,(axd,axm,axv) = subplots(3,1,sharex='col')
+		lined, = axd.loglog(self.r,self.dbar,linewidth=3)
+		linev, = axv.semilogx(self.r,self.vrbar,linewidth=3)
+		linem, = axm.semilogx(self.r,self.mdot,linewidth=3)
+		axv.set_xlabel('$r$',fontsize=20)
+		axv.set_ylabel('$v_r$',fontsize=20)
+		axd.set_ylabel('$\\Sigma$',fontsize=20)
+		axm.set_ylabel('$\\dot{M}$',fontsize=20)
+
+		dbar = zeros((len(self.dbar),len(irange)))
+		vrbar = zeros((len(self.dbar),len(irange)))
+		mdot = zeros(dbar.shape)
+		t = zeros(len(irange))
+		a = zeros(len(irange))
+
+		t[0] = self.t
+		a[0] = self.a
+		dbar[:,0] = self.dbar
+		vrbar[:,0] = self.vrbar	
+		mdot[:,0] = self.mdot
+		for i,j in enumerate(irange[1:],start=1):
+			self.__init__(i)
+			t[i] = self.t
+			dbar[:,i] = self.dbar
+			vrbar[:,i] = self.vrbar
+			mdot[:,i] = self.mdot
+			a[i] = self.a
+
+		axv.set_ylim(-.001,.001)
+		axm.set_ylim((mdot.min(),mdot.max()))
+		axm.set_yscale('symlog',linthreshy=1e-8)
+		for i in range(len(irange)):
+			lined.set_ydata(dbar[:,i])
+			linev.set_ydata(vrbar[:,i])
+			linem.set_ydata(mdot[:,i])
+			axd.set_title('t = %.1f = %.1f P' % (t[i],t[i]/(2*pi*a[i]**(1.5)))) 
+			fig.canvas.draw()

@@ -4,3 +4,5 @@
 *.bin
 fargo3d
 *.inf
+*.out
+*.o1*
