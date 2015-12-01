@@ -1,5 +1,5 @@
 ### Run only this parameter file is FARGO3D was build using the setup 'fargo'
-Setup			accretion		
+Setup			accretion
 
 ### Disk parameters
 
@@ -16,7 +16,7 @@ SIGMAIN            0.000001
 SIGMAOUT            0.01
 ### Planet parameters
 
-PlanetConfig		planets/jupiter.cfg
+PlanetConfig		planets/jupiter5.cfg
 ThicknessSmoothing 	1.0
 RocheSmoothing 		0.0
 Eccentricity		0.0
@@ -26,22 +26,20 @@ MassTaper           3.0
 
 ### Mesh parameters
 
-Nx  200			Azimuthal number of zones
+Nx  128			Azimuthal number of zones
 Ny               	128		Radial number of zones
-Xmin			-3.14159265358979323844	
+Xmin			-3.14159265358979323844
 Xmax			3.14159265358979323844
 Ymin			1.0		Inner boundary radius
 Ymax			20.0		Outer boundary radius
 Frame			C
-Spacing 		L
+Spacing 		LO
 ### Output control parameters
 
-Ntot		400000		Total number of time steps
-Ninterm	 		100		Time steps between outputs
+Ntot		2000		Total number of time steps
+Ninterm	 		10		Time steps between outputs
 DT			6.28	Time step length. 2PI = 1 orbit
-OutputDir		/projects/b1002/amd616/fargo3d/outputs/accretion
-
+OutputDir  @outputs/accretion/
 #Plotting parameters
 
 Log			yes
-
