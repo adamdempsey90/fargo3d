@@ -12,12 +12,12 @@ Mdot0                0.01
 Mdot                 0.013
 CPI                    3.141592653589793238462643383279502884
 NOISE               0.0
-SIGMAIN            0.00001
-SIGMAOUT            0.001
+SIGMAIN            0.000001
+SIGMAOUT            0.01
 ### Planet parameters
 
-PlanetConfig		planets/jupiter5.cfg
-ThicknessSmoothing 	0.1
+PlanetConfig		planets/jupiter.cfg
+ThicknessSmoothing 	0.6
 RocheSmoothing 		0.0
 Eccentricity		0.0
 ExcludeHill		Yes
@@ -26,19 +26,20 @@ MassTaper           3.0
 
 ### Mesh parameters
 
-Nx  400			Azimuthal number of zones
-Ny               	400		Radial number of zones
+Nx  256			Azimuthal number of zones
+Ny               	256		Radial number of zones
 Xmin			-3.14159265358979323844	
 Xmax			3.14159265358979323844
 Ymin			1.0		Inner boundary radius
 Ymax			20.0		Outer boundary radius
 Frame			C
+RadialSpacing 		L
 ### Output control parameters
 
-Ntot		20000		Total number of time steps
+Ntot		400000		Total number of time steps
 Ninterm	 		100		Time steps between outputs
 DT			6.28	Time step length. 2PI = 1 orbit
-OutputDir		@outputs/accretion2
+OutputDir		/projects/b1002/amd616/fargo3d/outputs/accretion
 
 #Plotting parameters
 

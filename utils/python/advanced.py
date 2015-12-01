@@ -384,20 +384,37 @@ def plot_random_streams(streams, cartesian=False, **kargs):
             else:
                 ax.plot(sub_stream[0],sub_stream[1],**kargs)
 
-
+from scipy.interpolate import interp1d,interp2d
 class Sim():
-	def __init__(self,i,p=0):
-		self.dens = Field('gasdens{0:d}.dat'.format(i))
-		self.vp = Field('gasvx{0:d}.dat'.format(i))
-		self.vr = Field('gasvy{0:d}.dat'.format(i))
+	def __init__(self,i,directory='',p=0):
+		if directory != '':
+			if directory[-1] != '/':
+				directory += '/'
+
+		self.dens = Field('gasdens{0:d}.dat'.format(i),directory=directory)
+		self.vp = Field('gasvx{0:d}.dat'.format(i),directory=directory)
+		self.vr = Field('gasvy{0:d}.dat'.format(i),directory=directory)
+		
 		self.r  = self.dens.y
 		self.phi = self.dens.x
 		self.dbar = self.dens.data.mean(axis=1)
 		self.vrbar = self.vr.data.mean(axis=1)
 		self.vpbar = self.vp.data.mean(axis=1)
 		self.mdot = -2*pi*self.r*self.vrbar*self.dbar
-		_,self.px,self.py,self.pz,self.pvx,self.pvy,self.pvz,self.mp,self.t,self.omf  = loadtxt('planet{0:d}.dat'.format(p))[i,:]	
+		_,self.px,self.py,self.pz,self.pvx,self.pvy,self.pvz,self.mp,self.t,self.omf  = loadtxt(directory+'planet{0:d}.dat'.format(p))[i,:]	
 		self.a = sqrt(self.px**2  + self.py**2)		
+		self.nu0 = self.dens.alphaviscosity*self.dens.aspectratio*self.dens.aspectratio
+		self.tvisc = self.dens.ymax**2/self.nu(self.dens.ymax)
+
+		self.omega = zeros(self.vp.data.shape)
+		self.vpc = zeros(self.vp.data.shape)
+		for i in range(len(self.r)):
+			self.omega[i,:] = self.vp.data[i,:]/self.r[i] + self.a**(1.5)
+			self.vpc[i,:] = self.omega[i,:]*self.r[i]
+
+	def nu(self,r):
+		return self.nu0 * r**(2*self.dens.flaringindex+.5)
+ 
 	def summary(self):
 		fig,(axd,axm,axv) = subplots(3,1,sharex='col')
 		lined, = axd.loglog(self.r,self.dbar,linewidth=3)
@@ -407,9 +424,37 @@ class Sim():
 		axv.set_ylabel('$v_r$',fontsize=20)
 		axd.set_ylabel('$\\Sigma$',fontsize=20)
 		axm.set_ylabel('$\\dot{M}$',fontsize=20)
-		axm.set_yscale('symlog',linthreshy=1e-7)
-		axv.set_ylim(-.001,.001)
-		axd.set_title('t = %.1f = %.1f P' % (self.t,self.t/(2*pi*self.a**(1.5)))) 
+#		axm.set_yscale('symlog',linthreshy=1e-7)
+#		axv.set_ylim(-.001,.001)
+		axd.set_title('t = %.1f = %.1f P = %.1f t_visc' % (self.t,self.t/(2*pi*self.a**(1.5)),self.t/self.tvisc)) 
+	def streams(self,rlims=None,plims=None,ax=None,**kargs):
+		if ax==None:
+			fig=figure()
+			ax=fig.add_subplot(111)
+
+		if rlims == None:
+			rlims = (self.dens.ymin,self.dens.ymax)
+		if plims == None:
+			plims = (-pi,pi)
+
+		rinds = (self.r<=rlims[1])&(self.r>=rlims[0])
+		pinds = (self.phi<=plims[1])&(self.phi>=plims[0])
+
+		vr = self.vr.data[pinds,:][rinds,:]
+		vp = self.vp.data[pinds,:][rinds,:]
+		dens = self.dens.data[pinds,:][rinds,:]
+		rr,pp = meshgrid(self.r[rinds],self.phi[pinds])
+		ax.pcolormesh(rr,pp,log10(dens.transpose()))
+		ax.streamplot(self.r[rinds],self.phi[pinds],vr.transpose(),vp.transpose(),**kargs)
+		return self.r,self.phi,rr,pp,vr,vp,dens
+	def stagnation(self,r,phi,rr,pp,vr,vp,dens):
+		ivp = interp2d(rr,pp,vp)
+		ivr = interp2d(rr,pp,vr)
+		vp_func = lambda x,y: ivp(x,y)
+		vr_func = lambda x,y: ivr(x,y)
+		root(ivp)
+
+
 
 	def animate(self,irange):
 		fig,(axd,axm,axv) = subplots(3,1,sharex='col')

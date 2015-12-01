@@ -1,8 +1,8 @@
 #!/bin/bash
 ## This line is a comment, the following lines are for Moab
-#MOAB -l nodes=2:ppn=20
+#MOAB -l nodes=1:ppn=20
 #MOAB -l walltime=168:00:00
-#MOAB -N run3
+#MOAB -N run
 #MOAB -j oe
 
 #MSUB -l advres=b1002
@@ -18,4 +18,4 @@ module load python/Canopy
 ulimit -s unlimited
 
 
-mpirun -np 40 fargo3d -m setups/accretion/accretion.par > f2.out
+mpirun -np 20 fargo3d -m -S 2000 setups/accretion/accretion.par >> f.out
