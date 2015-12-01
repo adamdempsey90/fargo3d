@@ -8,7 +8,7 @@ void InitVariables() {
   init_var("FLARINGINDEX", (char*)&FLARINGINDEX, REAL, NO, "0.0");
   init_var("SIGMASLOPE", (char*)&SIGMASLOPE, REAL, NO, "0.5");
   init_var("YMAX", (char*)&YMAX, REAL, NO, "20.0");
-  init_var("THICKNESSSMOOTHING", (char*)&THICKNESSSMOOTHING, REAL, NO, "0.6");
+  init_var("THICKNESSSMOOTHING", (char*)&THICKNESSSMOOTHING, REAL, NO, "1.0");
   init_var("MDOT0", (char*)&MDOT0, REAL, NO, "0.01");
   init_var("MASSTAPER", (char*)&MASSTAPER, REAL, NO, "3.0");
   init_var("ROCHESMOOTHING", (char*)&ROCHESMOOTHING, REAL, NO, "0.0");
@@ -23,16 +23,16 @@ void InitVariables() {
   init_var("ASPECTRATIO", (char*)&ASPECTRATIO, REAL, NO, "0.1");
   init_var("SIGMAIN", (char*)&SIGMAIN, REAL, NO, "0.000001");
   init_var("SIGMA0", (char*)&SIGMA0, REAL, NO, "1.0");
-  init_var("NX", (char*)&NX, INT, NO, "256");
-  init_var("NY", (char*)&NY, INT, NO, "256");
+  init_var("NX", (char*)&NX, INT, NO, "200");
+  init_var("NY", (char*)&NY, INT, NO, "128");
   init_var("NINTERM", (char*)&NINTERM, INT, NO, "100");
-  init_var("NTOT", (char*)&NTOT, INT, NO, "200000");
+  init_var("NTOT", (char*)&NTOT, INT, NO, "400000");
   init_var("PLANETCONFIG", (char*)&PLANETCONFIG, STRING, NO, "planets/jupiter.cfg");
   init_var("SETUP", (char*)&SETUP, STRING, NO, "accretion		");
+  init_var("SPACING", (char*)&SPACING, STRING, NO, "L");
   init_var("FRAME", (char*)&FRAME, STRING, NO, "C");
   init_var("OUTPUTDIR", (char*)&OUTPUTDIR, STRING, NO, "/projects/b1002/amd616/fargo3d/outputs/accretion");
-  init_var("RADIALSPACING", (char*)&RADIALSPACING, STRING, NO, "L");
-  init_var("INDIRECTTERM", (char*)&INDIRECTTERM, BOOL, NO, "0");
+  init_var("INDIRECTTERM", (char*)&INDIRECTTERM, BOOL, NO, "1");
   init_var("EXCLUDEHILL", (char*)&EXCLUDEHILL, BOOL, NO, "1");
   init_var("LOG", (char*)&LOG, BOOL, NO, "1");
   init_var("ZMAX", (char*)&ZMAX, REAL, NO, "1.0");
@@ -59,7 +59,6 @@ void InitVariables() {
   init_var("NSNAP", (char*)&NSNAP, INT, NO, "0");
   init_var("REALTYPE", (char*)&REALTYPE, STRING, NO, "Standard  #float or double");
   init_var("PLOTLINE", (char*)&PLOTLINE, STRING, NO, "field[:,:,0]");
-  init_var("SPACING", (char*)&SPACING, STRING, NO, "default");
   init_var("COORDINATES", (char*)&COORDINATES, STRING, NO, "standard");
   init_var("FIELD", (char*)&FIELD, STRING, NO, "gasdens");
   init_var("CMAP", (char*)&CMAP, STRING, NO, "cubehelix");
