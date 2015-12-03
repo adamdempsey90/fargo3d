@@ -398,6 +398,7 @@ class Sim():
 
     	self.r  = self.dens.y
     	self.phi = self.dens.x
+        self.pp, self.rr = meshgrid(self.phi,self.r)
     	self.dbar = self.dens.data.mean(axis=1)
     	self.vrbar = self.vr.data.mean(axis=1)
     	self.vpbar = self.vp.data.mean(axis=1)
@@ -413,10 +414,33 @@ class Sim():
     		self.omega[i,:] = self.vp.data[i,:]/self.r[i] + self.a**(-1.5)
     		self.vpc[i,:] = self.omega[i,:]*self.r[i]
 
+        self.dTr = (-2*pi*self.dens.data * self.dp_potential(self.rr,self.pp))
+        self.dTr_mean = self.dTr.mean(axis=1)
+
     def nu(self,r):
     	return self.nu0 * r**(2*self.dens.flaringindex+.5)
     def scaleH(self,r):
         return self.dens.aspectratio * r**(self.dens.flaringindex + 1)
+
+    def potential(self,r,phi):
+        if self.dens.rochesmoothing:
+            smoothing = self.dens.thicknesssmoothing*self.scaleH(r)
+        else:
+            smoothing = self.dens.thicknesssmoothing*self.rh
+        smoothing *= smoothing
+        rad = r**2 + smoothing + self.a**2 - 2*r*self.a*cos(phi)
+        rad = sqrt(rad)
+        return -self.mp/rad
+    def dp_potential(self,r,phi):
+        if self.dens.rochesmoothing:
+            smoothing = self.dens.thicknesssmoothing*self.scaleH(r)
+        else:
+            smoothing = self.dens.thicknesssmoothing*self.rh
+        smoothing *= smoothing
+        rad = r**2 + self.a**2 - 2*r*self.a*cos(phi) + self.dens.thicknesssmoothing*self.scaleH(r)**2
+        rad = rad**(1.5)
+        return self.mp * r*self.a*sin(phi)/rad
+
 
     def animate_mdot(self,irange,logspacing=True):
 
