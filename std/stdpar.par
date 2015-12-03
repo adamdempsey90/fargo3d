@@ -34,7 +34,7 @@ ExcludeHill		no
 MassTaper		0.0
 Noise			0.0
 VerticalDamping		0.0
-Spacing			L
+Spacing			default
 Coordinates		standard
 Disk			No
 Gamma			1.66666667

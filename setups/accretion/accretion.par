@@ -17,7 +17,7 @@ SIGMAOUT            0.01
 ### Planet parameters
 
 PlanetConfig		planets/jupiter5.cfg
-ThicknessSmoothing 	1.0
+ThicknessSmoothing 	0.6
 RocheSmoothing 		0.0
 Eccentricity		0.0
 ExcludeHill		Yes
@@ -33,13 +33,13 @@ Xmax			3.14159265358979323844
 Ymin			1.0		Inner boundary radius
 Ymax			20.0		Outer boundary radius
 Frame			C
-Spacing 		LO
+Spacing 		LOG
 ### Output control parameters
 
 Ntot		2000		Total number of time steps
 Ninterm	 		10		Time steps between outputs
 DT			6.28	Time step length. 2PI = 1 orbit
-OutputDir  @outputs/accretion/
+OutputDir  @outputs/accretion2/
 #Plotting parameters
 
 Log			yes
