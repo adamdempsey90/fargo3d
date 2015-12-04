@@ -393,8 +393,24 @@ class Sim():
     			directory += '/'
         self.directory = directory
     	self.dens = Field('gasdens{0:d}.dat'.format(i),directory=directory)
-    	self.vp = Field('gasvx{0:d}.dat'.format(i),directory=directory)
-    	self.vr = Field('gasvy{0:d}.dat'.format(i),directory=directory)
+    	self.vp = Field('gasvx{0:d}.dat'.format(i),directory=directory,staggered='x')
+    	self.vr = Field('gasvy{0:d}.dat'.format(i),directory=directory,staggered='y')
+
+        # self.vp.data = 0.5*(self.vp.data[:,1:]+self.vp.data[:,:-1])
+        # self.vp.x = 0.5*(self.vp.x[1:]+self.vp.x[:-1])
+        # self.vr.data = 0.5*(self.vr.data[1:,:]+self.vr.data[:-1,:])
+        # self.vr.y = 0.5*(self.vr.y[1:]+self.vr.y[:-1])
+        #
+        # self.vr.nx = len(self.vr.x)
+        # self.vr.ny = len(self.vr.y)
+        # self.vp.nx = len(self.vp.x)
+        # self.vp.ny = len(self.vp.y)
+
+        self.vp = self.vp.shift_field('x')
+        self.vr = self.vr.shift_field('y')
+        self.vp = self.vp.cut_field(direction='y',side='p')
+        self.vr = self.vr.cut_field(direction='x',side='p')
+        self.dens = self.dens.cut_field(direction='xy', side='p')
 
     	self.r  = self.dens.y
     	self.phi = self.dens.x
