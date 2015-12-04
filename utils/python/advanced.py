@@ -1,3 +1,5 @@
+
+viridis = load_viridis()
 class Mesh():
     """
     Mesh class, for keeping all the mesh data.
@@ -950,6 +952,3 @@ def load_viridis():
            [ 0.99324789,  0.90615657,  0.1439362 ]]
 
     return LinearSegmentedColormap.from_list('viridis', cm_data)
-
-
-viridis = load_viridis()
