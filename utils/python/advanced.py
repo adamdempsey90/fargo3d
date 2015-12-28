@@ -365,12 +365,13 @@ class Field(Mesh, Parameters):
         field = fromfile(f, dtype=dtype)
         return field.reshape(self.ny, self.nx)
 
-    def plot(self, log=False, cartesian=False, cmap=viridis, **karg):
+    def plot(self, ax=None,log=False, cartesian=False, cmap=viridis, **karg):
         """
         A layer to plt.imshow or pcolormesh function.
         if cartesian = True, pcolormesh is launched.
         """
-        ax = gca()
+        if ax == None:
+            ax = gca()
         if log:
             data = np.log(self.data)
         else:
