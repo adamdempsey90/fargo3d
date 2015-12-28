@@ -39,7 +39,7 @@ Spacing 		LOG
 Ntot		40000		Total number of time steps
 Ninterm	 		10		Time steps between outputs
 DT			6.28	Time step length. 2PI = 1 orbit
-OutputDir  @outputs/accretionL2/
+OutputDir  @outputs/accretionGPU/
 #Plotting parameters
 
 Log			yes

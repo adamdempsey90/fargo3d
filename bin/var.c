@@ -7,7 +7,7 @@ void InitVariables() {
   init_var("MDOT", (char*)&MDOT, REAL, NO, "0.013");
   init_var("FLARINGINDEX", (char*)&FLARINGINDEX, REAL, NO, "0.0");
   init_var("SIGMASLOPE", (char*)&SIGMASLOPE, REAL, NO, "0.5");
-  init_var("YMAX", (char*)&YMAX, REAL, NO, "20.0");
+  init_var("YMAX", (char*)&YMAX, REAL, NO, "30.0");
   init_var("THICKNESSSMOOTHING", (char*)&THICKNESSSMOOTHING, REAL, NO, "1.0");
   init_var("MDOT0", (char*)&MDOT0, REAL, NO, "0.01");
   init_var("MASSTAPER", (char*)&MASSTAPER, REAL, NO, "3.0");
@@ -26,12 +26,12 @@ void InitVariables() {
   init_var("NX", (char*)&NX, INT, NO, "256");
   init_var("NY", (char*)&NY, INT, NO, "256");
   init_var("NINTERM", (char*)&NINTERM, INT, NO, "10");
-  init_var("NTOT", (char*)&NTOT, INT, NO, "20000");
-  init_var("PLANETCONFIG", (char*)&PLANETCONFIG, STRING, NO, "planets/jupiter5.cfg");
+  init_var("NTOT", (char*)&NTOT, INT, NO, "40000");
+  init_var("PLANETCONFIG", (char*)&PLANETCONFIG, STRING, NO, "planets/jupiter10.cfg");
   init_var("SETUP", (char*)&SETUP, STRING, NO, "accretion");
   init_var("SPACING", (char*)&SPACING, STRING, NO, "LOG");
   init_var("FRAME", (char*)&FRAME, STRING, NO, "C");
-  init_var("OUTPUTDIR", (char*)&OUTPUTDIR, STRING, NO, "@outputs/accretion3/");
+  init_var("OUTPUTDIR", (char*)&OUTPUTDIR, STRING, NO, "@outputs/accretionGPU/");
   init_var("INDIRECTTERM", (char*)&INDIRECTTERM, BOOL, NO, "1");
   init_var("EXCLUDEHILL", (char*)&EXCLUDEHILL, BOOL, NO, "1");
   init_var("LOG", (char*)&LOG, BOOL, NO, "1");
