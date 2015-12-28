@@ -52,9 +52,9 @@ OUTPUT(Vy);
   int pitch  = Pitch_cpu;
   int stride = Stride_cpu;
   real dx = Dx;
-  real flaringindex = FLARINGINDEX;
+  real alpha = ALPHA;
   real omegaframe = OMEGAFRAME;
-  real alphaviscosity = ALPHAVISCOSITY;
+  real flaringindex = FLARINGINDEX;
   real aspectratio = ASPECTRATIO;
   real sigmaout = SIGMAOUT;
 //<\EXTERNAL>
@@ -91,8 +91,8 @@ OUTPUT(Vy);
 	density[lgh] = sigmaout;
 	vx[lgh] = (vx[lact]+ymed(jact)*omegaframe)*sqrt(ymed(jact)/ymed(jgh))-ymed(jgh)*omegaframe;
 	if (j<size_y-1)
-		vy[lghs] = -3*alphaviscosity*aspectratio*aspectratio*pow(ymin(jgh),-0.5+2*flaringindex)*(1+2*flaringindex + log(density[lgh]/density[lact])/(2*log(ymed(jgh)/ymed(jact))));
-	vy[lacts_null] = -3*alphaviscosity*aspectratio*aspectratio*pow(ymin(jgh),-0.5+2*flaringindex)*(1+2*flaringindex + log(density[lgh]/density[lact])/(2*log(ymed(jgh)/ymed(jact))));
+		vy[lghs] = -3*alpha*aspectratio*aspectratio*pow(ymin(jgh),-0.5+2*flaringindex)*(1+2*flaringindex + log(density[lgh]/density[lact])/(2*log(ymed(jgh)/ymed(jact))));
+	vy[lacts_null] = -3*alpha*aspectratio*aspectratio*pow(ymin(jgh),-0.5+2*flaringindex)*(1+2*flaringindex + log(density[lgh]/density[lact])/(2*log(ymed(jgh)/ymed(jact))));
 //<\#>
 #ifdef X
       }

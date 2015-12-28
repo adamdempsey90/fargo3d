@@ -23,10 +23,10 @@ FARGO_OPT +=  -DY #Y --> R
 FARGO_OPT +=  -DISOTHERMAL # ISOTHERMAL EQUATION OF STATE
 
 #Coordi     nate System.
-FARGO_OPT +=  -DCYLINDRICAL # COORDINATE SYSTEM. IN FARGO         SETUP, ALWAYS IS 
+FARGO_OPT +=  -DCYLINDRICAL # COORDINATE SYSTEM. IN FARGO         SETUP, ALWAYS IS
                         # CYLINDRICAL
 #Transport Algorithm
-#FARGO_OPT += -DSTANDARD# YOU CAN USE THIS OPTION IF YOU WANT TO COMPARE THE 
+#FARGO_OPT += -DSTANDARD# YOU CAN USE THIS OPTION IF YOU WANT TO COMPARE THE
                                                         # SPEEDUP OF THE FARGO ALGORITHM RESPECT TO THE
                                                                                 # STANDARD ADVECTION ALGORITHM.
                                                                                 FARGO_OPT += -DLEGACY
@@ -42,7 +42,7 @@ FARGO_OPT +=  -DCYLINDRICAL # COORDINATE SYSTEM. IN FARGO         SETUP, ALWAYS 
 FARGO_OPT += -DPOTENTIAL
 
 #Viscosity
-FARGO_OPT += -DVISCOSITY
+FARGO_OPT += -DALPHAVISCOSITY
 
 #Cuda blocks
 ifeq (${GPU}, 1)

@@ -6,9 +6,9 @@ void InitDensPlanet() {
   real viscosity,fac1,fac2,fac3,nuind,nu0,r;
   field = Density->field_cpu;
   nuind = 0.5+2*FLARINGINDEX;
-  nu0 = ASPECTRATIO*ASPECTRATIO*ALPHAVISCOSITY;
+  nu0 = ASPECTRATIO*ASPECTRATIO*ALPHA;
   boolean GhostInclude = TRUE;
-  
+
     int begin_k =(GhostInclude ? 0 : NGHZ);
   int end_k = Nz+2*NGHZ-begin_k;
   int begin_j =(GhostInclude ? 0 : NGHY);
@@ -52,17 +52,17 @@ void InitSoundSpeedPlanet() {
   d = Density->field_cpu;
 
   boolean GhostInclude = TRUE;
-  
+
   int begin_k =(GhostInclude ? 0 : NGHZ);
   int end_k = Nz+2*NGHZ-begin_k;
   int begin_j =(GhostInclude ? 0 : NGHY);
   int end_j = Ny+2*NGHY-begin_j;
   int begin_i = (GhostInclude ? 0 : NGHX);
   int end_i = Nx+2*NGHX-begin_i;
-  
+
   for (k = begin_k; k<end_k; k++) {
     for (j = begin_j; j<end_j; j++) {
-      for (i = begin_i; i<end_i; i++) {	
+      for (i = begin_i; i<end_i; i++) {
 	r = Ymed(j);
 	vk = sqrt(G*MSTAR/r);
 	field[l] = ASPECTRATIO * pow(Ymed(j)/R0, FLARINGINDEX) * vk; //sqrt(G*MSTAR/Ymed(j))
@@ -71,7 +71,7 @@ void InitSoundSpeedPlanet() {
 #endif
       }
     }
-  }    
+  }
 }
 
 void InitVazimPlanet() {
@@ -85,16 +85,16 @@ void InitVazimPlanet() {
   real vt, omega;
   real *vr;
   real *cs;
-  real md0,nuind,nu0; 
+  real md0,nuind,nu0;
   real vr0, fac1, fac2;
   field = Vx->field_cpu;
   vr = Vy->field_cpu;
   cs = Energy->field_cpu;
-    
+
   boolean GhostInclude = TRUE;
   nuind = 0.5+2*FLARINGINDEX;
-  nu0 = ALPHAVISCOSITY*ASPECTRATIO*ASPECTRATIO;
-  
+  nu0 = ALPHA*ASPECTRATIO*ASPECTRATIO;
+
 
 
   int begin_k =(GhostInclude ? 0 : NGHZ);
@@ -112,8 +112,8 @@ void InitVazimPlanet() {
    //     fac1 = pow(YMAX,.5-nuind)*SIGMAIN*YMIN-pow(YMIN,.5-nuind)*SIGMAOUT*YMAX;
    //
    //     fac2 = fac1 + (-pow(YMAX,1-nuind)*SIGMAIN*YMIN+pow(YMIN,1-nuind)*SIGMAOUT*YMAX)/sqrt(r);
-    
-   
+
+
         fac1=SIGMAOUT*YMAX/r-SIGMAIN*YMIN/r;
         fac1 /= (sqrt(YMAX) - sqrt(YMIN));
         fac2 = SIGMAIN*YMIN/r + fac1*(sqrt(r)-sqrt(YMIN));
@@ -121,7 +121,7 @@ void InitVazimPlanet() {
 
 
       for (i = begin_i; i<end_i; i++) {
-	
+
 	omega = sqrt(G*MSTAR/r/r/r);
 	vt = omega*r*sqrt(1.0+pow(ASPECTRATIO,2)*pow(r/R0,2*FLARINGINDEX)*
 			  (2.0*FLARINGINDEX - 1.0 - SIGMASLOPE));
@@ -130,15 +130,15 @@ void InitVazimPlanet() {
 
 	field[l] = vt*(1.+ASPECTRATIO*NOISE*(drand48()-.5));
 	//vr[l] = r*omega*ASPECTRATIO*NOISE*(drand48()-.5);
-//    vr[l] = -1.5*ALPHAVISCOSITY*ASPECTRATIO*ASPECTRATIO*pow(r,-0.5+2*FLARINGINDEX);
+//    vr[l] = -1.5*ALPHA*ASPECTRATIO*ASPECTRATIO*pow(r,-0.5+2*FLARINGINDEX);
     vr[l] = -md0/fac2;
       }
     }
-  }    
+  }
 }
 
 void CondInit() {
-  
+
   OUTPUT(Density);
   OUTPUT(Energy);
   OUTPUT(Vx);

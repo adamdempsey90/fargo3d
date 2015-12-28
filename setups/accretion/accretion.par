@@ -5,7 +5,7 @@ Setup			accretion
 
 AspectRatio     	0.1            Thickness over Radius in the disc
 Sigma0			1.0   Surface Density at r=1
-AlphaViscosity			0.1		Uniform kinematic viscosity
+Alpha			0.1		Uniform kinematic viscosity
 SigmaSlope		0.5		Slope of the surface density
 FlaringIndex		0.0
 Mdot0                0.01

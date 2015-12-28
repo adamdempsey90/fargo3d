@@ -1,5 +1,5 @@
 #Useful notes:
-#For now, it's allowed to use geometrical varibales such as xmin/xmed(i), ymin/ymed(i), zmin/zmax(i), 
+#For now, it's allowed to use geometrical varibales such as xmin/xmed(i), ymin/ymed(i), zmin/zmax(i),
 #and variables such that zone_size_x/y/z, but not Surf_x/y/z nor InvVol, Vol...
 #
 #Also, you can use any variable or macrocommand defined in the code. A consecuence of this, is that
@@ -14,13 +14,13 @@
 #
 #	   Centered:	|'omegaframe'**2+2*'flaring'+'mstar'+xmed(i)-ymed(j)+active|active|#
 #
-#You must to be care with the name of the active cell. Be sure that the chain "active" 
-#is not inside your varibles. 
+#You must to be care with the name of the active cell. Be sure that the chain "active"
+#is not inside your varibles.
 #Wrong example (that you never should to do):
 #
 #       		|'omegactive'|active|
 #
-#Explanation: the parser first makes the substitution:'omegactive'-->'omegavariable', and then uses 
+#Explanation: the parser first makes the substitution:'omegactive'-->'omegavariable', and then uses
 # 'omegavariable' for the allocation. "varible" is a variable defined in a .bound file.
 
 
@@ -54,7 +54,7 @@ ENERGY_RT_RIGHT:
 ### BELOW: BOUNDARY CONDITIONS FOR 2D KEPLERIAN DISKS WITH PRESSURE
 ### SUPPORT IN THEIR ROTATIONAL EQUILIBRIUM
 ##############################################################
- 
+
 KEPLERIAN2DDENS:                       #Analytic extension of surface density profile
             Centered:            |surfdens*pow(Ymed(jact)/Ymed(jgh),'SIGMASLOPE')|surfdens|
 
@@ -77,13 +77,13 @@ EXTRAPOLATE_RIGHT:   #Used for periodic runs
 ### FOR THE POSSIBLE RADIAL VARIATION OF THE ASPECT RATIO. IN THE CASE
 ### THE ASPECT RATIO IS CONSTANT (VANISHING FLARING INDEX), THE
 ### EXPRESSIONS ARE SIMPLER AS THEY ARE SEPARABLE IN RADIUS AND
-### COLATITUDE. 
+### COLATITUDE.
 ##############################################################
 ##############################################################
- 
+
 KEPLERIAN3DSPHDENSRAD: #Approximate extrapolation in radius
 	Centered: |ds*pow(Ymed(jact)/Ymed(jgh),'SIGMASLOPE'+'FLARINGINDEX'+1.)*exp(-pow(cos(Zmed(k)),2.)/('ASPECTRATIO'*'ASPECTRATIO')*(1.-Ymed(jgh)/(.5*(Ymed(jact)+Ymed(jgh))))*'FLARINGINDEX'*pow(.5*(Ymed(jgh)+Ymed(jact))/'R0',-2.*'FLARINGINDEX'-1.))|ds|
- 
+
 KEPLERIAN3DSPHVAZIMRAD:
         Centered: |(vv+'OmegaFrame'*Ymed(jact)*sin(Zmed(k)))*sqrt(Ymed(jact)/Ymed(jgh))*(1.+(2.+'SIGMASLOPE'-'FLARINGINDEX')*(Ymed(jact)-Ymed(jgh))/'R0'*'FLARINGINDEX'*'ASPECTRATIO'*'ASPECTRATIO'*pow((Ymed(jgh)+Ymed(jact))/(2.*'R0'),2.*'FLARINGINDEX'-1.))-Ymed(jgh)*'OmegaFrame'*sin(Zmed(k))|vv|
 
@@ -98,29 +98,29 @@ KEPLERIAN3DSPHVAZIMCOL:
 ##############################################################
 ##############################################################
 ### Fixed boundary conditions for a prescribed accretion
-### rate, MDOT. 
+### rate, MDOT.
 ###############################################################
 ##############################################################
- 
+
  ACCRETIONDENSINNER:
-    Centered: |'MDOT'/(3*pi*'ALPHAVISCOSITY'*'ASPECTRATIO'*'ASPECTRATIO' * pow(Ymed(jgh),0.5+2*'FLARINGINDEX'))|ds|
+    Centered: |'MDOT'/(3*pi*'ALPHA'*'ASPECTRATIO'*'ASPECTRATIO' * pow(Ymed(jgh),0.5+2*'FLARINGINDEX'))|ds|
 
 ACCRETIONDENSOUTER:
-#     Centered: |'MDOT'/(3*pi*'ALPHAVISCOSITY'*'ASPECTRATIO'*'ASPECTRATIO' * pow(Ymed(jgh),0.5+2*'FLARINGINDEX'))|ds|
+#     Centered: |'MDOT'/(3*pi*'ALPHA'*'ASPECTRATIO'*'ASPECTRATIO' * pow(Ymed(jgh),0.5+2*'FLARINGINDEX'))|ds|
      Centered: |'MDOT'/(-2*pi*Ymed(jgh)*vy[lghs])|active|
 
 #ACCRETIONVRADINNER:
 #   Staggered: |a|a|a|
-#   Staggered: | -1.5* 'ALPHAVISCOSITY'*'ASPECTRATIO'*'ASPECTRATIO'*pow(Ymed(jgh),-0.5+2*'FLARINGINDEX') | -1.5*'ALPHAVISCOSITY'*'ASPECTRATIO'*'ASPECTRATIO'*pow(Ymin(jact),-0.5+2*'FLARINGINDEX') |active|
+#   Staggered: | -1.5* 'ALPHA'*'ASPECTRATIO'*'ASPECTRATIO'*pow(Ymed(jgh),-0.5+2*'FLARINGINDEX') | -1.5*'ALPHA'*'ASPECTRATIO'*'ASPECTRATIO'*pow(Ymin(jact),-0.5+2*'FLARINGINDEX') |active|
 
 ACCRETIONVRADIN:
 #  Staggered: |a|a|a|
-    Staggered:  |-3*'ALPHAVISCOSITY'*'ASPECTRATIO'*'ASPECTRATIO'*pow(Ymin(jact),-0.5+2*'FLARINGINDEX')*(1+2*'FLARINGINDEX' + log(density[lgh]/density[lact])/(2*log(Ymed(jgh)/Ymed(jact))))|-3*'ALPHAVISCOSITY'*'ASPECTRATIO'*'ASPECTRATIO'*pow(Ymin(jact),-0.5+2*'FLARINGINDEX')*(1+2*'FLARINGINDEX' + log(density[lgh]/density[lact])/(2*log(Ymed(jgh)/Ymed(jact))))|active|
-       
+    Staggered:  |-3*'ALPHA'*'ASPECTRATIO'*'ASPECTRATIO'*pow(Ymin(jact),-0.5+2*'FLARINGINDEX')*(1+2*'FLARINGINDEX' + log(density[lgh]/density[lact])/(2*log(Ymed(jgh)/Ymed(jact))))|-3*'ALPHA'*'ASPECTRATIO'*'ASPECTRATIO'*pow(Ymin(jact),-0.5+2*'FLARINGINDEX')*(1+2*'FLARINGINDEX' + log(density[lgh]/density[lact])/(2*log(Ymed(jgh)/Ymed(jact))))|active|
+
 ACCRETIONVRADOUT:
 #  Staggered: |a|a|a|
-  Staggered:  |-3*'ALPHAVISCOSITY'*'ASPECTRATIO'*'ASPECTRATIO'*pow(Ymin(jgh),-0.5+2*'FLARINGINDEX')*(1+2*'FLARINGINDEX' + log(density[lgh]/density[lact])/(2*log(Ymed(jgh)/Ymed(jact))))|-3*'ALPHAVISCOSITY'*'ASPECTRATIO'*'ASPECTRATIO'*pow(Ymin(jgh),-0.5+2*'FLARINGINDEX')*(1+2*'FLARINGINDEX' + log(density[lgh]/density[lact])/(2*log(Ymed(jgh)/Ymed(jact))))|active|
-  
+  Staggered:  |-3*'ALPHA'*'ASPECTRATIO'*'ASPECTRATIO'*pow(Ymin(jgh),-0.5+2*'FLARINGINDEX')*(1+2*'FLARINGINDEX' + log(density[lgh]/density[lact])/(2*log(Ymed(jgh)/Ymed(jact))))|-3*'ALPHA'*'ASPECTRATIO'*'ASPECTRATIO'*pow(Ymin(jgh),-0.5+2*'FLARINGINDEX')*(1+2*'FLARINGINDEX' + log(density[lgh]/density[lact])/(2*log(Ymed(jgh)/Ymed(jact))))|active|
+
 
 
 VRADARBITRARY:
@@ -144,6 +144,4 @@ WALL:
   Staggered: |-a|0|a|
 
 ANGMOMVRADOUT:
-  Staggered:|0|-6*pi*'ALPHAVISCOSITY'*'ASPECTRATIO'*'ASPECTRATIO'*pow(Ymin(jgh),1.5+2*'FLARINGINDEX')*((1+2*'FLARINGINDEX')*(density[lghs]+density[lacts])/(2*Ymin(jgh)) + (density[lghs]-density[lacts])/(2*(Ymed(jgh)-Ymed(jact))))|active|
-
-
+  Staggered:|0|-6*pi*'ALPHA'*'ASPECTRATIO'*'ASPECTRATIO'*pow(Ymin(jgh),1.5+2*'FLARINGINDEX')*((1+2*'FLARINGINDEX')*(density[lghs]+density[lacts])/(2*Ymin(jgh)) + (density[lghs]-density[lacts])/(2*(Ymed(jgh)-Ymed(jact))))|active|
