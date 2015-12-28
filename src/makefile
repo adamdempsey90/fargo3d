@@ -117,24 +117,6 @@ CUDALIB_LINUX = -L${CUDA}/lib64/  -lcudart
 CXX_LINUX     = g++ -stdlib=libstdc++
 CXXPARA_LINUX = mpic++ -stdlib=libstdc++
 #---------------------------------------------------------------------
-##---------------------------------------------------------------------
-#MACOSX PLATFORM (GENERIC, default)
-#FARGO_ARCH must be set to MACOSX
-CC_MACOSX      = gcc-4.9
-SEQOPT_MACOSX  = -O3 -ffast-math -fopenmp
-PARAOPT_MACOSX = -O3 -ffast-math 
-PARACC_MACOSX  = mpicc
-LIBS_MACOSX    = -lm  -L/usr/local/lib/
-INC_MACOSX     = -I/usr/local/include/ 
-NVCC_MACOSX    = nvcc
-CUDAOPT_MACOSX = -O3 -arch=sm_20 -w
-PARAINC_MACOSX = -I/usr/local/include/
-PARALIB_MACOSX = -L/usr/local/lib/
-CUDAINC_MACOSX =  #-I${CUDA}/include/
-CUDALIB_MACOSX = #-L${CUDA}/lib64/  -lcudart
-CXX_MACOSX     = g++ -stdlib=libstdc++
-CXXPARA_MACOSX = mpic++ -stdlib=libstdc++
-#---------------------------------------------------------------------
 #KEPLER PLATFORM WITH OPENMPI-1.7.4 AT UNAM
 #FARGO_ARCH must be set to KEPLEROPENMPI
 CC_KEPLEROPENMPI      = gcc 
@@ -242,8 +224,8 @@ CUDAINC_QUADRO = -I${CUDA}/include/
 CXX_QUADRO     = g++ -stdlib=libstdc++
 CXXPARA_QUADRO = mpic++ -stdlib=libstdc++
 #---------------------------------------------------------------------
-#MAC PLATFORM (FREDERIC'S COMPUTER) - Works with OSX 10.9 (Maverick)
-#Probably works also with older OSX versions.
+#MAC PLATFORM (FREDERIC'S COMPUTER) - Works with OSX 10.10 (Yosemite)
+#and CUDA release 7.5, V7.5.19 + GPU Driver Version: 10.4.2 310.41.35f01
 #FARGO_ARCH must be set to MacIntel
 CC_MacIntel      = gcc
 SEQOPT_MacIntel  = -O3 -arch x86_64 -Wmissing-prototypes #-Wall -Wextra
@@ -298,26 +280,27 @@ EXENAME  = ../fargo3d  #Name and location of the executable file
 VPATH=${SETUPSDIR}/${SETUP}:${STDDIR}:${SCRIPTSDIR}:${SRCDIR}
 
 #---------------#Sequential and parallel objects----------------------
-MAINOBJ  = LowTasks.o psys.o main.o param.o var.o usage.o   	\
-	   split.o comm.o CompPresIso.o         		\
-	   boundary.o checknans.o 				\
-	   vanleer_x_a.o vanleer_x_b.o 				\
-           vanleer_y_a.o vanleer_y_b.o				\
-	   vanleer_z_a.o vanleer_z_b.o 				\
-	   divrho.o transport.o 				\
-	   substep3.o CompPresAd.o			    	\
-	   substep2_a.o substep2_b.o condinit.o     		\
-	   output.o output2d.o output_vtk.o 			\
-	   output_vtk_merging.o			                \
-	   algogas.o planets.o runge_kutta.o	        	\
-	   stockholm.o mhd.o potential.o	           	\
-	   timeinfo.o allocate.o resistivity.o		      	\
-	   defout.o fresh.o  light_global_dev.o          	\
-	   fargo_mhd.o substep1_x.o substep1_y.o substep1_z.o	\
-	   compfields.o advect_shift.o rescale.o		\
-	   momenta_x.o momenta_y.o momenta_z.o			\
-	   reduction_sum.o reduction_min.o			\
-	   update_x.o update_y.o update_z.o 			\
+MAINOBJ  = LowTasks.o psys.o main.o param.o var.o usage.o   	    \
+	   split.o comm.o CompPresIso.o CompPresPoly.o         	    \
+	   boundary.o checknans.o 				    \
+	   vanleer_x_a.o vanleer_x_b.o 				    \
+           vanleer_y_a.o vanleer_y_b.o				    \
+	   vanleer_z_a.o vanleer_z_b.o 				    \
+	   divrho.o transport.o 				    \
+	   substep3.o CompPresAd.o			    	    \
+	   substep2_a.o substep2_b.o condinit.o     		    \
+	   output.o output2d.o output_vtk.o 			    \
+	   output_vtk_merging.o			                    \
+	   algogas.o planets.o runge_kutta.o	        	    \
+	   stockholm.o mhd.o potential.o	           	    \
+	   timeinfo.o allocate.o resistivity.o		      	    \
+	   defout.o fresh.o  light_global_dev.o          	    \
+	   fargo_mhd.o substep1_x.o substep1_y.o substep1_z.o	    \
+	   compfields.o advect_shift.o rescale.o		    \
+	   momenta_x.o momenta_y.o momenta_z.o			    \
+	   reduction_sum.o reduction_min.o			    \
+	   update_x.o update_y.o update_z.o 			    \
+           update_density_x.o update_density_y.o update_density_z.o \
 	   newvel_x.o newvel_y.o newvel_z.o 			\
 	   compute_residual.o change_frame.o compute_vmed.o	\
            correct_vtheta.o cfl.o cfl_b.o			\
@@ -339,7 +322,7 @@ MAINOBJ  = LowTasks.o psys.o main.o param.o var.o usage.o   	\
 	   mon_bxflux.o                                         \
 	   postrestarthook.o change_arch.o select_device.o	\
 	   redefoptions.o setuphook1.o				\
-           fill_ghostsx.o                    \
+           fill_ghostsx.o                                       \
 
 #-----------------------#Cuda objects---------------------------------
 GPU_OBJ  =  reduction_sum_device.o reduction_min_device.o	\
@@ -360,11 +343,12 @@ GPU_OBJBLOCKS =  CompPresIso_gpu.o CompPresAd_gpu.o 		\
 	   vanleer_z_a_gpu.o vanleer_z_b_gpu.o 			\
 	   momenta_x_gpu.o momenta_y_gpu.o momenta_z_gpu.o	\
 	   update_x_gpu.o update_y_gpu.o update_z_gpu.o 	\
-	   newvel_x_gpu.o newvel_y_gpu.o newvel_z_gpu.o 	\
+	   update_density_x_gpu.o update_density_y_gpu.o update_density_z_gpu.o\
+           newvel_x_gpu.o newvel_y_gpu.o newvel_z_gpu.o 	\
 	   advect_shift_gpu.o compute_residual_gpu.o 		\
 	   change_frame_gpu.o potential_gpu.o 			\
 	   correct_vtheta_gpu.o cfl_gpu.o compute_force_gpu.o	\
-	   lorentz_force_gpu.o 					\
+	   lorentz_force_gpu.o CompPresPoly_gpu.o 		\
 	   fargo_ppa_a_gpu.o fargo_ppa_b_gpu.o			\
 	   fargo_ppa_c_gpu.o fargo_ppa_d_gpu.o			\
 	   fargo_ppa_d_2d_gpu.o resist_gpu.o 			\
@@ -377,7 +361,7 @@ GPU_OBJBLOCKS =  CompPresIso_gpu.o CompPresAd_gpu.o 		\
 	   mon_maxwell_gpu.o visctensor_sph_gpu.o               \
 	   mon_bxflux_gpu.o                                     \
 	   fargo_ppa_steep_gpu.o setuphook1_gpu.o		\
-           fill_ghostsx_gpu.o            \
+           fill_ghostsx_gpu.o                                   \
 #</CUDA OBJECTS>
 #---------------------------------------------------------------------
 
@@ -514,7 +498,7 @@ ${EXENAME} : ${OBJECTS}
 	@echo ""
 	@echo "All objects are OK. Linking stage"
 # You may remove the '@' sign in the instructions below if you need a verbose output
-	${LINKER} ${OBJECTS} -o ${EXENAME} ${LIBS}
+	@${LINKER} ${OBJECTS} -o ${EXENAME} ${LIBS}
 ifdef FARGO_COLOR
 	@echo -n "${GREEN}"
 	@echo "The executable file has been created."
@@ -569,5 +553,5 @@ ymax_bound.c zmin_bound.c zmax_bound.c: ymin_bound.c
 
 # You may remove the '@' sign in the instructions below if you need a verbose output
 %.o : %.c ${GLOBAL}
-	echo CC $< "==>" $*.o
-	${COMPILER} $< -c ${INCLUDE} ${OPTIONS} ${CUDAINC} ${FARGO_OPT} -DMONITOR_SCALAR='${MONITOR_SCALAR}' -DMONITOR_2D='${MONITOR_2D}' -DMONITOR_Y='${MONITOR_Y}' -DMONITOR_Y_RAW='${MONITOR_Y_RAW}' -DMONITOR_Z='${MONITOR_Z}' -DMONITOR_Z_RAW='${MONITOR_Z_RAW}' -DSETUPNAME='${SETUP}'
+	@echo CC $< "==>" $*.o
+	@${COMPILER} $< -c ${INCLUDE} ${OPTIONS} ${CUDAINC} ${FARGO_OPT} -DMONITOR_SCALAR='${MONITOR_SCALAR}' -DMONITOR_2D='${MONITOR_2D}' -DMONITOR_Y='${MONITOR_Y}' -DMONITOR_Y_RAW='${MONITOR_Y_RAW}' -DMONITOR_Z='${MONITOR_Z}' -DMONITOR_Z_RAW='${MONITOR_Z_RAW}' -DSETUPNAME='${SETUP}'

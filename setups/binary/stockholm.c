@@ -78,7 +78,7 @@ void StockholmBoundary_cpu(real dt) {
   // see De Val Borro et al. (2006), section 3.2
   //  real Y_inf = y_min + (y_max-y_min)*0.0476;
   //  real Y_sup = y_max - (y_max-y_min)*0.19;
-  real Y_inf = y_min + (y_max-y_min)*0.05;
+  real Y_inf = 0.0; // No damping at disk inner edge
   real Y_sup = y_max - (y_max-y_min)*0.10;
   real Z_inf = z_min - (z_max-z_min); // Here we push Z_inf & Z_sup
   real Z_sup = z_max + (z_max-z_min); // out of the mesh
@@ -91,7 +91,7 @@ void StockholmBoundary_cpu(real dt) {
   }
 #endif
 #ifdef SPHERICAL
-  Z_inf = M_PI/2.0-(M_PI/2.0-z_min)*1.2;
+  Z_inf = M_PI/2.0-(M_PI/2.0-z_min)*0.8;
   Z_sup = M_PI/2.0+(M_PI/2.0-z_min)*0.8; // Avoid damping in ghost zones
   // if only half upper disk is covered by the mesh
 #endif
@@ -164,7 +164,9 @@ void StockholmBoundary_cpu(real dt) {
 	tau = ds*sqrt(ymed(j)*ymed(j)*ymed(j)/G/MSTAR);
 	if(ramp>0.0) {
 	  taud = tau/ramp;
+#ifndef RADIATIVE_TRANSFER
 	  rho[l] = (rho[l]*taud+rho0[l2D]*dt)/(dt+taud);
+#endif
 #ifdef X
 	  vx0_target = vx0[l2D];
 	  radius = ymed(j);
@@ -176,6 +178,11 @@ void StockholmBoundary_cpu(real dt) {
 #endif
 #ifdef Y
 	  vy[l] = (vy[l]*taud+vy0[l2D]*dt)/(dt+taud);
+#endif
+#ifdef ADIABATIC
+#ifndef RADIATIVE_TRANSFER
+	  e[l] = (e[l]*taud+e0[l2D]*dt)/(dt+taud);
+#endif
 #endif
 	}
 #ifdef Z

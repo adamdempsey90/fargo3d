@@ -90,7 +90,7 @@ void copy_velocities_gpu(int option) {
     Output_GPU(Vz_temp, __LINE__, __FILE__);
 #endif
   }
-  if (Nx+2*NGHX == 1) { //NICOLE Actually we need something like check miute in x direction also
+  if (Nx+2*NGHX == 1) { //Actually we need something like check mute in x direction also
     pitch = Stride_gpu * sizeof(real);
     width = (Ny+2*NGHY)*sizeof(real);
     height = Nz+2*NGHZ;

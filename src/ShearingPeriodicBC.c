@@ -11,10 +11,7 @@ static real SlideVel;
 /* This routine is in Beta version and should not be used without
    intensive prior testing */
 /* These boundary conditions only run on the CPU at the present time,
-   which somehow impact performance */
-
-/* NICOlE: I have not added ghost values in the X direction 
-   I think it´s not necessary because on the coarsest level they will never exist */
+   which somehow impacts performance */
 
 void ShearBC (int var) {
   FARGO_SAFE(ShearingPeriodicCondition()); // Determine integer and

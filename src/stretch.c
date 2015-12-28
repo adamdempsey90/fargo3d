@@ -41,7 +41,7 @@ void RestartStretch (Field *field, int n) {
   for (k = NGHZ; k < Nz+NGHZ; k++) {
     for (j = NGHY; j < Ny+NGHY; j++) {
       fseek(fi, (origin+(k-NGHZ)*Nxp*NY+(j-NGHY)*Nxp)*sizeof(real), SEEK_SET); 
-      temp = fread(f+j*(Nxp+2*NGHX)+k*Stride+NGHX, sizeof(real), Nxp, fi); //150318 NICOLE temp = fread(f+j*NX+k*Stride, sizeof(real), Nxp, fi);   OKAY if Nxp = NX
+      temp = fread(f+j*(Nx+2*NGHX)+k*Stride+NGHX, sizeof(real), Nxp, fi);
       for (i = NX+NGHX-1; i>=0; i--) //backward sweep as we overwrite data
 	f[l] = f[(i-NGHX)/size_ratio + j*(Nx+2*NGHX) + k*Stride+NGHX];
     }

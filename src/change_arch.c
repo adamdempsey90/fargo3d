@@ -21,6 +21,7 @@ void ChangeArch() {
   //----------------------------------------------------
   ComputePressureFieldIso = ComputePressureFieldIso_cpu;
   ComputePressureFieldAd = ComputePressureFieldAd_cpu;
+  ComputePressureFieldPoly = ComputePressureFieldPoly_cpu;
   SubStep1_x  = SubStep1_x_cpu;
   SubStep1_y  = SubStep1_y_cpu;
   SubStep1_z  = SubStep1_z_cpu;
@@ -40,6 +41,9 @@ void ChangeArch() {
   UpdateX    = UpdateX_cpu;
   UpdateY    = UpdateY_cpu;
   UpdateZ    = UpdateZ_cpu;
+  UpdateDensityX = UpdateDensityX_cpu;
+  UpdateDensityY = UpdateDensityY_cpu;
+  UpdateDensityZ = UpdateDensityZ_cpu;
   NewVelocity_x = NewVelocity_x_cpu;
   NewVelocity_y = NewVelocity_y_cpu;
   NewVelocity_z = NewVelocity_z_cpu;
@@ -134,6 +138,12 @@ void ChangeArch() {
 	  printf("CompPressFieldAd runs on the GPU\n");
 	}
       }
+      if (strcmp(name, "computepressurefieldpoly") == 0) {
+	if(strval[0] == 'g') {
+	  ComputePressureFieldPoly = ComputePressureFieldPoly_gpu;
+	  printf("CompPressFieldPoly runs on the GPU\n");
+	}
+      }
       if (strcmp(name, "substep1") == 0) {
 	if(strval[0] == 'g') {
 	  SubStep1_x = SubStep1_x_gpu;
@@ -186,6 +196,14 @@ void ChangeArch() {
 	  UpdateY = UpdateY_gpu;
 	  UpdateZ = UpdateZ_gpu;
 	  printf("update runs on the GPU\n");
+	}
+      }
+      if (strcmp(name, "updatedensity") == 0) {
+	if(strval[0] == 'g'){
+	  UpdateDensityX = UpdateDensityX_gpu;
+	  UpdateDensityY = UpdateDensityY_gpu;
+	  UpdateDensityZ = UpdateDensityZ_gpu;
+	  printf("updatedensity runs on the GPU\n");
 	}
       }
       if (strcmp(name, "newvelocity") == 0) {

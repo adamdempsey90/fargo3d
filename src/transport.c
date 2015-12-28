@@ -7,25 +7,37 @@ void VanLeerX(Field *Density, Field *DensStar, Field *Vx_t, real dt) {
   FARGO_SAFE(VanLeerX_b(dt, Density, DensStar, Vx_t));
 }
 
+
 void TransportX(Field *Q, Field *Qs, Field *Vx_t, real dt) { 
-  FARGO_SAFE(DivideByRho(Q));
-  __VanLeerX(DivRho, Qs, Vx_t, dt);
-  FARGO_SAFE(UpdateX (dt, Q, Qs, Vx_t));
+  if (Q != Density){
+     FARGO_SAFE(DivideByRho(Q));
+     __VanLeerX(DivRho, Qs, Vx_t, dt);
+     FARGO_SAFE(UpdateX (dt, Q, Qs, Vx_t));
+  }
+  else{
+     FARGO_SAFE(UpdateDensityX (dt, Q, Vx_t));
+  }
 }
-
 void TransportY(Field *Q, Field *Qs, real dt) {
-  FARGO_SAFE(DivideByRho(Q));
-  FARGO_SAFE(VanLeerY_a(DivRho));
-  FARGO_SAFE(VanLeerY_b(dt, DivRho, Qs));
-
-  FARGO_SAFE(UpdateY (dt, Q, Qs));
+  if (Q != Density){
+    FARGO_SAFE(DivideByRho(Q));
+    FARGO_SAFE(VanLeerY_a(DivRho));
+    FARGO_SAFE(VanLeerY_b(dt, DivRho, Qs));
+    FARGO_SAFE(UpdateY (dt, Q, Qs));
+  }
+  else
+    FARGO_SAFE(UpdateDensityY (dt, Q));
 }
 
 void TransportZ(Field *Q, Field *Qs, real dt) {
-  FARGO_SAFE(DivideByRho(Q));
-  FARGO_SAFE(VanLeerZ_a(DivRho));
-  FARGO_SAFE(VanLeerZ_b(dt, DivRho, Qs));
-  FARGO_SAFE(UpdateZ (dt, Q, Qs));
+   if (Q != Density){
+    FARGO_SAFE(DivideByRho(Q));
+    FARGO_SAFE(VanLeerZ_a(DivRho));
+    FARGO_SAFE(VanLeerZ_b(dt, DivRho, Qs));
+    FARGO_SAFE(UpdateZ (dt, Q, Qs));
+  }
+  else
+    FARGO_SAFE(UpdateDensityZ (dt, Q));
 }
 
 void X_advection (Field *Vx_t, real dt) {

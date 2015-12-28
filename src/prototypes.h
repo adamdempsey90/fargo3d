@@ -137,6 +137,9 @@ ex void ComputePressureFieldAd_cpu(void);
 //ComPresIso.c prototypes;
 ex void ComputePressureFieldIso_cpu(void);
 
+//ComPresPoly.c prototypes;
+ex void ComputePressureFieldPoly_cpu(void);
+
 //comm.c Prototypes
 ex void ResetBuffers(void);
 ex void MakeCommunicator (int, int, int, int, int, int, int, int, int, int, int, int);
@@ -313,7 +316,9 @@ ex void write_vtk_scalar(FILE*, Field*);
 ex void UpdateX_cpu(real, Field*, Field*, Field*);
 ex void UpdateY_cpu(real, Field*, Field*);
 ex void UpdateZ_cpu(real, Field*, Field*);
-
+ex void UpdateDensityX_cpu(real, Field*, Field*);
+ex void UpdateDensityY_cpu(real, Field*);
+ex void UpdateDensityZ_cpu(real, Field*);
 //newvel Prototypes
 ex void NewVelocity_x_cpu (void);
 ex void NewVelocity_y_cpu (void);
@@ -409,7 +414,6 @@ ex void CondInit(void);
 ex void PostRestartHook(void);
 
 
-
 //CUDA PROTOTYPES-----------------------------------------------------
 
 //fresh.c Prototypes
@@ -428,7 +432,7 @@ ex void Output2D_CPU(Field2D *, int, const char *);
 ex void Output2DInt_GPU(FieldInt2D *, int, const char *);
 ex void Output2DInt_CPU(FieldInt2D *, int, const char *);
 ex void Draft(Field *, int, const char *);
-ex void check_errors(char*);
+ex void check_errors(const char*);
 ex void WhereIsField(Field*);
 ex void WhereIsFieldInt2D(FieldInt2D*);
 ex void WhoOwns (Field *);
@@ -460,6 +464,8 @@ ex void reduction_MIN_gpu (Field *, int, int, int, int);
 
 ex void ComputePressureFieldIso_gpu(void);
 ex void ComputePressureFieldAd_gpu(void);
+ex void ComputePressureFieldPoly_gpu(void);
+
 ex void SubStep1_x_gpu(real);
 ex void SubStep1_y_gpu(real);
 ex void SubStep1_z_gpu(real);
@@ -491,6 +497,9 @@ ex void momenta_z_gpu(void);
 ex void UpdateX_gpu(real, Field*, Field*, Field*);
 ex void UpdateY_gpu(real, Field*, Field*);
 ex void UpdateZ_gpu(real, Field*, Field*);
+ex void UpdateDensityX_gpu(real, Field*, Field*);
+ex void UpdateDensityY_gpu(real, Field*);
+ex void UpdateDensityZ_gpu(real, Field*);
 
 ex void NewVelocity_x_gpu (void);
 ex void NewVelocity_y_gpu (void);
@@ -511,7 +520,6 @@ ex void boundary_ymax_gpu(void);
 ex void boundary_zmax_gpu(void);
 ex void boundary_zmin_gpu(void);
 ex void Fill_GhostsX_gpu(void);
-ex void Fill_GhostsX_erad_gpu(void);
 
 ex void CheckMuteY_gpu(void);
 ex void CheckMuteZ_gpu(void);

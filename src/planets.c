@@ -1,6 +1,7 @@
 #include "fargo3d.h"
 
 void ComputeIndirectTerm () {
+#ifndef NODEFAULTSTAR
   IndirectTerm.x = -DiskOnPrimaryAcceleration.x;
   IndirectTerm.y = -DiskOnPrimaryAcceleration.y;
   IndirectTerm.z = -DiskOnPrimaryAcceleration.z;
@@ -9,6 +10,11 @@ void ComputeIndirectTerm () {
     IndirectTerm.y = 0.0;
     IndirectTerm.z = 0.0;
   }
+#else
+  IndirectTerm.x = 0.0;
+  IndirectTerm.y = 0.0;
+  IndirectTerm.z = 0.0;
+#endif
 }
 
 Force ComputeForce(real x, real y, real z,

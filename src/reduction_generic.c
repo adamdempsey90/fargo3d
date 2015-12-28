@@ -15,8 +15,7 @@ void name_reduction_cpu(macro) (Field *F, int ymin, int ymax, int zmin, int zmax
   for (k = zmin; k < zmax; k++) {
     for (j = ymin; j < ymax; j++) {
       reduc2d[l2D] = INIT_REDUCTION (macro);
-      for (i = NGHX; i < (Nx+NGHX); i++) { //NICOLE
-//      for (i = 0; i < Nx; i++) { //NICOLE
+      for (i = NGHX; i < (Nx+NGHX); i++) {
 	reduc2d[l2D] = macro(reduc2d[l2D], f[l]);
       }
     }

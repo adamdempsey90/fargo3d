@@ -5,8 +5,10 @@
 # the equator). If you want to simulate a half disk, you should create
 # another setup (p3diso) slightly different from this one.  In order
 # to run it, do:
-# make SETUP=p3disof.par
-# fargo3d -m setup/p3disof/p3disof.par
+# make SETUP=p3disof
+# ./fargo3d -m in/p3disof.par
+# Note: if you want to simulate a half disk with reflecting boundary
+# conditions at the midplane, use the setup 'p3diso'.
 # END
 #----------------------------------------------------------------------
 # From the list below, please activate/deactivate the options that     

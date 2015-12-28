@@ -232,9 +232,7 @@ void var_assign(){
 #elif defined(SPHERICAL)
   sprintf(COORDINATES,"%s","spherical");
 #endif
-  if (ALPHAVISCOSITY > 0) {
-      ViscosityAlpha = YES;
-  }
+
   if ((THICKNESSSMOOTHING != 0.0) && (ROCHESMOOTHING != 0.0)) {
     mastererr ("You cannot use at the same time\n");
     mastererr ("`ThicknessSmoothing' and `RocheSmoothing'.\n");
@@ -242,6 +240,38 @@ void var_assign(){
     mastererr ("one of these variables and run again.\n");
     prs_exit (1);
   }
+
+#ifndef VISCOSITY
+  if (NU != 0.0) {
+    mastererr ("ERROR - You have defined a non-vanishing value for\n");
+    mastererr ("the kinematic viscosity NU, but the code is built\n");
+    mastererr ("without the viscosity module. Edit your setup file\n");
+    mastererr ("and add the line:\n");
+    mastererr ("\nFARGO_OPT += -DVISCOSITY\n\n");
+    mastererr ("and rebuild the code.\n");
+    prs_exit (1);
+  }
+#endif
+  
+
+#ifndef ALPHAVISCOSITY
+  if (ALPHA != 0.0) {
+    mastererr ("ERROR - You have defined a non-vanishing value for\n");
+    mastererr ("the disk's alpha viscosity, but the code is built\n");
+    mastererr ("without the viscosity module. Edit your setup file\n");
+    mastererr ("and add the line:\n");
+    mastererr ("\nFARGO_OPT += -DALPHAVISCOSITY\n\n");
+    mastererr ("and rebuild the code.\n");
+    prs_exit (1);
+  }
+#endif
+
+#if (defined(VISCOSITY) && defined(ALPHAVISCOSITY))
+  mastererr ("ERROR - You cannot activate at the same time\n");
+  mastererr ("VISCOSITY and ALPHAVISCOSITY. Fix, rebuild and rerun.\n");
+  prs_exit (1);
+#endif
+  
 
   if (NGHX > NX) {
     mastererr ("\n\n\nERROR\n\nThe buffer zones in X are wider than the active mesh\n");

@@ -9,8 +9,10 @@
 # meant to prevent a spurious vertical force to arise as a consequence
 # of the lack of the lower half of the disk.
 # In order to run it, do: 
-# make SETUP=p3diso.par
-# fargo3d -m setup/p3diso/p3diso.par
+# make SETUP=p3diso
+# ./fargo3d -m in/p3diso.par
+# Note: the 'full disk' set up is now provided in the public release
+# and is called 'p3disof'
 # END
 #----------------------------------------------------------------------
 # From the list below, please activate/deactivate the options that     

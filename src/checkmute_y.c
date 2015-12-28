@@ -104,8 +104,8 @@ void CheckMuteY_cpu() {
 //<#>
 	  ll = l;
 
-	  l_act = i+NGHY*size_x+k*stride;
-	  l_up  = i+(j+NGHY+1)*size_x+k*stride;
+	  l_act = i+NGHY*pitch+k*stride;
+	  l_up  = i+(j+NGHY+1)*pitch+k*stride;
 	  
 	  rho[ll]    = rho[l_act];
 	  rho[l_up]  = rho[l_act];

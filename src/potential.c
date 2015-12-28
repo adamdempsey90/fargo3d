@@ -10,6 +10,8 @@
 void compute_potential(real dt) {
 
   real OmegaNew, domega;
+  int i;
+  int subcycling = 5;
   
   if (Corotating) GetPsysInfo (MARK);
   
@@ -25,8 +27,12 @@ void compute_potential(real dt) {
   FARGO_SAFE(ComputeIndirectTerm());
   FARGO_SAFE(Potential()); // Gravitational potential from star and planet(s)
   FARGO_SAFE(AdvanceSystemFromDisk(dt));
-  
-  FARGO_SAFE(AdvanceSystemRK5(dt));
+
+  if (ThereIsACentralBinary)
+    subcycling = 30;		/* Arbitrary number of subcycles which
+				   should fit most needs */
+  for (i = 0; i < subcycling; i++)
+    FARGO_SAFE(AdvanceSystemRK5(1.0/((double)(subcycling))*dt));
   
   if (Corotating) {
     OmegaNew = GetPsysInfo(GET)/dt;
@@ -65,6 +71,9 @@ void Potential_cpu() {
   int indirecty = IndirectTerm.y;
   int indirectz = IndirectTerm.z;
   real taper = planetmass_taper;
+  int istar1 = BinaryStar1;
+  int istar2 = BinaryStar2;
+  int binary_true = ThereIsACentralBinary;
 //<\EXTERNAL>
   
 //<INTERNAL>
@@ -77,6 +86,7 @@ void Potential_cpu() {
   real rroche;
   real planetdistance;
   real mp;
+  real invd3;
 //<\INTERNAL>
 
 //<CONSTANT>
@@ -102,6 +112,7 @@ void Potential_cpu() {
       for (i=0; i<size_x; i++) {
 #endif
 //<#>
+#ifndef NODEFAULTSTAR
 #ifdef SPHERICAL
 	pot[l] =  -G*MSTAR/ymed(j); //Potential from star
 #endif
@@ -110,6 +121,9 @@ void Potential_cpu() {
 #endif
 #ifdef CARTESIAN
 	pot[l] = -G*MSTAR/sqrt(XC*XC+YC*YC+ZC*ZC);
+#endif
+#else
+	pot[l] = 0.0; // No default star
 #endif
 
 	for(n=0; n<nb; n++) {
@@ -133,6 +147,7 @@ void Potential_cpu() {
 	  dist = ((XC-xplanet[n])*(XC-xplanet[n])+
 		  (YC-yplanet[n])*(YC-yplanet[n])+
 		  (ZC-zplanet[n])*(ZC-zplanet[n]));
+#ifndef NODEFAULTSTAR
 	  if (indirect_term == YES) {
 	    /* Indirect term due to planets */
 	    pot[l] += G*mp*(XC*xplanet[n]+YC*yplanet[n]+ZC*zplanet[n])/(planetdistance*
@@ -140,6 +155,31 @@ void Potential_cpu() {
 										planetdistance); 
 	    pot[l] -= indirectx*XC + indirecty*YC + indirectz*ZC; /* Indirect term due to gas */
 	  }
+#endif
+#ifdef NODEFAULTSTAR
+	  if (binary_true && (indirect_term == YES)) {
+	    if ((n != istar1) && (n != istar2)) { /* For all non-stellar objects */
+	      planetdistance = sqrt((xplanet[n]-xplanet[istar1])*(xplanet[n]-xplanet[istar1])+
+				    (yplanet[n]-yplanet[istar1])*(yplanet[n]-yplanet[istar1])+
+				    (zplanet[n]-zplanet[istar1])*(zplanet[n]-zplanet[istar1]));
+	      invd3 = 1.0/(planetdistance*planetdistance*planetdistance);
+	      pot[l] += G*mp*invd3*mplanet[1]*((xplanet[n]-xplanet[istar1])*XC+	\
+					       (yplanet[n]-yplanet[istar1])*YC+	\
+					       (zplanet[n]-zplanet[istar1])*ZC)/\
+		(mplanet[1]+mplanet[2]);
+	      
+	      planetdistance = sqrt((xplanet[n]-xplanet[istar2])*(xplanet[n]-xplanet[istar2])+
+				    (yplanet[n]-yplanet[istar2])*(yplanet[n]-yplanet[istar2])+
+				    (zplanet[n]-zplanet[istar2])*(zplanet[n]-zplanet[istar2]));
+	      invd3 = 1.0/(planetdistance*planetdistance*planetdistance);
+	      pot[l] += G*mp*invd3*mplanet[2]*((xplanet[n]-xplanet[istar2])*XC+	\
+					       (yplanet[n]-yplanet[istar2])*YC+	\
+					       (zplanet[n]-zplanet[istar2])*ZC)/\
+		(mplanet[1]+mplanet[2]);
+	      
+	    }
+	  }
+#endif
 	  pot[l] += -G*mp/sqrt(dist+smoothing); //Potential from planets
 	}
 //<\#>

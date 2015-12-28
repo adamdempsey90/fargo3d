@@ -2,10 +2,11 @@
 
 void PrintUsage (char *execname)
 {
-  fprintf (stderr, "Usage : %s [-tfCmpVB0] [-D number] [-s number] [-S number] [+S number] [+/-# arraynb] [+D device_file] parameter_file\n", execname);
+  fprintf (stderr, "Usage : %s [-tfCmkpVB0] [-D number] [-s number] [-S number] [+S number] [+/-# arraynb] [+D device_file] parameter_file\n", execname);
   fprintf (stderr, "-C : Force execution of all functions on CPU for a GPU built\n");
   fprintf (stderr, "-D : Manually select the GPU device on which you want to run\n");
   fprintf (stderr, "-m : Merge output files from different processes\n");
+  fprintf (stderr, "-k : Do NOT merge output files from different processes\n");
   fprintf (stderr, "-o : redefine parameters on the command line\n");
   fprintf (stderr, "-s : Restart simulation, from output #number (split output)\n");
   fprintf (stderr, "-S : Restart simulation, from output #number (merged output)\n");

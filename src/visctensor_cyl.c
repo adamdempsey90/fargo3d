@@ -11,6 +11,9 @@ void visctensor_cyl_cpu(){
 
 //<USER_DEFINED>
   INPUT(Density);
+#ifdef ALPHAVISCOSITY
+  INPUT(Energy);
+#endif
 #ifdef X
   INPUT(Vx);
   OUTPUT(Mmx);
@@ -30,6 +33,9 @@ void visctensor_cyl_cpu(){
 
 //<EXTERNAL>
   real* rho = Density->field_cpu;
+#ifdef ALPHAVISCOSITY
+  real* energy = Energy->field_cpu;
+#endif
 #ifdef X
   real* vx = Vx->field_cpu;
 #endif
@@ -71,10 +77,13 @@ void visctensor_cyl_cpu(){
   int k;
   real div_v;
   real viscosity;
+  real viscositym;
 //<\INTERNAL>
 
 //<CONSTANT>
-// real viscosity(1);
+// real NU(1);
+// real GAMMA(1);
+// real ALPHA(1);
 // real Sxj(Ny+2*NGHY);
 // real Syj(Ny+2*NGHY);
 // real Szj(Ny+2*NGHY);
@@ -95,15 +104,23 @@ void visctensor_cyl_cpu(){
 #endif
 #ifdef Y
     for(j=1; j<size_y; j++) {
-        if (ViscosityAlpha)
-            viscosity = ALPHAVISCOSITY*ASPECTRATIO*ASPECTRATIO*pow(Ymed(j),0.5+2*FLARINGINDEX);
-        else viscosity = NU;
 #endif
 #ifdef X
       for(i=XIM; i<size_x; i++) {
 #endif
 //<#>
-//Evaluated centered divergence.
+#ifdef ALPHAVISCOSITY
+#ifdef ISOTHERMAL
+	viscosity = ALPHA*energy[l]*energy[l]*sqrt(ymed(j)*ymed(j)*ymed(j)/(G*MSTAR));
+	viscositym= ALPHA*.5*(energy[l]*energy[l]+energy[lym]*energy[lym])*sqrt(ymin(j)*ymin(j)*ymin(j)/(G*MSTAR));
+#else
+	viscosity = ALPHA*GAMMA*(GAMMA-1.0)*energy[l]/rho[l]*sqrt(ymed(j)*ymed(j)*ymed(j)/(G*MSTAR));
+	viscositym= ALPHA*GAMMA*(GAMMA-1.0)*(energy[l]+energy[lym])/(rho[l]+rho[lym])*sqrt(ymin(j)*ymin(j)*ymin(j)/(G*MSTAR));
+#endif
+#else
+	viscositym = viscosity = NU;
+#endif
+//Evaluate centered divergence.
 	div_v = 0.0;
 #ifdef X
 	div_v += (vx[lxp]-vx[l])*SurfX(j,k);
@@ -134,11 +151,11 @@ void visctensor_cyl_cpu(){
 #endif
 
 #if defined(Y) && defined(X)
-	tauyx[l] = viscosity*.25*(rho[l]+rho[lxm]+rho[lym]+rho[lxm-pitch])*((vy[l]-vy[lxm])/(dx*ymin(j)) + (vx[l]-vx[lym])/(ymed(j)-ymed(j-1))-.5*(vx[l]+vx[lym])/ymin(j)); //centered on left, inner vertical edge in z
+	tauyx[l] = viscositym*.25*(rho[l]+rho[lxm]+rho[lym]+rho[lxm-pitch])*((vy[l]-vy[lxm])/(dx*ymin(j)) + (vx[l]-vx[lym])/(ymed(j)-ymed(j-1))-.5*(vx[l]+vx[lym])/ymin(j)); //centered on left, inner vertical edge in z
 #endif
 
 #if defined(Z) && defined(Y)
-	tauzy[l] = viscosity*.25*(rho[l]+rho[lym]+rho[lzm]+rho[lym-stride])*((vz[l]-vz[lym])/(ymed(j)-ymed(j-1)) + (vy[l]-vy[lzm])/(zmed(k)-zmed(k-1))); //centered on lower, inner edge in x ("azimuthal")
+	tauzy[l] = viscositym*.25*(rho[l]+rho[lym]+rho[lzm]+rho[lym-stride])*((vz[l]-vz[lym])/(ymed(j)-ymed(j-1)) + (vy[l]-vy[lzm])/(zmed(k)-zmed(k-1))); //centered on lower, inner edge in x ("azimuthal")
 #endif
 //<\#>
 #ifdef X

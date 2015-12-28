@@ -57,7 +57,7 @@ void VanLeerY_b_cpu(real dt, Field *Q, Field *Qs){
 //<#>
 	ll = l;
 	llym = lym;
-    	if(vy[l]>0.)
+    	if(vy[ll]>0.)
 	  qs[ll] = q[llym] + 0.5 * (zone_size_y(j-1,k)
 				  -vy[ll]*dt)*slope[llym];
 	else

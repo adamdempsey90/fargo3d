@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
     }
     if (*(argv[i]) == '-') {
       if (strspn (argv[i], \
-		  "-tofCmspSVBD0#") \
+		  "-tofCmkspSVBD0#") \
 	  != strlen (argv[i]))
 	PrintUsage (argv[0]);
       if (strchr (argv[i], 't'))
@@ -66,12 +66,9 @@ int main(int argc, char *argv[]) {
       }
       if (strchr (argv[i], 'm')) {
 	Merge = YES;
-#ifdef WRITEGHOSTS
-	mastererr ("Cannot merge outputs when dumping ghost values.\n");
-	mastererr ("'make nofulldebug' could fix this problem.\n");
-	mastererr ("Starting without the -m flag could be another solution.\n");
-	prs_exit (1);
-#endif
+      }
+      if (strchr (argv[i], 'k')) {
+	Merge = NO;
       }
       if (strchr (argv[i], 'o')) {
 	RedefineOptions = YES;
@@ -134,6 +131,15 @@ int main(int argc, char *argv[]) {
     }
     else strcpy (ParameterFile, argv[i]);
   }
+
+#ifdef WRITEGHOSTS
+  if (Merge == YES) {
+	mastererr ("Cannot merge outputs when dumping ghost values.\n");
+	mastererr ("'make nofulldebug' could fix this problem.\n");
+	mastererr ("Using the -k flag could be another solution.\n");
+	prs_exit (1);
+  }
+#endif
   
   if (ParameterFile[0] == 0) PrintUsage (argv[0]);
 
@@ -287,10 +293,6 @@ OMEGAFRAME (which is used afterwards to build the initial Vx field. */
 #ifndef NOOUTPUTS
       WriteOutputsAndDisplay(ALL);
 
-#ifdef REMAP
-      WriteY(TimeStep); //Dumping domain_y when the mesh is varying.
-      printf("YMIN=%lf, YMAX=%lf\n",YMIN,YMAX);
-#endif
 
       if(CPU_Master) printf("OUTPUTS %d at date t = %f OK\n", TimeStep, PhysicalTime);
 #endif

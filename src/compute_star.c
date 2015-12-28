@@ -174,7 +174,7 @@ void _ComputeStar_cpu(real dt, int idx1, int idy1, int idz1, int idx2, int idy2,
 
 #ifndef GHOSTSX
 	if(idx2 == 1) {
-	  if(i == 0) //150318 Nicole: Should it be i == XIM
+	  if(i == 0)
 	    lmperpm = lpropm + nx -1; //passes permutation test
 	}
 #endif

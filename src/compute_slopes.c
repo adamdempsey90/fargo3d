@@ -58,7 +58,7 @@ void ComputeSlopes_cpu(int idx, int idy, int idz, Field *f, Field *s) {
 
   for (k=1; k<size_z; k++) {
     for (j=1; j<size_y; j++) {
-      for (i=XIM; i<size_x; i++) { //NICOLE
+      for (i=XIM; i<size_x; i++) {
 //<#>
 	ll = l;
 

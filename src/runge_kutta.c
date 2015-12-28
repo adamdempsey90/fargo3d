@@ -40,22 +40,33 @@ void DerivMotionRK5(real *q_init, real *masses, \
     derivx[i] = vx[i];
     derivy[i] = vy[i];
     derivz[i] = vz[i];
+#ifdef NODEFAULTSTAR
+    coef = 0.0;
+#else
     coef = -G*MSTAR/Dist[i]/Dist[i]/Dist[i];
+#endif
     derivvx[i] = coef*x[i];
     derivvy[i] = coef*y[i];
     derivvz[i] = coef*z[i];
     for (j = 0; j < n; j++) {
+#ifndef NODEFAULTSTAR
       if (INDIRECTTERM) {
 	coef = G*masses[j]/Dist[j]/Dist[j]/Dist[j];
 	derivvx[i] -= coef*x[j];
 	derivvy[i] -= coef*y[j];
 	derivvz[i] -= coef*z[j];
       }
+#endif
       if ((j != i) && (feelothers[i] == YES)) {
 	dist = (x[i]-x[j])*(x[i]-x[j])+(y[i]-y[j])*(y[i]-y[j])+\
 	  (z[i]-z[j])*(z[i]-z[j]);
 	dist = sqrt(dist);
 	coef = G*masses[j]/dist/dist/dist;
+	if (ThereIsACentralBinary &&\
+	    ((i == BinaryStar1) || (i == BinaryStar2)) &&\
+	    (j != BinaryStar1) && (j != BinaryStar2))
+	  /* Binary stars do not feel the planet(s) */
+	  coef = 0.0;
 	derivvx[i] += coef*(x[j]-x[i]);
 	derivvy[i] += coef*(y[j]-y[i]);
 	derivvz[i] += coef*(z[j]-z[i]);
@@ -112,7 +123,8 @@ void AdvanceSystemRK5 (real dt) {
   boolean *feelothers;
   real theta, rdot, r, new_r, omega, x, y;
   real dtheta, vx, vy, denom;
-
+  real xc, yc, zc;
+  
   n = Sys->nb; 
 
   for (i = 0; i < n; i++) { 
@@ -160,5 +172,21 @@ void AdvanceSystemRK5 (real dt) {
     Sys->vx[0]= vx*cos(dtheta+theta)-vy*sin(dtheta+theta); 
     Sys->vy[0]= vx*sin(dtheta+theta)+vy*cos(dtheta+theta); 
     Sys->vz[0] = 0.0;
+  }
+
+  /* Final residual correction for the binary barycenter (in order
+     to avoid a long term spurious drift) */
+  if (ThereIsACentralBinary) {
+    xc = (PlanetMasses[BinaryStar1]*(Sys->x[BinaryStar1]) + PlanetMasses[BinaryStar2]*(Sys->x[BinaryStar2]))/	\
+      (PlanetMasses[BinaryStar1]+PlanetMasses[BinaryStar2]);
+    yc = (PlanetMasses[BinaryStar1]*(Sys->y[BinaryStar1]) + PlanetMasses[BinaryStar2]*(Sys->y[BinaryStar2]))/	\
+      (PlanetMasses[BinaryStar1]+PlanetMasses[BinaryStar2]);
+    zc = (PlanetMasses[BinaryStar1]*(Sys->z[BinaryStar1]) + PlanetMasses[BinaryStar2]*(Sys->z[BinaryStar2]))/	\
+      (PlanetMasses[BinaryStar1]+PlanetMasses[BinaryStar2]);
+    for (i = 0; i < 3; i++) {
+      Sys->x[i] -= xc;
+      Sys->y[i] -= yc;
+      Sys->z[i] -= zc;
+    }
   }
 }

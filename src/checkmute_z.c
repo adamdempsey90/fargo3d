@@ -104,8 +104,8 @@ void CheckMuteZ_cpu() {
 #endif
 //<#>
 	ll = l;
-	l_act = i+j*size_x+NGHZ*stride;
-	l_up  = i+j*size_x+(k+NGHZ+1)*stride;
+	l_act = i+j*pitch+NGHZ*stride;
+	l_up  = i+j*pitch+(k+NGHZ+1)*stride;
 	
 	rho[ll]    = rho[l_act];
 	rho[l_up]  = rho[l_act];

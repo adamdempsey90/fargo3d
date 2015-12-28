@@ -470,8 +470,6 @@ if (type == ALL){ //We recover the .par variables' value
     WRITEVX = writevx;
     WRITEVY = writevy;
     WRITEVZ = writevz;
-    WRITEENERGYRAD = writeenergyrad;
-    WRITETAU = writetau;
   }
 
   if(Vtk2dat)

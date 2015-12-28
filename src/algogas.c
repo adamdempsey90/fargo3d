@@ -74,6 +74,10 @@ void AlgoGas () {
 #ifdef ISOTHERMAL
     FARGO_SAFE(ComputePressureFieldIso());
 #endif
+
+#ifdef POLYTROPIC
+    FARGO_SAFE(ComputePressureFieldPoly());
+#endif
     
     /// AT THIS STAGE Vx IS THE INITIAL TOTAL VELOCITY IN X
     
@@ -113,7 +117,7 @@ void AlgoGas () {
     FARGO_SAFE(SubStep1_z(dt));
 #endif
 
-#ifdef VISCOSITY
+#if (defined(VISCOSITY) || defined(ALPHAVISCOSITY))
     viscosity(dt);
 #endif
 

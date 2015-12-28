@@ -3,7 +3,7 @@
 
 #include "fargo3d.h"
 
-extern "C" void check_errors(char *s) {
+extern "C" void check_errors(const char *s) {
   cudaDeviceSynchronize();
   cudaError_t  cudaError = cudaGetLastError();
   const char *error; 

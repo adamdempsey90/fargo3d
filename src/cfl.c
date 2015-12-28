@@ -59,7 +59,6 @@ void cfl_cpu() {
   int size_z = Nz+NGHZ;
   real dx = Dx;
   int pitch2d = Pitch2D;
-  real viscosity;
 //<\EXTERNAL>
 
 //<INTERNAL>
@@ -91,6 +90,7 @@ void cfl_cpu() {
   real vxx, vxxp;
   real soundspeed;
   real soundspeed2;
+  real viscosity;
 //<\INTERNAL>
 
 //<CONSTANT>
@@ -99,6 +99,8 @@ void cfl_cpu() {
 // real zmin(Nz+2*NGHZ+1);
 // real GAMMA(1);
 // real CFL(1);
+// real ALPHA(1);
+// real NU(1);
 //<\CONSTANT>
 
 //<MAIN_LOOP>
@@ -110,9 +112,6 @@ void cfl_cpu() {
 #endif
 #ifdef Y
     for (j=NGHY; j<size_y; j++) {
-       if (ViscosityAlpha)
-            viscosity = ALPHAVISCOSITY*ASPECTRATIO*ASPECTRATIO*pow(Ymed(j),0.5+2*FLARINGINDEX);
-        else viscosity = NU;
 #endif
 #ifdef X
       for (i=NGHX; i<size_x; i++) {
@@ -136,9 +135,24 @@ void cfl_cpu() {
 	soundspeed2 = cs[ll]*cs[ll];
 #endif
 
+
+#ifdef ALPHAVISCOSITY
+#ifdef ISOTHERMAL
+	viscosity = ALPHA*cs[l]*cs[l]*sqrt(ymed(j)*ymed(j)*ymed(j)/(G*MSTAR));
+#else //ADIABATIC
+	viscosity = ALPHA*GAMMA*(GAMMA-1.0)*cs[l]/rho[l]*sqrt(ymed(j)*ymed(j)*ymed(j)/(G*MSTAR)); //cs means internal energy.
+#endif //END ISOTHERMAL
+#else  //NU VISCOSITY
+	viscosity = NU;
+#endif //END ALPHAVISCOSITY
+
 #ifdef ADIABATIC
 	soundspeed2 = GAMMA*(GAMMA-1)*cs[ll]/rho[ll];
-#endif	
+#endif
+
+#ifdef POLYTROPIC
+	soundspeed2 = GAMMA*cs[ll]*pow(rho[ll],GAMMA-1.0); //In polytropic setups we use cs[] to store the entropy
+#endif
 
 #ifdef MHD
 	soundspeed2 += ((bx[ll]*bx[ll]+by[ll]*by[ll]+bz[ll]*bz[ll])

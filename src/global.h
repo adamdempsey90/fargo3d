@@ -2,11 +2,11 @@
 
 int CPU_Rank;
 int CPU_Number;
-boolean CPU_Master;
+boolean CPU_Master = YES;
 
 //Global variables
 
-boolean ViscosityAlpha = NO;
+
 boolean VxIsResidual = NO;
 boolean LogGrid = NO;
 boolean GuidingCenter = NO;
@@ -14,7 +14,7 @@ boolean Corotating = NO;
 boolean Restart = NO;
 boolean Restart_Full = NO;
 boolean Stockholm = NO;
-boolean Merge = NO;
+boolean Merge = YES;
 boolean Merge_All = NO;
 boolean MonitorIntegral;
 boolean TimeInfo = NO;
@@ -29,6 +29,7 @@ boolean RedefineOptions = NO;
 boolean DeviceFileSpecified = NO;
 boolean StretchOldOutput = NO;
 boolean ThereArePlanets = NO;
+boolean ThereIsACentralBinary = NO;
 real    PhysicalTimeInitial;
 real    PhysicalTime = 0;
 real    XAxisRotationAngle = 0.0;
@@ -41,6 +42,8 @@ int     ContourComms = 0;
 int     DeviceManualSelection = -1;
 int     ArrayNb = 0;
 int     StretchNumber = 0;
+int     BinaryStar1 = 0;
+int     BinaryStar2 = 0;
 
 real InnerBorder;
 real OuterBorder;
@@ -242,8 +245,6 @@ MPI_Status fargostat;
 
 real OMEGAFRAME0;
 
-real pi = M_PI;
-
 int Fscan;
 
 long VtkPosition = 0; 
@@ -252,6 +253,7 @@ long VtkPosition = 0;
 //WARNING!!! FUNCTIONS' ARGUMENTS MUST NOT CONTAIN BLANK SPACES
 void (*ComputePressureFieldIso)();
 void (*ComputePressureFieldAd)();
+void (*ComputePressureFieldPoly)();
 void (*SubStep1_x)(real);
 void (*SubStep1_y)(real);
 void (*SubStep1_z)(real);
@@ -273,6 +275,9 @@ void (*reduction_MIN)(Field*,int,int,int,int);
 void (*UpdateX)(real,Field*,Field*,Field*);
 void (*UpdateY)(real,Field*,Field*);
 void (*UpdateZ)(real,Field*,Field*);
+void (*UpdateDensityX)(real,Field*,Field*);
+void (*UpdateDensityY)(real,Field*);
+void (*UpdateDensityZ)(real,Field*);
 void (*NewVelocity_x)();
 void (*NewVelocity_y)();
 void (*NewVelocity_z)();

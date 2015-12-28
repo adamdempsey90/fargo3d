@@ -92,3 +92,8 @@ KEPLERIAN3DSPHDENSCOL: #Approximate extrapolation in COLatitude (Z)
 
 KEPLERIAN3DSPHVAZIMCOL:
 	Centered: |(vv+'OmegaFrame'*Ymed(j)*sin(Zmed(kact)))*(1.+'FLARINGINDEX'*cos(.5*(Zmed(kgh)+Zmed(kact)))*(Zmed(kact)-Zmed(kgh))) -Ymed(j)*'OmegaFrame'*sin(Zmed(kgh))|vv|
+
+#### Allow outflow only at inner mesh edge
+OPENINNER:
+	Staggered: |(a>0.0 ? 0.0: a)|(a>0.0 ? 0.0: a)|a|
+

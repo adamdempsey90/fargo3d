@@ -38,6 +38,7 @@ Spacing			default
 Coordinates		standard
 Disk			No
 Gamma			1.66666667
+Alpha			0.0
 PlanetConfig		NONE
 PeriodicZ		No
 PeriodicY		No

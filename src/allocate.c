@@ -110,10 +110,20 @@ Field *CreateField(char *name, int type, boolean sx, boolean sy, boolean sz) {
   //Now on the GPU
 #ifdef GPU
   if (Nx+2*NGHX > 1 ) {
-    cudaMallocPitch (&arr_gpu, &pitch, (Nx+2*NGHX)*sizeof(real), (Ny+2*NGHY)*(Nz+2*NGHZ));
+    #ifndef NOPITCH
+      cudaMallocPitch (&arr_gpu, &pitch, (Nx+2*NGHX)*sizeof(real), (Ny+2*NGHY)*(Nz+2*NGHZ));
+    #else
+      cudaMalloc (&arr_gpu, (Nx+2*NGHX)*(Ny+2*NGHY)*(Nz+2*NGHZ)*sizeof(real));
+      pitch = (Nx+2*NGHX)*sizeof(real);
+    #endif
     field->gpu_pp = make_cudaPitchedPtr (arr_gpu, pitch, (Nx+2*NGHX), Ny+2*NGHY);
   } else {
-    cudaMallocPitch (&arr_gpu, &pitch, (Ny+2*NGHY)*sizeof(real), Nz+2*NGHZ);
+    #ifndef NOPITCH
+      cudaMallocPitch (&arr_gpu, &pitch, (Ny+2*NGHY)*sizeof(real), Nz+2*NGHZ);
+    #else
+      cudaMalloc (&arr_gpu, (Ny+2*NGHY)*(Nz+2*NGHZ)*sizeof(real));
+      pitch = (Ny+2*NGHY)*sizeof(real);
+    #endif
   }
   check_errors ("CreateField");
   field->cpu_pp = make_cudaPitchedPtr (array, (Nx+2*NGHX)*sizeof(real), (Nx+2*NGHX), Ny+2*NGHY);

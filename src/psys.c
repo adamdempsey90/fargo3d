@@ -142,19 +142,22 @@ PlanetarySystem *InitPlanetarySystem (char *filename) {
   FILE *input;
   char s[512], nm[512], test1[512], test2[512], *s1;
   PlanetarySystem *sys;
-  int i=0, j, nb;
+  int i=0, j, nb, nbstars=0, i_star1=-1, i_star2=-1;
+  real xp,yp,zp,vxp,vyp,vzp,mp,M1,M2,r1,r2,v1,v2;
   real mass, dist, accret;
   boolean feeldis, feelothers;
   real newmass;
+  real summass=0.0;
+  real e_bin, a_bin, period_bin;
   int status;
-
+  
   if (ThereArePlanets == NO) {
     sys = AllocPlanetSystem (1);
     sys->nb = 0;
     sys->x = sys->vx = sys->y = sys->vy = NULL;
     return sys;
   }
-
+  
   nb = FindNumberOfPlanets (filename);
   if (CPU_Master) {
     if(nb > 1) printf  ("%d planets found.\n", nb);
@@ -184,14 +187,13 @@ PlanetarySystem *InitPlanetarySystem (char *filename) {
       accret *= sqrt(G*MSTAR/(R0*R0*R0));
       mass *= MSTAR;
 #endif
-      //      if (PLANETMASS > 1e-30)
       sys->mass[i] = mass;
       if (PLANETMASS > 1e-18)
 	sys->mass[0] = PLANETMASS;
       feeldis = feelothers = YES;
       if (tolower(*test1) == 'n') feeldis = NO;
       if (tolower(*test2) == 'n') feelothers = NO;
-      sys->x[i] = (real)dist*(1.0+ECCENTRICITY); // Apoastron
+      sys->x[i] = (real)dist*(1.0+ECCENTRICITY); // Planets are initialized at apoastron
       sys->y[i] = 0.0;
       sys->z[i] = 0.0;
       sys->vy[i] = (real)sqrt(G*(MSTAR+mass)/dist)*	\
@@ -203,9 +205,127 @@ PlanetarySystem *InitPlanetarySystem (char *filename) {
       sys->acc[i] = accret;
       sys->FeelDisk[i] = feeldis;
       sys->FeelOthers[i] = feelothers;
+      if (sys->mass[i] > THRESHOLD_STELLAR_MASS)
+	nbstars++;
       i++;
     }
   }
+  if (nbstars > 0)
+    if (CPU_Master)
+      printf ("%d appear to be stellar mass objects.\n", nbstars);
+  /* We check whether some "planets" are actually stars */
+  for (i = 0; i < nb; i++) {
+    if (sys->mass[i] > THRESHOLD_STELLAR_MASS) {/* Our arbitrary threshold for a star */
+      summass += sys->mass[i];
+    }
+  }
+  if ((summass > 0.0) && (fabs(summass-MSTAR)/MSTAR > 0.01)) {
+    mastererr ("WARNING --- It seems that some 'planet(s)' in file %s\n", PLANETCONFIG);
+    mastererr ("WARNING --- is (are) actually star(s). In that case, it is a good idea that\n");
+    mastererr ("WARNING --- the preprocessor variable MSTAR be the sum of their mass.\n");
+    mastererr ("WARNING --- Currently this is not the case.\n");
+    mastererr ("WARNING --- You can edit the value of MSTAR in the file src/fondam.h.\n");
+    mastererr ("WARNING --- In this file, you want to edit the flavor of MSTAR which\n");
+    mastererr ("WARNING --- corresponds to the unit system you are presently working with.\n");
+    mastererr ("WARNING --- The current unit system is: ");
+#if !(defined(MKS) || defined (CGS))
+    mastererr ("scale free (code units).\n");
+#endif
+#ifdef CGS
+    mastererr ("cgs\n");
+#endif
+#ifdef MKS
+    mastererr ("MKS\n");
+#endif
+    mastererr ("WARNING --- So we suggest you edit src/fondam.h to have:\n");
+    mastererr ("\n    #define MSTAR_");
+#if !(defined(MKS) || defined (CGS))
+    mastererr ("SF");
+#endif
+#ifdef CGS
+    mastererr ("CGS");
+#endif
+#ifdef MKS
+    mastererr ("MKS");
+#endif
+    mastererr (" %g\n\n", summass);
+    mastererr ("WARNING --- This will ensure that:\n");
+    mastererr ("WARNING ---   * The planets are initialized on nearly circular orbits.\n");
+    mastererr ("WARNING ---   * Roche radii, wherever needed, are correctly estimated.\n");
+    mastererr ("WARNING ---   * Wave-killing BCs have the correct strength.\n\n");
+  }
+#ifndef NODEFAULTSTAR
+  if (summass > 0.0) {
+    mastererr("WARNING --- Some of your planets appear to be stars.\n");
+    mastererr("WARNING --- Their total mass is %g.\n", summass);
+    mastererr("WARNING --- Yet you have also by default a star at the mesh center.\n");
+    mastererr("WARNING --- Its mass is %g, ie %5.2f %% of the other stars mass.\n",MSTAR, MSTAR/summass*100);
+    mastererr("WARNING --- If this is what you intended, you can safely ignore this message.\n");
+    mastererr("WARNING --- Otherwise, you must recompile the code with the flag NODEFAULTSTAR\n");
+    mastererr("WARNING --- turned on. To do so, find your .opt file (in the setups folder),\n");
+    mastererr("WARNING --- and add to it the following line:\n");
+    mastererr("\nFARGO_OPT += -DNODEFAULTSTAR\n\n");
+  }
+#endif
+
+#ifdef NODEFAULTSTAR
+  /* We now properly re-initialize the stars */
+  if (nbstars > 2) {
+    mastererr ("ERROR --- at the present time you cannot have more than two stars in your .cfg file.\n");
+    prs_exit (1);
+  }
+  xp = yp = zp = vxp = vyp = vzp = 0.0;
+  for (i = 0; i < nb; i++) {
+    if (sys->mass[i] < THRESHOLD_STELLAR_MASS) {
+      mp = sys->mass[i];
+      xp += mp*sys->x[i];
+      yp += mp*sys->y[i];
+      zp += mp*sys->z[i];
+      vxp += mp*sys->vx[i];
+      vyp += mp*sys->vy[i];
+      vzp += mp*sys->vz[i];
+    } else
+      if (i_star1 < 0)
+	i_star1 = i;
+      else
+	i_star2 = i;
+  }
+  if (nbstars == 1) {		/* We impose that the mesh be centered
+				   on the center of mass of the
+				   system */
+    mp = sys->mass[i_star1];
+    sys->x[i_star1] = -xp/mp;
+    sys->y[i_star1] = -yp/mp;
+    sys->z[i_star1] = -zp/mp;
+    sys->vx[i_star1] = -vxp/mp;
+    sys->vy[i_star1] = -vyp/mp;
+    sys->vz[i_star1] = -vzp/mp;
+  }
+  if (nbstars == 2) {
+    ThereIsACentralBinary = YES;
+    BinaryStar1 = i_star1;
+    BinaryStar2 = i_star2;
+    e_bin = sys->x[i_star2];
+    period_bin = sys->x[i_star1];
+    M1 = sys->mass[i_star1];
+    M2 = sys->mass[i_star2];
+    a_bin = pow((period_bin*sqrt(G*(M1+M2)))/2.0/M_PI,2./3.);
+    r1 = a_bin*M2/(M1+M2)*(1.+e_bin);
+    r2 = M1*r1/M2;
+    v1 = 2.0*M_PI*a_bin*M2/(M1+M2)/period_bin*sqrt((1.0-e_bin)/(1.0+e_bin));
+    v2 = M1*v1/M2;
+    /* We impose below that the mesh be centered on the center of mass
+       of the binary */
+    sys->x[i_star1] = r1;
+    sys->x[i_star2] = -r2;
+    sys->vy[i_star1] = v1;
+    sys->vy[i_star2] = -v2;
+    sys->y[i_star1] = 0.0;
+    sys->z[i_star1] = 0.0;
+    sys->vx[i_star1] = 0.0;
+    sys->vz[i_star1] = 0.0;
+  }
+#endif
   return sys;
 }
 
