@@ -5,7 +5,7 @@ Setup			accretion
 
 AspectRatio     	0.1            Thickness over Radius in the disc
 Sigma0			1.0   Surface Density at r=1
-Alpha			0.1		Uniform kinematic viscosity
+Alpha			0.03		Uniform kinematic viscosity
 SigmaSlope		0.5		Slope of the surface density
 FlaringIndex		0.0
 Mdot0                0.01
@@ -20,7 +20,7 @@ PlanetConfig		planets/jupiter10.cfg
 ThicknessSmoothing 	1.0
 RocheSmoothing 		0.0
 Eccentricity		0.0
-ExcludeHill		No
+ExcludeHill	        No
 IndirectTerm		Yes
 MassTaper           3.0
 
@@ -39,7 +39,7 @@ Spacing 		LOG
 Ntot		80000		Total number of time steps
 Ninterm	 		10		Time steps between outputs
 DT			6.28	Time step length. 2PI = 1 orbit
-OutputDir  outputs/accretionGPU/
+OutputDir  outputs/accretion/
 #Plotting parameters
 
 Log			yes

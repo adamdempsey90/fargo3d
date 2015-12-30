@@ -692,7 +692,7 @@ class Sim():
     	self.mdot = -2*pi*self.r*(self.vr.data*self.dens.data).mean(axis=1)
     	_,self.px,self.py,self.pz,self.pvx,self.pvy,self.pvz,self.mp,self.t,self.omf  = loadtxt(directory+'planet{0:d}.dat'.format(p))[i,:]
     	self.a = sqrt(self.px**2  + self.py**2)
-    	self.nu0 = self.dens.alphaviscosity*self.dens.aspectratio*self.dens.aspectratio
+    	self.nu0 = self.dens.alpha*self.dens.aspectratio*self.dens.aspectratio
     	self.tvisc = self.dens.ymax**2/self.nu(self.dens.ymax)
         self.rh = (self.mp/3)**(1./3) * self.a
     	self.omega = zeros(self.vp.data.shape)

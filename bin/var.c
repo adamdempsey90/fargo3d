@@ -31,9 +31,9 @@ void InitVariables() {
   init_var("SETUP", (char*)&SETUP, STRING, NO, "accretion");
   init_var("SPACING", (char*)&SPACING, STRING, NO, "LOG");
   init_var("FRAME", (char*)&FRAME, STRING, NO, "C");
-  init_var("OUTPUTDIR", (char*)&OUTPUTDIR, STRING, NO, "@outputs/accretionGPU/");
+  init_var("OUTPUTDIR", (char*)&OUTPUTDIR, STRING, NO, "outputs/accretionGPU/");
   init_var("INDIRECTTERM", (char*)&INDIRECTTERM, BOOL, NO, "1");
-  init_var("EXCLUDEHILL", (char*)&EXCLUDEHILL, BOOL, NO, "1");
+  init_var("EXCLUDEHILL", (char*)&EXCLUDEHILL, BOOL, NO, "0");
   init_var("LOG", (char*)&LOG, BOOL, NO, "1");
   init_var("ZMAX", (char*)&ZMAX, REAL, NO, "1.0");
   init_var("SEMIMAJORAXIS", (char*)&SEMIMAJORAXIS, REAL, NO, "0.0");
