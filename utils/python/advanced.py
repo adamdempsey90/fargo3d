@@ -940,7 +940,7 @@ class Sim():
         vp_val = ivp(u0,p0)
         vr_val = ivr(u0,p0)
 
-        h *= 0.5*l/np.sqrt((vp_val**2+vr_val**2))
+        h *= 0.5*l
         return h* np.array([vr_val,vp_val])
 
 
