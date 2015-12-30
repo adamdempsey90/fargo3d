@@ -26,7 +26,7 @@ void InitVariables() {
   init_var("NX", (char*)&NX, INT, NO, "256");
   init_var("NY", (char*)&NY, INT, NO, "256");
   init_var("NINTERM", (char*)&NINTERM, INT, NO, "10");
-  init_var("NTOT", (char*)&NTOT, INT, NO, "40000");
+  init_var("NTOT", (char*)&NTOT, INT, NO, "80000");
   init_var("PLANETCONFIG", (char*)&PLANETCONFIG, STRING, NO, "planets/jupiter10.cfg");
   init_var("SETUP", (char*)&SETUP, STRING, NO, "accretion");
   init_var("SPACING", (char*)&SPACING, STRING, NO, "LOG");

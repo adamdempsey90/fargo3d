@@ -870,10 +870,12 @@ class Sim():
         rh,ph = self.calculate_circle(self.rh,rlims)
         rs,ps = self.calculate_circle(self.dens.aspectratio*self.a*self.dens.thicknesssmoothing,rlims)
 
-        ax.plot(log(rh), ph,'-w',linewidth=3)
-        ax.plot(log(rs),ps,'--w',linewidth=3)
+        ax.plot(log(rh), ph,'-r',linewidth=3)
+        ax.plot(log(rs),ps,'--r',linewidth=3)
+        ax.contour(log(self.r[rinds]),self.phi[pinds],vr.transpose(),levels=(0,),colors='w',linewidths=3)
+        ax.contour(log(self.r[rinds]),self.phi[pinds],vp.transpose(),levels=(0,),colors='w',linewidths=3)
 
-
+        return log(self.r[rinds]),self.phi[pinds],rr,pp,vr.transpose(),vp.transpose()
 
     def calculate_circle(self,d,rlims=None):
         if rlims == None:
@@ -893,12 +895,53 @@ class Sim():
         circle_phi = hstack((circle_phi,circle_lower[::-1]))
         return circle_r, circle_phi
 
-    def stagnation(self,r,phi,rr,pp,vr,vp,dens):
-    	ivp = interp2d(rr,pp,vp)
-    	ivr = interp2d(rr,pp,vr)
-    	vp_func = lambda x,y: ivp(x,y)
-    	vr_func = lambda x,y: ivr(x,y)
-    	root(ivp)
+    def stagnation(self,lr,phi,vr,vp):
+        cr = contour(lr,phi,vr,levels=(0,))
+        cp = contour(lr,phi,vp,levels=(0,))
+
+        vertr = cr.collections[0].get_paths()[1].vertices
+        vertp = cp.collections[0].get_paths()[0].vertices
+
+        segsr =[ vstack( (vertr[i,:],vertr[i+1,:])) for i in range(vertr.shape[0]-1)]
+
+        segsp =[ vstack( (vertp[i,:],vertp[i+1,:])) for i in range(vertp.shape[0]-1)]
+
+        stag_points = []
+        for sr in segsr:
+            for sp in segsp:
+                if intersect(sr,sp):
+                    stag_points.get_intersection(sr,sp)
+
+        return stag_points
+
+    def separatrix(self,lr,phi,vr,vp):
+        ivp = interp2d(lr,phi,vp)
+        ivr = interp2d(lr,phi,vr)
+        dlr = lr[1]-lr[0]
+        dp = phi[1]-phi[0]
+
+        stag_points = self.stagnation(lr,phi,vr,vp)
+
+
+        u0 = stag_points[0][0] + rand()*dlr
+        p0 = stag_points[0][1] + rand()*dp
+
+        l = np.min((dlr,dp))
+        self.euler_step(u0,p0,l,ivp,ivr,True)
+        self.euler_step(u0,p0,l,ivp,ivr,False)
+
+
+    def euler_step(self,u0,p0,l,ivp,ivr,reverse=False):
+
+        h = 1.0
+        if reverse:
+            h = -1.0
+
+        vp_val = ivp(u0,p0)
+        vr_val = ivr(u0,p0)
+
+        h *= 0.5*l/np.sqrt((vp_val**2+vr_val**2))
+        return h* np.array([vr_val,vp_val])
 
 
 
@@ -947,3 +990,27 @@ class Sim():
     		linem.set_ydata(mdot[:,i])
     		axd.set_title('t = %.1f = %.1f P' % (t[i],t[i]/(2*pi*a[i]**(1.5))),color='w')
     		fig.canvas.draw()
+def ccw(a,b,c):
+    return (c[1]-a[1])*(b[0]-a[0]) > (b[1]-a[1])*(c[0]-a[0])
+
+def intersect(segment_1, segment_2):
+    a1 = segment_1[0,:]
+    a2 = segment_1[1,:]
+    b1 = segment_2[0,:]
+    b2 = segment_2[1,:]
+    return ccw(a1,b1,b2) != ccw(a2,b1,b2) and ccw(a1,a2,b1) != ccw(a1,a2,b2)
+def get_intersection(segment_1, segment_2):
+    if intersect(segment_1,segment_2):
+        m1 = segment_1[1,:]-segment_1[0,:]
+        print m1
+        m1 = m1[1]/m1[0]
+        m2 = segment_2[1,:] - segment_2[0,:]
+        print m2
+        m2 = m2[1]/m2[0]
+        lhs = np.array([[-m1,1.],[-m2,1.]])
+        rhs = np.array([[ segment_1[0,1] - m1*segment_1[0,0]],[segment_2[0,1]-m2*segment_2[0,0]]])
+        return dot( np.linalg.inv(lhs),rhs)
+    else:
+        print 'Lines do not intersect'
+        return False
+

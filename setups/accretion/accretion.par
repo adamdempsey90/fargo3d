@@ -36,7 +36,7 @@ Frame			C
 Spacing 		LOG
 ### Output control parameters
 
-Ntot		40000		Total number of time steps
+Ntot		80000		Total number of time steps
 Ninterm	 		10		Time steps between outputs
 DT			6.28	Time step length. 2PI = 1 orbit
 OutputDir  @outputs/accretionGPU/
