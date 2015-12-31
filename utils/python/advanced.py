@@ -1,4 +1,4 @@
-
+from matplotlib import _cntr as cntr
 def load_viridis():
     from matplotlib.colors import LinearSegmentedColormap
     parameters = {'xp': [22.674387857633945, 11.221508276482126, -14.356589454756971, -47.18817758739222, -34.59001004812521, -6.0516291196352654],
@@ -703,7 +703,7 @@ class Sim():
 
         self.dTr = (-2*pi*self.dens.data * self.dp_potential(self.rr,self.pp))
         self.dTr_mean = self.dTr.mean(axis=1)
-
+        self.safety_fac  = .5
     def nu(self,r):
     	return self.nu0 * r**(2*self.dens.flaringindex+.5)
     def scaleH(self,r):
@@ -835,7 +835,7 @@ class Sim():
     #		axm.set_yscale('symlog',linthreshy=1e-7)
     #		axv.set_ylim(-.001,.001)
     	axd.set_title('t = %.1f = %.1f P = %.1f t_visc' % (self.t,self.t/(2*pi*self.a**(1.5)),self.t/self.tvisc))
-    def streams(self,rlims=None,plims=None,ax=None,**kargs):
+    def streams(self,rlims=None,plims=None,ax=None,noise=.1,**kargs):
         if ax == None:
             fig=figure()
             ax=fig.add_subplot(111)
@@ -852,7 +852,8 @@ class Sim():
         vp = self.vp.data[rinds,:][:,pinds]
         dens = self.dens.data[rinds,:][:,pinds]
         rr,pp = meshgrid(self.r[rinds],self.phi[pinds])
-
+        lr = log(self.r[rinds])
+        phi = self.phi[pinds]
         cmap = kargs.pop('cmap',viridis)
 
         line2d= ax.pcolormesh(log(rr),pp,log10(dens.transpose()),cmap=cmap)
@@ -872,10 +873,12 @@ class Sim():
 
         ax.plot(log(rh), ph,'-r',linewidth=3)
         ax.plot(log(rs),ps,'--r',linewidth=3)
-        ax.contour(log(self.r[rinds]),self.phi[pinds],vr.transpose(),levels=(0,),colors='w',linewidths=3)
-        ax.contour(log(self.r[rinds]),self.phi[pinds],vp.transpose(),levels=(0,),colors='w',linewidths=3)
 
-        return log(self.r[rinds]),self.phi[pinds],rr,pp,vr.transpose(),vp.transpose()
+        sep_lines = self.separatrix(lr,phi,vr.transpose(),vp.transpose(),noise=noise,npoints=10)
+        for line in sep_lines:
+            ax.plot(line[:,0],line[:,1],'-w',linewidth=2)
+
+#        return log(self.r[rinds]),self.phi[pinds],rr,pp,vr.transpose(),vp.transpose()
 
     def calculate_circle(self,d,rlims=None):
         if rlims == None:
@@ -899,7 +902,7 @@ class Sim():
         cr = contour(lr,phi,vr,levels=(0,))
         cp = contour(lr,phi,vp,levels=(0,))
 
-        vertr = cr.collections[0].get_paths()[1].vertices
+        vertr = cr.collections[0].get_paths()[0].vertices
         vertp = cp.collections[0].get_paths()[0].vertices
 
         segsr =[ vstack( (vertr[i,:],vertr[i+1,:])) for i in range(vertr.shape[0]-1)]
@@ -910,38 +913,100 @@ class Sim():
         for sr in segsr:
             for sp in segsp:
                 if intersect(sr,sp):
-                    stag_points.get_intersection(sr,sp)
+                    stag_points.append(get_intersection(sr,sp))
 
         return stag_points
 
-    def separatrix(self,lr,phi,vr,vp):
+    def separatrix(self,lr,phi,vr,vp,noise=0.1,npoints=10):
         ivp = interp2d(lr,phi,vp)
         ivr = interp2d(lr,phi,vr)
         dlr = lr[1]-lr[0]
         dp = phi[1]-phi[0]
 
+        plt.figure()
         stag_points = self.stagnation(lr,phi,vr,vp)
+        plt.close()
+        uvals=np.array([x[0] for x in stag_points])
+        inds = np.argsort(uvals)
 
 
-        u0 = stag_points[0][0] + rand()*dlr
-        p0 = stag_points[0][1] + rand()*dp
+        sL = stag_points[inds[0]]
+        sR = stag_points[inds[-1]]
+        lines=[]
+
+        tempx = noise*np.sqrt(dlr**2 + dp**2)
+
+        for i in range(npoints*2):
+            theta = 2*np.pi *  i/(float(2*npoints))
+            u0 = sL[0] + tempx * np.cos(theta)
+            p0 = sL[1] + tempx*np.sin(theta)
+
+#            u0 = stag_points[0][0] + dlr*noise*2*(-.5 + rand())
+#            p0 = stag_points[0][1] + dp*noise*2*(-.5+rand())
+            lines.append(self.get_stream(u0,p0,ivp,ivr,lr,phi,False))
+            lines.append(self.get_stream(u0,p0,ivp,ivr,lr,phi,True))
+            u0 = sR[0] + tempx * np.cos(theta)
+            p0 = sR[1] + tempx*np.sin(theta)
+
+#            u0 = stag_points[0][0] + dlr*noise*2*(-.5 + rand())
+#            p0 = stag_points[0][1] + dp*noise*2*(-.5+rand())
+            lines.append(self.get_stream(u0,p0,ivp,ivr,lr,phi,False))
+            lines.append(self.get_stream(u0,p0,ivp,ivr,lr,phi,True))
+
+
+        return lines
+    def get_stream(self,u0,p0,ivp,ivr,lr,phi,reverse=False):
+        dlr = lr[1]-lr[0]
+        dp = phi[1]-phi[0]
+
+        lr_min,lr_max = (lr.min(),lr.max())
+        phi_min,phi_max = (phi.min(),phi.max())
 
         l = np.min((dlr,dp))
-        self.euler_step(u0,p0,l,ivp,ivr,True)
-        self.euler_step(u0,p0,l,ivp,ivr,False)
+        nmax=1000
 
+        res = np.array([u0,p0])
+        uj = u0
+        pj=  p0
+        breakflag = False
+        for j in range(nmax):
+            dx, dy = self.euler_step(uj,pj,l,ivp,ivr,reverse)
+            uj += dx
+            pj += dy
+            if uj >= lr_max:
+                uj = lr_max
+#                print 'Stream lnr > lnr_max'
+                breakflag = True
+            if uj <= lr_min:
+ #               print 'Stream lnr < lnr_min'
+                uj = lr_min
+                breakflag = True
+            if pj >= phi_max:
+  #              print 'Stream phi > phi_max'
+                pj = phi_max
+                breakflag = True
+            if pj <= phi_min:
+   #             print 'Stream phi < phi_min'
+                pj = phi_min
+                breakflag = True
+            if breakflag:
+                break
+            else:
+               res=np.vstack( (res,np.array([uj,pj])))
+    #    print 'Iterated past max iterations of %d' % nmax
+        return res
 
     def euler_step(self,u0,p0,l,ivp,ivr,reverse=False):
-
+        safety_fac = self.safety_fac
         h = 1.0
         if reverse:
             h = -1.0
 
-        vp_val = ivp(u0,p0)
-        vr_val = ivr(u0,p0)
+        vp_val = ivp(u0,p0)[0]
+        vr_val = ivr(u0,p0)[0]
 
-        h *= 0.5*l
-        return h* np.array([vr_val,vp_val])
+        h *= safety_fac*l/np.sqrt( vp_val**2 + vr_val**2)
+        return h*vr_val, h*vp_val
 
 
 
@@ -1001,16 +1066,15 @@ def intersect(segment_1, segment_2):
     return ccw(a1,b1,b2) != ccw(a2,b1,b2) and ccw(a1,a2,b1) != ccw(a1,a2,b2)
 def get_intersection(segment_1, segment_2):
     if intersect(segment_1,segment_2):
+#        print 'Calculating Intersection'
         m1 = segment_1[1,:]-segment_1[0,:]
-        print m1
         m1 = m1[1]/m1[0]
         m2 = segment_2[1,:] - segment_2[0,:]
-        print m2
         m2 = m2[1]/m2[0]
         lhs = np.array([[-m1,1.],[-m2,1.]])
         rhs = np.array([[ segment_1[0,1] - m1*segment_1[0,0]],[segment_2[0,1]-m2*segment_2[0,0]]])
-        return dot( np.linalg.inv(lhs),rhs)
+        return dot( np.linalg.inv(lhs),rhs).reshape(2)
     else:
-        print 'Lines do not intersect'
+#        print 'Lines do not intersect'
         return False
 
