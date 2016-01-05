@@ -13,11 +13,11 @@ void InitVariables() {
   init_var("MASSTAPER", (char*)&MASSTAPER, REAL, NO, "3.0");
   init_var("YMIN", (char*)&YMIN, REAL, NO, "1.0");
   init_var("DT", (char*)&DT, REAL, NO, "6.28");
-  init_var("SIGMAIN", (char*)&SIGMAIN, REAL, NO, "0.000001");
+  init_var("SIGMAIN", (char*)&SIGMAIN, REAL, NO, "0.00000001");
   init_var("XMIN", (char*)&XMIN, REAL, NO, "-3.14159265358979323844");
   init_var("NOISE", (char*)&NOISE, REAL, NO, "0.0");
   init_var("XMAX", (char*)&XMAX, REAL, NO, "3.14159265358979323844");
-  init_var("SIGMAOUT", (char*)&SIGMAOUT, REAL, NO, "0.01");
+  init_var("SIGMAOUT", (char*)&SIGMAOUT, REAL, NO, "0.000001");
   init_var("ECCENTRICITY", (char*)&ECCENTRICITY, REAL, NO, "0.0");
   init_var("ALPHA", (char*)&ALPHA, REAL, NO, "0.1");
   init_var("ASPECTRATIO", (char*)&ASPECTRATIO, REAL, NO, "0.1");
@@ -32,6 +32,7 @@ void InitVariables() {
   init_var("SPACING", (char*)&SPACING, STRING, NO, "LOG");
   init_var("FRAME", (char*)&FRAME, STRING, NO, "C");
   init_var("OUTPUTDIR", (char*)&OUTPUTDIR, STRING, NO, "outputs/accretionGPU/");
+  init_var("LAMBDABC", (char*)&LAMBDABC, BOOL, NO, "1");
   init_var("INDIRECTTERM", (char*)&INDIRECTTERM, BOOL, NO, "1");
   init_var("EXCLUDEHILL", (char*)&EXCLUDEHILL, BOOL, NO, "0");
   init_var("LOG", (char*)&LOG, BOOL, NO, "1");

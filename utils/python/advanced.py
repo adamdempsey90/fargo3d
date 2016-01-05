@@ -692,7 +692,10 @@ class Sim():
     	self.mdot = -2*pi*self.r*(self.vr.data*self.dens.data).mean(axis=1)
     	_,self.px,self.py,self.pz,self.pvx,self.pvy,self.pvz,self.mp,self.t,self.omf  = loadtxt(directory+'planet{0:d}.dat'.format(p))[i,:]
     	self.a = sqrt(self.px**2  + self.py**2)
-    	self.nu0 = self.dens.alpha*self.dens.aspectratio*self.dens.aspectratio
+        try:
+            self.nu0 = self.dens.alpha*self.dens.aspectratio*self.dens.aspectratio
+        except AttributeError:
+            self.nu0 = self.dens.alphaviscosity*self.dens.aspectratio*self.dens.aspectratio
     	self.tvisc = self.dens.ymax**2/self.nu(self.dens.ymax)
         self.rh = (self.mp/3)**(1./3) * self.a
     	self.omega = zeros(self.vp.data.shape)
@@ -704,6 +707,7 @@ class Sim():
         self.dTr = (-2*pi*self.dens.data * self.dp_potential(self.rr,self.pp))
         self.dTr_mean = self.dTr.mean(axis=1)
         self.safety_fac  = .5
+        self.steady_state_calc()
     def nu(self,r):
     	return self.nu0 * r**(2*self.dens.flaringindex+.5)
     def scaleH(self,r):
@@ -877,7 +881,7 @@ class Sim():
         sep_lines = self.separatrix(lr,phi,vr.transpose(),vp.transpose(),noise=noise,npoints=10)
         for line in sep_lines:
             ax.plot(line[:,0],line[:,1],'-w',linewidth=2)
-
+        fig.canvas.draw()
 #        return log(self.r[rinds]),self.phi[pinds],rr,pp,vr.transpose(),vp.transpose()
 
     def calculate_circle(self,d,rlims=None):
@@ -899,21 +903,20 @@ class Sim():
         return circle_r, circle_phi
 
     def stagnation(self,lr,phi,vr,vp):
-        cr = contour(lr,phi,vr,levels=(0,))
-        cp = contour(lr,phi,vp,levels=(0,))
-
-        vertr = cr.collections[0].get_paths()[0].vertices
-        vertp = cp.collections[0].get_paths()[0].vertices
-
-        segsr =[ vstack( (vertr[i,:],vertr[i+1,:])) for i in range(vertr.shape[0]-1)]
-
-        segsp =[ vstack( (vertp[i,:],vertp[i+1,:])) for i in range(vertp.shape[0]-1)]
+        cr = contour(lr,phi,vr,levels=(0,),colors='w')
+        cp = contour(lr,phi,vp,levels=(0,),colors='w')
 
         stag_points = []
-        for sr in segsr:
-            for sp in segsp:
-                if intersect(sr,sp):
-                    stag_points.append(get_intersection(sr,sp))
+        for pathr in cr.collections[0].get_paths():
+            vertr = pathr.vertices
+            segsr =[ vstack( (vertr[i,:],vertr[i+1,:])) for i in range(vertr.shape[0]-1)]
+            for pathp in cp.collections[0].get_paths():
+                vertp = pathp.vertices
+                segsp =[ vstack( (vertp[i,:],vertp[i+1,:])) for i in range(vertp.shape[0]-1)]
+                for sr in segsr:
+                    for sp in segsp:
+                        if intersect(sr,sp):
+                            stag_points.append(get_intersection(sr,sp))
 
         return stag_points
 
@@ -928,8 +931,8 @@ class Sim():
         plt.close()
         uvals=np.array([x[0] for x in stag_points])
         inds = np.argsort(uvals)
-
-
+#        for x in stag_points:
+#            plot(x[0],x[1],'ow',markersize=20)
         sL = stag_points[inds[0]]
         sR = stag_points[inds[-1]]
         lines=[]
@@ -1055,6 +1058,15 @@ class Sim():
     		linem.set_ydata(mdot[:,i])
     		axd.set_title('t = %.1f = %.1f P' % (t[i],t[i]/(2*pi*a[i]**(1.5))),color='w')
     		fig.canvas.draw()
+
+
+    def steady_state_calc(self):
+        self.mdot0_ss = 3*pi*self.nu0*(self.dens.ymax*self.dens.sigmaout-self.dens.ymin*self.dens.sigmain)/(np.sqrt(self.dens.ymax)-np.sqrt(self.dens.ymin))
+        self.lam0_ss = 2*pi*self.dens.sigmain*self.dens.ymax + 2*self.mdot0_ss*(np.sqrt(self.r)-np.sqrt(self.dens.ymin))/(3*self.nu0)
+        self.vr0_ss = -self.mdot0_ss/self.lam0_ss
+        self.dbar0_ss = self.lam0_ss/(2*pi*self.r)
+
+
 def ccw(a,b,c):
     return (c[1]-a[1])*(b[0]-a[0]) > (b[1]-a[1])*(c[0]-a[0])
 

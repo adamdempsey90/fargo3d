@@ -12,8 +12,9 @@ Mdot0                0.01
 Mdot                 0.013
 CPI                    3.141592653589793238462643383279502884
 NOISE               0.0
-SIGMAIN            0.000001
-SIGMAOUT            0.01
+SIGMAIN            0.00000001
+SIGMAOUT            0.000001
+LAMBDABC            Yes
 ### Planet parameters
 
 PlanetConfig		planets/jupiter10.cfg

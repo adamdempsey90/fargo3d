@@ -9,6 +9,8 @@ void InitDensPlanet() {
   nu0 = ASPECTRATIO*ASPECTRATIO*ALPHA;
   boolean GhostInclude = TRUE;
 
+  
+
     int begin_k =(GhostInclude ? 0 : NGHZ);
   int end_k = Nz+2*NGHZ-begin_k;
   int begin_j =(GhostInclude ? 0 : NGHY);
@@ -22,7 +24,7 @@ void InitDensPlanet() {
         fac1=SIGMAOUT*YMAX/r-SIGMAIN*YMIN/r;
         fac3=sqrt(YMAX) - sqrt(YMIN);
         fac2 = sqrt(r)-sqrt(YMIN);
-        //fac1=pow(YMAX,.5-nuind)*YMIN*SIGMAIN-pow(YMIN,.5-nuind)*YMAX*SIGMAOUT;
+        //fac1=pow(YMAX,.5-nuind)*YMIN*sig_in-pow(YMIN,.5-nuind)*YMAX*SIGMAOUT;
         //fac2=-pow(YMAX,1-nuind)*YMIN*SIGMAIN+pow(YMIN,1-nuind)*YMAX*SIGMAOUT;
         //fac3 = pow(YMIN,1-nuind)*pow(YMAX,0.5-nuind)-pow(YMAX,1-nuind)*pow(YMIN,0.5-nuind);
         //fac1 *= pow(r,-nuind);
@@ -94,8 +96,6 @@ void InitVazimPlanet() {
   boolean GhostInclude = TRUE;
   nuind = 0.5+2*FLARINGINDEX;
   nu0 = ALPHA*ASPECTRATIO*ASPECTRATIO;
-
-
 
   int begin_k =(GhostInclude ? 0 : NGHZ);
   int end_k = Nz+2*NGHZ-begin_k;

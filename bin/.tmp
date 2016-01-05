@@ -1,5 +1,5 @@
-make[1]: Entering directory `/home/adam/fargo3d/bin'
+make[1]: Entering directory `/projects/b1002/amd616/fargo3d/bin'
 
 Generating var.c file
 You have not defined mandatory variables...
-make[1]: Leaving directory `/home/adam/fargo3d/bin'
+make[1]: Leaving directory `/projects/b1002/amd616/fargo3d/bin'

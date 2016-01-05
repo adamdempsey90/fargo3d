@@ -12,11 +12,12 @@ Mdot0                0.01
 Mdot                 0.013
 CPI                    3.141592653589793238462643383279502884
 NOISE               0.0
-SIGMAIN            0.000001
-SIGMAOUT            0.01
+SIGMAIN             0.00000001
+SIGMAOUT            0.000001
+LAMBDABC             Yes
 ### Planet parameters
 
-PlanetConfig		planets/jupiter10.cfg
+PlanetConfig		planets/jupiter.cfg
 ThicknessSmoothing 	1.0
 RocheSmoothing 		0.0
 Eccentricity		0.0
@@ -31,12 +32,12 @@ Ny               	256		Radial number of zones
 Xmin			-3.14159265358979323844
 Xmax			3.14159265358979323844
 Ymin			1.0		Inner boundary radius
-Ymax			30.0		Outer boundary radius
+Ymax			50.0		Outer boundary radius
 Frame			C
 Spacing 		LOG
 ### Output control parameters
 
-Ntot		80000		Total number of time steps
+Ntot		40000		Total number of time steps
 Ninterm	 		10		Time steps between outputs
 DT			6.28	Time step length. 2PI = 1 orbit
 OutputDir  outputs/accretion/

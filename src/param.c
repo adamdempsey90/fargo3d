@@ -305,6 +305,13 @@ void var_assign(){
 #endif
   rescale();
 #endif
+
+  SIGMAIN *= SIGMA0;
+  SIGMAOUT *= SIGMA0;
+  if (LAMBDABC) { 
+      SIGMAOUT /= (2*M_PI*YMAX);
+      SIGMAIN /= (2*M_PI*YMIN);
+  }
 }
 
 void ListVariables (char *filename) {
