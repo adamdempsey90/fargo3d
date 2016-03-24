@@ -105,9 +105,18 @@ KEPLERIAN3DSPHVAZIMCOL:
  ACCRETIONDENSINNER:
     Centered: |'MDOT'/(3*pi*'ALPHA'*'ASPECTRATIO'*'ASPECTRATIO' * pow(Ymed(jgh),0.5+2*'FLARINGINDEX'))|ds|
 
-ACCRETIONDENSOUTER:
-#     Centered: |'MDOT'/(3*pi*'ALPHA'*'ASPECTRATIO'*'ASPECTRATIO' * pow(Ymed(jgh),0.5+2*'FLARINGINDEX'))|ds|
-     Centered: |'MDOT'/(-2*pi*Ymed(jgh)*vy[lghs])|active|
+ACCRETIONOUTER:
+    Centered: |(fh1+'MDOT'*(sqrt(Ymed(jgh))-sqrt(ri1)))/(3*pi*nu_0*pow(Ymed(jgh),nu_index+0.5))|active|
+#     Centered: |(nu_0*pow(ri1,nu_index+0.5)*sig1+m3p*(sqrt(Ymed(jgh))-sqrt(ri1)))/(nu_0*pow(Ymed(jgh),nu_index+0.5))|active|
+#     Centered: |sig1|active|
+     Staggered: |vnorm*pow(Ymin(jgh),vr_index)*'MDOT'*sqrt(Ymin(jgh))/(fh1+'MDOT'*(sqrt(Ymin(jgh))-sqrt(ri1)))|vnorm*pow(Ymin(jgh),vr_index)*'MDOT'*sqrt(Ymin(jgh))/(fh1+'MDOT'*(sqrt(Ymin(jgh))-sqrt(ri1)))|active|
+#     Staggered: |vnorm*pow(Ymin(jgh),vr_index)*'MDOT'*sqrt(ri1)/(3*pi*nu_0*pow(ri1,nu_index+0.5)*sig1+'MDOT'*(sqrt(Ymin(jgh))-sqrt(ri1)))|vnorm*pow(Ymin(jgh),vr_index)*'MDOT'*sqrt(ri1)/(3*pi*nu_0*pow(ri1,nu_index+0.5)*sig1+'MDOT'*(sqrt(Ymin(jgh))-sqrt(ri1)))|active|
+     
+ACCRETIONINNER:
+     Centered: |sig1*pow(ri1/Ymed(jgh),nu_index)|active|
+     Staggered: |vr1*pow(Ymed(jgh)/ri1,vr_index)|vr1*pow(rm1/ri1,vr_index)|active|
+
+
 
 #ACCRETIONVRADINNER:
 #   Staggered: |a|a|a|
@@ -122,12 +131,33 @@ ACCRETIONVRADOUT:
   Staggered:  |-3*'ALPHA'*'ASPECTRATIO'*'ASPECTRATIO'*pow(Ymin(jgh),-0.5+2*'FLARINGINDEX')*(1+2*'FLARINGINDEX' + log(density[lgh]/density[lact])/(2*log(Ymed(jgh)/Ymed(jact))))|-3*'ALPHA'*'ASPECTRATIO'*'ASPECTRATIO'*pow(Ymin(jgh),-0.5+2*'FLARINGINDEX')*(1+2*'FLARINGINDEX' + log(density[lgh]/density[lact])/(2*log(Ymed(jgh)/Ymed(jact))))|active|
 
 
+VISCFLOWOUT:
+  Centered: |a|a|
+  Staggered: |vnorm*pow(Ymin(jgh),vr_index)|vnorm*pow(Ymed(jgh),vr_index)|active|
+
+ACCFLOWOUT:
+  Centered: |sig1*pow(ri1/Ymed(jgh),nu_index)|active|
+#  Staggered: |vr1*pow(Ymed(jgh)/ri1,nu_index-1)|vr1*pow(Ymin(jact)/ri1,nu_index-1)|active|
+  Staggered: |vnorm*pow(Ymed(jgh),nu_index-1)|vnorm*pow(Ymin(jact),nu_index-1)|active|
+
+TORQUEBC:
+    Centered: |bfac*pow(Ymed(jgh),-nu_index) + cfac*pow(Ymed(jgh),-0.5-nu_index)|active|
+    Staggered: |vnorm*pow(Ymed(jgh),nu_index-1)/(1+afac/sqrt(Ymed(jgh)))|vnorm*pow(Ymin(jact),nu_index-1)/(1+afac/sqrt(Ymin(jact)))|active|
+#    Centered: |signorm*pow(Ymed(jgh),-nu_index)*(1+sqrt(Ymed(jact)/Ymed(jgh))*(density[lgh]/(signorm*pow(Ymed(jact),-nu_index)-1)))|active|
+#    Staggered: |vnorm*pow(Ymin(jact),nu_index-1)/(1+sqrt(Ymed(jact)/Ymin(jgh))*(density[lgh]/(signorm*pow(Ymed(jact),-nu_index)-1)))|vnorm*pow(Ymin(jact),nu_index-1)/(1+sqrt(Ymed(jact)/Ymin(jgh))*(density[lgh]/(signorm*pow(Ymed(jact),-nu_index)-1)))|active|
+
+
+VISCBC: 
+    Staggered: |vrad_visc_out*pow(Ymin(jact)/'YMAX',vr_index)|vrad_visc_out*pow(Ymin(jact)/'YMAX',vr_index)|active|
 
 VRADARBITRARY:
   Staggered: |1000.0|a|a|
 
  ZERODENS:
     Centered: |'SIGFLOOR'|a|
+
+FIXED:
+    Centered: |-'MDOT'/(vrad_visc_out*pow(Ymed(jgh)/'YMAX',vr_index))/(2*pi*Ymed(jgh))|active|
 
 FIXEDDENSIN:
     Centered: |'SIGMAIN'|active|
@@ -137,6 +167,7 @@ FIXEDDENSOUT:
 
 
 FLOWOUT:
+  Centered: |a|a|
   Staggered: |-fabs(active)|(active-fabs(active))/2.0|active|
 
 WALL:

@@ -293,7 +293,7 @@ BOUNDARIES =  boundparser.py boundaries.txt 			    \
 	      boundary_template.c
 
 MPIDUMMY = mpi_dummy.o #dummy file, for sequential runs.
-EXENAME  = ../fargo3d  #Name and location of the executable file
+EXENAME  = ../fargo3d_nowk  #Name and location of the executable file
 
 VPATH=${SETUPSDIR}/${SETUP}:${STDDIR}:${SCRIPTSDIR}:${SRCDIR}
 
@@ -341,6 +341,7 @@ MAINOBJ  = LowTasks.o psys.o main.o param.o var.o usage.o   	    \
 	   postrestarthook.o change_arch.o select_device.o	\
 	   redefoptions.o setuphook1.o				\
            fill_ghostsx.o                                       \
+	   compute_vymed.o compute_rhomed.o				\
 
 #-----------------------#Cuda objects---------------------------------
 GPU_OBJ  =  reduction_sum_device.o reduction_min_device.o	\

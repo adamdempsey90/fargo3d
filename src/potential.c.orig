@@ -26,12 +26,6 @@ void compute_potential(real dt) {
   DiskOnPrimaryAcceleration = ComputeAccel(0.0, 0.0, 0.0, 0.0, 0.0);
   FARGO_SAFE(ComputeIndirectTerm());
   FARGO_SAFE(Potential()); // Gravitational potential from star and planet(s)
-#ifdef FTPOTENTIAL
-  if (InitPotential) {
-        FARGO_SAFE(init_potential_m());
-        InitPotential = NO;
-  }
-#endif
   FARGO_SAFE(AdvanceSystemFromDisk(dt));
 
   if (ThereIsACentralBinary)
@@ -52,9 +46,6 @@ void compute_potential(real dt) {
 void Potential_cpu() {
   
 //<USER_DEFINED>
-#ifdef FTPOTENTIAL
-  INPUT(FTPot)
-#endif
   OUTPUT(Pot);
   real planetmass_taper;
   if (MASSTAPER == 0.0)
@@ -65,9 +56,6 @@ void Potential_cpu() {
 
 //<EXTERNAL>
   real* pot  = Pot->field_cpu;
-#ifdef FTPOTENTIAL
-  real* ftpot = FTPot->field_cpu;
-#endif
   real* xplanet = Sys->x_cpu;
   real* yplanet = Sys->y_cpu;
   real* zplanet = Sys->z_cpu;
@@ -140,6 +128,7 @@ void Potential_cpu() {
 
 	for(n=0; n<nb; n++) {
 	  mp = mplanet[n]*taper;
+	  
 
 	  planetdistance = sqrt(xplanet[n]*xplanet[n]+
 				yplanet[n]*yplanet[n]+
@@ -191,13 +180,7 @@ void Potential_cpu() {
 	    }
 	  }
 #endif
-#ifndef FTPOTENTIAL
 	  pot[l] += -G*mp/sqrt(dist+smoothing); //Potential from planets
-#else
-      pot[l] += ftpot[l]*taper;
-#endif
-//      }
-
 	}
 //<\#>
 #ifdef X
@@ -211,137 +194,3 @@ void Potential_cpu() {
 #endif
 //<\MAIN_LOOP>
 }
-
-void init_potential_m(void) {
-    OUTPUT(Pot);
-    OUTPUT(FTPot);
-    OUTPUT(PotP);
-    int i;
-    int j;
-    int k;
-    int n;
-    int m;
-    int size_x;
-    int size_y;
-    int size_z;
-    real facr;
-    real faci;
-    int mstart;
-    int mend;
-    
-    int nb        = Sys->nb;
-    real* xplanet = Sys->x_cpu;
-    real* yplanet = Sys->y_cpu;
-    real* zplanet = Sys->z_cpu;
-    real* mplanet = Sys->mass_cpu;
-    real smoothing;
-    real dist;
-    real rroche;
-    real planetdistance;
-    real mp;
-    real* pot = Pot->field_cpu;
-    real* fpot = FTPot->field_cpu;
-    real* potp = PotP->field_cpu;
-
-    mstart = MSTART;
-    mend = MEND;
-    size_x = Nx + 2*NGHX;
-    size_y = Ny + 2*NGHY;
-    size_z = Nz + 2*NGHZ;
-    i=j=k=m=0;
-#ifdef Z
-        for (k=0; k<size_z; k++) {
-#endif
-#ifdef Y
-            for (j=0; j<size_y; j++) {
-#endif
-                for(i=0; i<size_x; i++) {
-
-                for(n=0; n<nb; n++) {
-                  mp = mplanet[n];
-
-                  planetdistance = sqrt(xplanet[n]*xplanet[n]+
-                            yplanet[n]*yplanet[n]+
-                            zplanet[n]*zplanet[n]);
-                  rroche = planetdistance*pow((1.0/3.0*mp/MSTAR),1.0/3.0);
-
-                  if (ROCHESMOOTHING != 0)
-                    smoothing = rroche*ROCHESMOOTHING;
-                  else
-                    smoothing = ASPECTRATIO*
-                      pow(planetdistance/R0,FLARINGINDEX)*
-                      planetdistance*THICKNESSSMOOTHING;
-
-                  smoothing*=smoothing;
-
-                  dist = ((XC-xplanet[n])*(XC-xplanet[n])+
-                      (YC-yplanet[n])*(YC-yplanet[n])+
-                      (ZC-zplanet[n])*(ZC-zplanet[n]));
-                  potp[l] += -G*mp/sqrt(smoothing + dist);
-                }
-                }
-#ifdef Y 
-            }
-#endif
-#ifdef Z
-        }
-#endif
-    WriteField(PotP,0);
-    printf("%d\t%d\n",mstart,mend);
-    for (m=mstart; m<mend+1; m++) {                
-        printf("Adding the m=%d mode\n",m);
-#ifdef Z
-        for (k=0; k<size_z; k++) {
-#endif
-#ifdef Y
-            for (j=0; j<size_y; j++) {
-#endif
-                i=0;
-                facr = .5*cos(m*xmed(i))*potp[l];
-                faci = -.5*sin(m*xmed(i))*potp[l];
-                i=Nx + 2*NGHX-1;
-                facr += .5*cos(m*xmed(i))*potp[l];
-                faci += -.5*sin(m*xmed(i))*potp[l];
-                for( i=1; i<size_x-1; i++) {
-                    facr += cos(m*xmed(i))*potp[l];
-                    faci += -sin(m*xmed(i))*potp[l];
-                }
-                facr /= (real)size_x;
-                faci /= (real)size_x;
-
-                for(i=0;i<size_x;i++) {
-                    fpot[l] += 2*(facr*cos(m*xmed(i)) - faci*sin(m*xmed(i)));
-        
-                }
-#ifdef Y 
-            }
-#endif
-#ifdef Z
-        }
-#endif
-    }
-
-
-#ifdef Z
-        for (k=0; k<size_z; k++) {
-#endif
-#ifdef Y
-            for (j=0; j<size_y; j++) {
-#endif
-                for(i=0; i<size_x; i++) {
-                    pot[l] += fpot[l];
-                }
-#ifdef Y 
-            }
-#endif
-#ifdef Z
-        }
-#endif
-
-        FARGO_SAFE(WriteField(Pot,0));
-        FARGO_SAFE(WriteField(FTPot,0));
-}
-
-
-
-

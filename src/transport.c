@@ -91,7 +91,7 @@ void transport(real dt){
   TransportZ(Energy, Qs, dt);
 #endif
   TransportZ(Density, Qs, dt);
-#endif
+#endif // ---- Z
 
 #ifdef Y
   FARGO_SAFE(VanLeerY_a(Density));
@@ -113,7 +113,7 @@ void transport(real dt){
   TransportY(Energy, Qs, dt);
 #endif
   TransportY(Density, Qs, dt);
-#endif
+#endif // ---- Y
 
 #ifdef X
 #ifdef STANDARD
@@ -142,7 +142,7 @@ void transport(real dt){
 #endif
   AdvectSHIFT(Density, Nshift);
 #endif
-#endif
+#endif // ---- X
   
   FARGO_SAFE(NewVelocity_x());
   FARGO_SAFE(NewVelocity_y());

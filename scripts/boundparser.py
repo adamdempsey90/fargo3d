@@ -11,13 +11,13 @@ def pformat_read(name,dataformat):
 
     Input:
     ------
-    
+
     name: string
           data filename
 
     dataformat: string
                 regular expresion for the data.
-                
+
     Output:
     -------
     A list of field dictionaries. The main key is the name,
@@ -70,7 +70,7 @@ class Library():
     def __init__(self,boundaries, centering):
         self.boundaries = pformat_read(boundaries,"\|.*\|")
         self.centering  = pformat_read(centering,"\w+")
-        
+
 class Field():
     def __init__(self,name,library):
         self.library = library
@@ -198,8 +198,25 @@ class Boundary():
             "  int lact;\n" + \
             "  int lacts;\n" + \
             "  int lacts_null;\n"
+        if 'torquebc' in [f.boundaries['ymax'] for f in self.setup.fields] or 'accflowout' in [f.boundaries['ymin'] for f in self.setup.fields]:
+            internal_lines += "  real sig1;\n" + \
+                "  real bfac;\n" + \
+                "  real cfac;\n" + \
+                "  real afac;\n" + \
+                "  real ri1;\n" + \
+                "  real ri2;\n" + \
+                "  real vr1;\n" + \
+                "  real vr2;\n" + \
+                "  real sig2;\n"
+        if 'accretionouter' in [f.boundaries['ymax'] for f in self.setup.fields] or 'accretioninner' in [f.boundaries['ymin'] for f in self.setup.fields]:
+            internal_lines += "  real sig1;\n" + \
+                    " real vr1;\n" + \
+                    " real ri1;\n" + \
+                    " real fh1;\n" + \
+                    " real rm1;\n"
+
         self.template.template[n] = internal_lines
-        
+
     def process_external(self):
         pointerfield_lines = ""
         string = "%pointerfield"
@@ -213,7 +230,7 @@ class Boundary():
         n = self.stones[string]
         self.template.template[n] = \
             self.template.template[n] = pointerfield_lines
-        
+
         string = "%size_y"
         n = self.stones[string]
         if self.side[0] == "y":
@@ -235,6 +252,8 @@ class Boundary():
     def process_boundaries(self):
         boundaries_lines = ""
         global_variables = []
+        print [f.boundaries['ymax'] for f in self.setup.fields]
+        print [f.boundaries['ymin'] for f in self.setup.fields]
         for field in self.setup.fields:
             if field.centered[-1] == self.side[0]:
                 if self.side[:] == "ymax":
@@ -254,10 +273,15 @@ class Boundary():
             for variable in gvariables:
                 global_variables.append(variable.replace("'",""))
 
-                
+
             right_hand = right_hand.replace("'","")
             boundaries_lines += left_hand + right_hand
-        
+
+#        if self.side[:] == 'ymax' and 'torquebc' in [f.boundaries['ymax'] for f in self.setup.fields]:
+#            boundaries_lines += "\t"+"if (vy[lacts] > 0) {\n\t\tvy[lghs]=-vy[lacts];\n\t\tvy[lacts_null]=0;\n\t}\n\n"
+#        elif self.side[:] == 'ymin' and 'accflowout' in [f.boundaries['ymin'] for f in self.setup.fields]:
+#            boundaries_lines += "\t"+"if (vy[lacts] > 0) {\n\t\tvy[lghs]=-vy[lacts];\n\t\tvy[lacts_null]=0;\n\t}\n\n"
+
         string = "%boundaries"
         n = self.stones[string]
         self.template.template[n] = boundaries_lines
@@ -267,10 +291,31 @@ class Boundary():
         n = self.stones[string]
         global_variables = set(global_variables)
         variables = ""
-        for variable in global_variables:
-            variables += "  real " + variable + " = " + variable.upper() + ";\n"
+
+        if self.side == 'ymax' or self.side == 'ymin':
+            for variable in global_variables:
+                if variable != "tot_torq":
+                    variables += "  real " + variable + " = " + variable.upper() + ";\n"
+            if self.side == 'ymax' and 'torquebc' in [f.boundaries['ymax'] for f in self.setup.fields]:
+                variables += "  real torq_param = Gtottorq;\n" #total_torque_cpu();\n"
+                variables += "  real beta_out = 1 + Gtottorq/(MDOT * sqrt(YMAX));\n"
+            if any( [ val in [f.boundaries['ymax'] for f in self.setup.fields] + [f.boundaries['ymin'] for f in self.setup.fields] for val in ['torquebc','accflowout','accretioninner','accretionouter']]):
+                variables += "  real nu_0 = ALPHA*ASPECTRATIO*ASPECTRATIO;\n"
+                variables += "  real m3p = MDOT/(3*M_PI);\n"
+ #               variables += "  real signorm = (MDOT/(3*M_PI))/(ALPHA*ASPECTRATIO*ASPECTRATIO);\n"
+                variables += "  real nu_index = 0.5 + 2*FLARINGINDEX;\n"
+                variables += "  real vnorm = -1.5*ALPHA*ASPECTRATIO*ASPECTRATIO;\n"
+                variables += "  real vr_index = -0.5 + 2*FLARINGINDEX;\n"
+#                variables += "  real vrad_visc_out = -1.5*ALPHA*ASPECTRATIO*ASPECTRATIO*pow(YMAX,2*FLARINGINDEX-0.5);\n"
+                variables += "  real pi = M_PI;\n"
+#            if self.side == 'ymax':
+#                variables += '  if (!CPU_Rank) printf( " torque is %.12f\\n ",torq_param);\n '
+        else:
+            for variable in global_variables:
+                variables += "  real " + variable + " = " + variable.upper() + ";\n"
+
         self.template.template[n] = variables
-        
+
 
     def parsing_boundary(self,field):
         output = ""
@@ -289,7 +334,7 @@ class Boundary():
                         print "Be careful!", field.name.upper(), "is staggered in", field.centered[-1],\
                             "but you are trying to use a centered condition for it. Please review the "\
                             "definition of", boundary['name'].upper(), "if you want to use this condition."
-                        exit()                        
+                        exit()
                     groups = re.match("\|(.*)\|(.*)\|(\w*)\|",bound)
                     active = groups.group(1).replace(groups.group(3),field.variable+"[lacts]")
                     ghosts = groups.group(2).replace(groups.group(3),field.variable+"[lacts]")
@@ -308,7 +353,7 @@ class Boundary():
                             "definition of", boundary['name'].upper(), "if you want to use this condition."
                         exit()
                     groups = re.match("\|(.*)\|(\w*)\|",bound)
-                    active = groups.group(1).replace(groups.group(2),field.variable+"[lact]")  
+                    active = groups.group(1).replace(groups.group(2),field.variable+"[lact]")
                     output += active + ";\n"
         if bound == False:
             print field.boundaries[self.side].upper(),"boundary for",\
@@ -320,13 +365,26 @@ class Boundary():
     def process_indices(self):
         indices_lines = ""
         if self.side == 'ymin':
-            indices_lines += "\n\t" +"lgh = l;\n"            
+            indices_lines += "\n\t" +"lgh = l;\n"
             indices_lines += "\t" +"lghs = l;\n"
             indices_lines += "\t" +"lact = i + (2*nghy-j-1)*pitch + k*stride;\n"
             indices_lines += "\t"+"lacts = i + (2*nghy-j)*pitch + k*stride;\n"
             indices_lines += "\t"+"lacts_null = i + nghy*pitch + k*stride;\n"
             indices_lines += "\t" +"jgh = j;\n"
             indices_lines += "\t" +"jact = (2*nghy-j-1);\n\n"
+            if 'accflowout' in [f.boundaries['ymin'] for f in self.setup.fields]:
+                indices_lines += "\t" +"sig1 = density[ i + (2*nghy-(size_y-1)-1)*pitch + k*stride];\n"
+                indices_lines += "\t" +"sig2 = density[i + (2*nghy-(size_y-2)-1)*pitch + k*stride];\n"
+                indices_lines += "\t" +"ri1 = ymed(2*nghy-(size_y-1)-1);\n"
+                indices_lines += "\t" +"ri2 = ymed(2*nghy-(size_y-2)-1);\n\n"
+                indices_lines += "\t" +"vr1 = vy[ i + (2*nghy-(size_y-1)+1)*pitch + k*stride];\n"
+                indices_lines += "\t" +"vr2 = vy[i + (2*nghy-(size_y-2)+1)*pitch + k*stride];\n"
+            if 'accretioninner' in [f.boundaries['ymin'] for f in self.setup.fields]:
+                indices_lines += "\t" +"sig1 = density[ i + (nghy)*pitch + k*stride];\n"
+                indices_lines += "\t" +"ri1 = ymed(nghy);\n"
+                indices_lines += "\t" +"rm1 = ymin(nghy);\n"
+                indices_lines += "\t" +"vr1 = vy[ i + (nghy)*pitch + k*stride];\n"
+
         if self.side == 'ymax':
             indices_lines += "\n\t" +"lgh = i + (ny+nghy+j)*pitch + k*stride;\n"
             indices_lines += "\t" +"lghs = i + (ny+nghy+1+j)*pitch + k*stride;\n"
@@ -335,8 +393,27 @@ class Boundary():
             indices_lines += "\t" +"lacts_null = i + (ny+nghy)*pitch + k*stride;\n"
             indices_lines += "\t" +"jgh = (ny+nghy+j);\n"
             indices_lines += "\t" +"jact = (ny+nghy-1-j);\n\n"
+            if 'torquebc' in [f.boundaries['ymax'] for f in self.setup.fields]:
+                indices_lines += "\t" +"sig1 = density[ i + (ny+nghy-1)*pitch + k*stride];\n"
+                indices_lines += "\t" +'printf("%lg\t%lg\n",sig1, density[ i + (ny+nghy-1)*pitch + k*stride]);\n'
+                indices_lines += "\t" +"sig2 = density[i + (ny+nghy-2)*pitch + k*stride];\n"
+                indices_lines += "\t" +"vr1 = vy[ i + (ny+nghy)*pitch + k*stride];\n"
+                indices_lines += "\t" +"vr2 = vy[i + (ny+nghy-1)*pitch + k*stride];\n"
+                indices_lines += "\t" +"ri1 = ymed((ny+nghy-1));\n"
+                indices_lines += "\t" +"ri2 = ymed(ny+nghy-2);\n"
+                indices_lines += "\t" +"cfac = (sig1*pow(ri1,nu_index)-sig2*pow(ri2,nu_index))/(1./sqrt(ri1)-1./sqrt(ri2));\n"
+                indices_lines += "\t" +"bfac = (sig1*pow(ri1,nu_index+.5)-sig2*pow(ri2,nu_index+.5))/(sqrt(ri1)-sqrt(ri2));\n"
+                indices_lines += "\t" +"afac = cfac/bfac;\n\n"
+
+            if 'accretionouter' in [f.boundaries['ymax'] for f in self.setup.fields]:
+                indices_lines += "\t" +"sig1 = density[ i + (ny+nghy-1)*pitch + k*stride];\n"
+                indices_lines += "\t" +"vr1 = vy[ i + (ny +  nghy)*pitch + k*stride];\n"
+                indices_lines += "\t" +"ri1 = ymed(ny+nghy-1);\n"
+                indices_lines += "\t" +"rm1 = ymin(ny+nghy);\n"
+                indices_lines += "\t" +"fh1 = 3*pi*nu_0*pow(ri1,nu_index+0.5)*sig1;\n"
+
         if self.side == 'zmin':
-            indices_lines += "\n\t" +"lgh = l;\n"            
+            indices_lines += "\n\t" +"lgh = l;\n"
             indices_lines += "\t" +"lghs = l;\n"
             indices_lines += "\t" +"lact = i + j*pitch + (2*nghz-k-1)*stride;\n"
             indices_lines += "\t"+"lacts = i + j*pitch + (2*nghz-k)*stride;\n"
@@ -434,7 +511,7 @@ if __name__ == '__main__':
         write_mute("y",copy.deepcopy(template))
         write_mute("z",copy.deepcopy(template))
         print "================================="
-        print "Warning: Some file is missing..." 
+        print "Warning: Some file is missing..."
         "\nCheck the files: \n" + SETUP + "\n" \
             + BOUNDARIES + "\n" + CENTERING + \
             "\nThis version was compiled with"
@@ -446,19 +523,19 @@ if __name__ == '__main__':
         left  = Boundary("ymin",
                          copy.deepcopy(setup),
                          copy.deepcopy(template))
-        right = Boundary("ymax", 
-                         copy.deepcopy(setup), 
+        right = Boundary("ymax",
+                         copy.deepcopy(setup),
                          copy.deepcopy(template))
     except KeyError:
         write_mute("y", copy.deepcopy(template))
         print "Skipping boundaries in Y. Not defined."
 
     try:
-        down  = Boundary("zmin", 
+        down  = Boundary("zmin",
                          copy.deepcopy(setup),
                          copy.deepcopy(template))
-        up    = Boundary("zmax", 
-                         copy.deepcopy(setup), 
+        up    = Boundary("zmax",
+                         copy.deepcopy(setup),
                          copy.deepcopy(template))
     except KeyError:
         write_mute("z", copy.deepcopy(template))

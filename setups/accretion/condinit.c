@@ -20,10 +20,12 @@ void InitDensPlanet() {
    for (k = begin_k; k<end_k; k++) {
     for (j = begin_j; j<end_j; j++) {
         r = Ymed(j);
-        viscosity = nu0*pow(r,nuind);
-        fac1=SIGMAOUT*YMAX/r-SIGMAIN*YMIN/r;
-        fac3=sqrt(YMAX) - sqrt(YMIN);
-        fac2 = sqrt(r)-sqrt(YMIN);
+      //  fac1 = -1.5 * nu0 * pow(r/YMAX,-0.5+2*FLARINGINDEX);
+        fac2 = MDOT/(3*M_PI*nu0*pow(r,nuind));
+//        viscosity = nu0*pow(r,nuind);
+//        fac1=SIGMAOUT*YMAX/r-SIGMAIN*YMIN/r;
+//        fac3=sqrt(YMAX) - sqrt(YMIN);
+//        fac2 = sqrt(r)-sqrt(YMIN);
         //fac1=pow(YMAX,.5-nuind)*YMIN*sig_in-pow(YMIN,.5-nuind)*YMAX*SIGMAOUT;
         //fac2=-pow(YMAX,1-nuind)*YMIN*SIGMAIN+pow(YMIN,1-nuind)*YMAX*SIGMAOUT;
         //fac3 = pow(YMIN,1-nuind)*pow(YMAX,0.5-nuind)-pow(YMAX,1-nuind)*pow(YMIN,0.5-nuind);
@@ -33,7 +35,9 @@ void InitDensPlanet() {
           //
           //
 //         field[l] = SIGFLOOR + SIGMA0 * exp( - (Ymed(j)-1.8)*(Ymed(j)-1.8)/.01);
-        field[l]= SIGMAIN*YMIN/r + fac1*fac2/fac3;//(fac1-fac2)/fac3;
+//        field[l]= SIGMAIN*YMIN/r + fac1*fac2/fac3;//(fac1-fac2)/fac3;
+          field[l] = fac2;
+
       }
     }
   }
@@ -114,11 +118,12 @@ void InitVazimPlanet() {
    //     fac2 = fac1 + (-pow(YMAX,1-nuind)*SIGMAIN*YMIN+pow(YMIN,1-nuind)*SIGMAOUT*YMAX)/sqrt(r);
 
 
-        fac1=SIGMAOUT*YMAX/r-SIGMAIN*YMIN/r;
-        fac1 /= (sqrt(YMAX) - sqrt(YMIN));
-        fac2 = SIGMAIN*YMIN/r + fac1*(sqrt(r)-sqrt(YMIN));
-        md0 = 1.5*nu0*fac1;
+//        fac1=SIGMAOUT*YMAX/r-SIGMAIN*YMIN/r;
+//        fac1 /= (sqrt(YMAX) - sqrt(YMIN));
+//        fac2 = SIGMAIN*YMIN/r + fac1*(sqrt(r)-sqrt(YMIN));
+//        md0 = 1.5*nu0*fac1;
 
+        fac1 = -1.5 * nu0 * pow(r,nuind-1);
 
       for (i = begin_i; i<end_i; i++) {
 
@@ -131,7 +136,7 @@ void InitVazimPlanet() {
 	field[l] = vt*(1.+ASPECTRATIO*NOISE*(drand48()-.5));
 	//vr[l] = r*omega*ASPECTRATIO*NOISE*(drand48()-.5);
 //    vr[l] = -1.5*ALPHA*ASPECTRATIO*ASPECTRATIO*pow(r,-0.5+2*FLARINGINDEX);
-    vr[l] = -md0/fac2;
+    vr[l] = -1.5 * ALPHA*ASPECTRATIO*ASPECTRATIO*pow(Ymin(j),2*FLARINGINDEX-0.5);
       }
     }
   }

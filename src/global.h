@@ -30,6 +30,7 @@ boolean DeviceFileSpecified = NO;
 boolean StretchOldOutput = NO;
 boolean ThereArePlanets = NO;
 boolean ThereIsACentralBinary = NO;
+boolean InitPotential = YES;
 real    PhysicalTimeInitial;
 real    PhysicalTime = 0;
 real    XAxisRotationAngle = 0.0;
@@ -85,6 +86,8 @@ Field *Mmy;
 Field *Mmz;
 
 Field *Pot;
+Field *FTPot;
+Field *PotP;
 
 Field *DivRho;
 Field *DensStar;
@@ -146,6 +149,11 @@ Field2D *Vy0;
 Field2D *Vz0;
 Field2D *Energy0;
 
+Field2D *Density0_avg;
+Field2D *Vx0_avg;
+Field2D *Vy0_avg;
+Field2D *Vz0_avg;
+Field2D *Energy0_avg;
 
 
 
@@ -184,6 +192,10 @@ real *Szj;
 real *Szk;
 real *InvVj;
 real shift_buffer[MAX1D];
+real Gtottorq;
+real Gafac;
+real Gbfac;
+real Gcfac;
 
 //GPU GLOBAL LIGHT ARRAYS
 real *Dx_d;

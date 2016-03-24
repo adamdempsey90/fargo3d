@@ -35,6 +35,11 @@ OUTPUT(Vy);
   int lact;
   int lacts;
   int lacts_null;
+  real sig1;
+ real vr1;
+ real ri1;
+ real fh1;
+ real rm1;
 //<\INTERNAL>
 
 //<EXTERNAL>
@@ -52,11 +57,14 @@ OUTPUT(Vy);
   int pitch  = Pitch_cpu;
   int stride = Stride_cpu;
   real dx = Dx;
-  real alpha = ALPHA;
+  real mdot = MDOT;
   real omegaframe = OMEGAFRAME;
-  real flaringindex = FLARINGINDEX;
-  real aspectratio = ASPECTRATIO;
-  real sigmaout = SIGMAOUT;
+  real nu_0 = ALPHA*ASPECTRATIO*ASPECTRATIO;
+  real m3p = MDOT/(3*M_PI);
+  real nu_index = 0.5 + 2*FLARINGINDEX;
+  real vnorm = -1.5*ALPHA*ASPECTRATIO*ASPECTRATIO;
+  real vr_index = -0.5 + 2*FLARINGINDEX;
+  real pi = M_PI;
 //<\EXTERNAL>
 
 //<CONSTANT>
@@ -88,11 +96,16 @@ OUTPUT(Vy);
 	jgh = (ny+nghy+j);
 	jact = (ny+nghy-1-j);
 
-	density[lgh] = sigmaout;
+	sig1 = density[ i + (ny+nghy-1)*pitch + k*stride];
+	vr1 = vy[ i + (ny +  nghy)*pitch + k*stride];
+	ri1 = ymed(ny+nghy-1);
+	rm1 = ymin(ny+nghy);
+	fh1 = 3*pi*nu_0*pow(ri1,nu_index+0.5)*sig1;
+	density[lgh] = (fh1+mdot*(sqrt(ymed(jgh))-sqrt(ri1)))/(3*pi*nu_0*pow(ymed(jgh),nu_index+0.5));
 	vx[lgh] = (vx[lact]+ymed(jact)*omegaframe)*sqrt(ymed(jact)/ymed(jgh))-ymed(jgh)*omegaframe;
 	if (j<size_y-1)
-		vy[lghs] = -3*alpha*aspectratio*aspectratio*pow(ymin(jgh),-0.5+2*flaringindex)*(1+2*flaringindex + log(density[lgh]/density[lact])/(2*log(ymed(jgh)/ymed(jact))));
-	vy[lacts_null] = -3*alpha*aspectratio*aspectratio*pow(ymin(jgh),-0.5+2*flaringindex)*(1+2*flaringindex + log(density[lgh]/density[lact])/(2*log(ymed(jgh)/ymed(jact))));
+		vy[lghs] = vnorm*pow(ymin(jgh),vr_index)*mdot*sqrt(ymin(jgh))/(fh1+mdot*(sqrt(ymin(jgh))-sqrt(ri1)));
+	vy[lacts_null] = vnorm*pow(ymin(jgh),vr_index)*mdot*sqrt(ymin(jgh))/(fh1+mdot*(sqrt(ymin(jgh))-sqrt(ri1)));
 //<\#>
 #ifdef X
       }

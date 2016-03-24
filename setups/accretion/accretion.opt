@@ -11,9 +11,15 @@
 #-------------------------------------------------------------------------------
 #Problem
 MONITOR_SCALAR = MASS | MOM_X | TORQ
-MONITOR_Y_RAW  = TORQ
+MONITOR_Y_RAW  = TORQ | MASS | MOM_Y
 
 #FARGO_OPT += -DSTOCKHOLM
+FARGO_OPT += -DNOWAVEKILLRHO
+#FARGO_OPT += -DNOSTOCKHOLMRIGHT
+FARGO_OPT += -DSTOCKHOLMACC
+
+#Use only a single mode of the potential
+#FARGO_OPT += -DFTPOTENTIAL
 
 #Dimension(s) of Simulation. Here 2D (r,Phi) like the former FARGO code
 FARGO_OPT +=  -DX #X --> PHI

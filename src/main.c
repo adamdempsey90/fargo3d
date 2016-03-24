@@ -273,6 +273,13 @@ OMEGAFRAME (which is used afterwards to build the initial Vx field. */
   FillGhosts(PrimitiveVariables()); 
 #ifdef STOCKHOLM 
   FARGO_SAFE(init_stockholm());
+#ifdef STOCKHOLMACC
+  FARGO_SAFE(ComputeVymed(Vy));
+  FARGO_SAFE(ComputeRhomed(Density));
+  
+  Write2D(Density0_avg, "density0_2d_avg.dat", OUTPUTDIR, GHOSTINC);
+  Write2D(Vy0_avg, "vy0_2d_avg.dat", OUTPUTDIR, GHOSTINC);
+#endif
 #endif
 
 #ifdef GHOSTSX

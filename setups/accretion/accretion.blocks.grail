@@ -29,4 +29,3 @@ fargo_ppa_c	32	4	1
 fargo_ppa_d	32	4	1
 addviscosity_cyl	16	8	1
 visctensor_cyl	32	4	1
-setuphook1	64	8	1

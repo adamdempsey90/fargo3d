@@ -17,6 +17,13 @@ void SelectDevice(int myrank){
   Check_CUDA_Blocks_Consistency ();
   /* Custom device selection rules depending on host name */
   /* The user may edit or had his own rules  */
+
+  if (strstr(hostname, "qgpu") != NULL) {
+  //  device = 1-(myrank % 2);
+    ChooseDeviceForMe = YES;
+   // printf("Procces %d using GPU %d\n",myrank,device);
+  }
+
   if (strcmp(hostname, "tesla") == 0) {
     device = 1-(myrank % 2);
     ChooseDeviceForMe = NO;
@@ -92,6 +99,14 @@ void EarlyDeviceSelection () {
     exit(1);
   }
   local_rank = atoi(getenv(MpiEnvVariable));
+
+//  if (strstr(hostname, "qgpu") != NULL) {
+//    device = 1-(local_rank % 2);
+//    printf("Procces %d using GPU %d\n",local_rank,device);
+//  }
+//  else {
+//    device = local_rank;
+//  }
   device = local_rank;
   if (DeviceFileSpecified == YES) {
     devfile = fopen(DeviceFile, "r");

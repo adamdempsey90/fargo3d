@@ -13,6 +13,7 @@ void FillGhosts (int var) {
   InitSpecificTime (&t_Comm, "MPI Communications");
   FARGO_SAFE(comm (var));
   GiveSpecificTime (t_Comm);
+//  total_torque_cpu();
   FARGO_SAFE(boundaries()); // Always after a comm.
 
 #if defined(Y)
@@ -98,9 +99,15 @@ void AlgoGas () {
     dtemp+=dt;
     if(dtemp>DT)  dt = DT - (dtemp-dt); // updating dt
 
-
 #ifdef POTENTIAL
-    FARGO_SAFE(compute_potential(dt));
+#ifdef FTPOTENTIAL
+    if (InitPotential) {
+#endif
+        FARGO_SAFE(compute_potential(dt));
+#ifdef FTPOTENTIAL
+    }
+#endif
+    
 #endif
 
 #if ((defined(SHEARINGSHEET2D) || defined(SHEARINGBOX3D)) && !defined(SHEARINGBC))
@@ -213,6 +220,10 @@ void AlgoGas () {
 
 
 #ifdef STOCKHOLM
+#ifdef STOCKHOLMACC
+    FARGO_SAFE(ComputeVymed(Vy));
+    FARGO_SAFE(ComputeRhomed(Density));
+#endif
     FARGO_SAFE(StockholmBoundary(dt));
 #endif
 

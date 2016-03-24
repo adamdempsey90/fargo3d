@@ -1,4 +1,9 @@
 from matplotlib import _cntr as cntr
+import matplotlib.gridspec as gridspec
+from subprocess import call
+from scipy.optimize import curve_fit
+from scipy.integrate import cumtrapz
+import copy
 def load_viridis():
     from matplotlib.colors import LinearSegmentedColormap
     parameters = {'xp': [22.674387857633945, 11.221508276482126, -14.356589454756971, -47.18817758739222, -34.59001004812521, -6.0516291196352654],
@@ -281,20 +286,31 @@ class Mesh():
             print "IOError with domain_x.dat"
         try:
             #We have to avoid ghost cells!
-            domain_y = np.loadtxt(directory+"domain_y.dat")[3:-3]
+            domain_y = np.loadtxt(directory+"domain_y.dat")[2:-2]
         except IOError:
             print "IOError with domain_y.dat"
         self.xm = domain_x #X-Edge
         self.ym = domain_y #Y-Edge
 
-        self.xmed = 0.5*(domain_x[:-1] + domain_x[1:]) #X-Center
-        self.ymed = 0.5*(domain_y[:-1] + domain_y[1:]) #Y-Center
+        self.xmed = 0.5*(self.xm[:-1] + self.xm[1:]) #X-Center
+        self.ymed = 0.5*(self.ym[:-1] + self.ym[1:]) #Y-Center
+
+        self.dx = diff(self.xm)
+        self.dy = diff(self.ym)
+        self.surfy = outer(self.ym[:-1],self.dx)
+        self.surfx = outer(self.dy,ones(self.dx.shape))
+
+        self.vol = outer(.5*(self.ym[1:]**2-self.ym[:-1]**2),self.dx)
+
+        self.nx = len(self.xmed)
+        self.ny = len(self.ymed)-2
 
         #(Surfaces taken from the edges)
         #First we make 2D arrays for x & y, that are (theta,r)
-        T,R = meshgrid(self.xm, self.ym)
-        R2  = R*R
-        self.surf = 0.5*(T[:-1,1:]-T[:-1,:-1])*(R2[1:,:-1]-R2[:-1,:-1])
+#        T,R = meshgrid(self.xm, self.ym)
+#        R2  = R*R
+#        self.surf = 0.5*(T[:-1,1:]-T[:-1,:-1])*(R2[1:,:-1]-R2[:-1,:-1])
+
 
 class Parameters():
     """
@@ -339,13 +355,15 @@ class Field(Mesh, Parameters):
            dtype='float64' (numpy dtype) -> 'float64', 'float32',
                                              depends if FARGO_OPT+=-DFLOAT is activated
     """
-    def __init__(self, field, staggered='c', directory='', dtype='float64'):
+    Q_dict = {'dens':'gasdens{0:d}.dat','vx':'gasvx{0:d}.dat','vy':'gasvy{0:d}.dat','momx':['dens','vx'],'momy':['dens','vy'],'pres':['dens']}
+    name_dict={'dens':'$\\Sigma$', 'vx': '$v_\\phi$', 'vy': '$v_r$'}
+    def __init__(self, Q, num, staggered='c', directory='', dtype='float64'):
         if len(directory) > 1:
             if directory[-1] != '/':
                 directory += '/'
         Mesh.__init__(self, directory) #All the Mesh attributes inside Field!
         Parameters.__init__(self, directory) #All the Parameters attributes inside Field!
-
+        self.staggered = staggered
         #Now, the staggering:
         if staggered.count('x')>0:
             self.x = self.xm[:-1] #Do not dump the last element
@@ -356,35 +374,294 @@ class Field(Mesh, Parameters):
         else:
             self.y = self.ymed
 
-        self.data = self.__open_field(directory+field,dtype) #The scalar data is here.
+        try:
+            field = self.Q_dict[Q].format(num)
+        except KeyError:
+            print '%s not a valid Field'%Q
+            print 'Please choose one of:, ',self.Q_dict.keys()
+            raise
+
+        self.name = Q
+        self.math_name = self.name_dict[Q]
+        self.data = self.__open_field(directory+field.format(num),dtype) #The scalar data is here.
+        self.data = self.set_boundary()
+        self.avg = self.data.mean(axis=1)
+        self.wkz = self.ymin + (self.ymax-self.ymin)*self.wkzin
+        self.wkzr = self.ymax - (self.ymax-self.ymin)*self.wkzout
+        self.ft = fft.rfft(self.data,axis=1)/self.nx
+
 
     def __open_field(self, f, dtype):
         """
         Reading the data
         """
-        field = fromfile(f, dtype=dtype)
+        try:
+            field = fromfile(f, dtype=dtype)
+        except IOError:
+            print "Couldn't find %s, trying again with un-merged file"%f
+            try:
+                field = fromfile(f.replace('.dat','_0.dat'),dtype=dtype)
+            except IOError:
+                raise
+
         return field.reshape(self.ny, self.nx)
 
-    def plot(self, ax=None,log=False, cartesian=False, cmap=viridis, **karg):
+
+    def recalculate(self):
+        self.avg = self.data.mean(axis=1)
+        self.ft = fft.rfft(self.data,axis=1)/self.nx
+
+    def grad(self):
+        q = copy.copy(self.data)
+        res = zeros(q.shape)
+        one_dim = False
+        try:
+            q.shape[1]
+        except IndexError:
+            one_dim = True
+
+
+        for i in range(1,q.shape[0]-1):
+            if one_dim:
+                res[i] = (q[i+1]-q[i-1])/(self.y[i+1]-self.y[i-1])
+            else:
+                res[i,:] = (q[i+1,:]-q[i-1,:])/(self.y[i+1]-self.y[i-1])
+
+        if one_dim:
+            res[0] = (q[1]-q[0])/(self.y[1]-self.y[0])
+            res[-1] = (q[-1]-q[-2])/(self.y[-1]-self.y[-2])
+        else:
+            res[0,:] = (q[1,:]-q[0,:])/(self.y[1]-self.y[0])
+            res[-1,:] = (q[-1,:]-q[-2,:])/(self.y[-1]-self.y[-2])
+        return res
+
+
+    def set_boundary(self,accretion=True):
+        if self.name == 'vx':
+            iact = 1; igh = 0;
+            inner_ring = (self.data[iact,:] + self.ymed[iact]*self.omegaframe)*sqrt(self.ymed[iact]/self.ymed[igh]) - self.ymed[igh]*self.omegaframe
+            iact = -2; igh = -1;
+            outer_ring = (self.data[iact,:] + self.ymed[iact]*self.omegaframe)*sqrt(self.ymed[iact]/self.ymed[igh]) - self.ymed[igh]*self.omegaframe
+        if self.name == 'vy':
+            if accretion:
+                iact=1; igh=0;
+                inner_ring = -1.5*self.alpha*self.aspectratio*self.aspectratio*self.ymed[igh]**(2*self.flaringindex-.5)
+                inner_ring *= ones(self.data[igh,:].shape)
+                iact=-2; igh=-1;
+                outer_ring = self.data[iact,:]
+            else:
+                inner_ring = self.data[iact,:]
+                outer_ring = self.data[iact,:]
+
+        if self.name == 'dens':
+            if accretion:
+                iact=1;igh=0;
+                inner_ring = self.data[iact,:]* (self.ymed[iact]/self.ymed[igh])**(2*self.flaringindex+.5)
+                iact=-2;igh=-1;
+                nu_0 = self.alpha*self.aspectratio*self.aspectratio
+                fac = 3*pi*nu_0* (self.ymed[iact])**(2*self.flaringindex+1)
+                outer_ring = (self.data[iact,:]*fac  + self.mdot*(sqrt(self.ymed[igh])-sqrt(self.ymed[iact])))/(3*pi*nu_0*self.ymed[igh]**(2*self.flaringindex+1))
+            else:
+                iact=1;igh=0;
+                inner_ring = self.data[iact,:]
+                iact=-2;igh=-1;
+                outer_ring = self.data[iact,:]
+
+        return vstack( (inner_ring, self.data, outer_ring) )
+
+    def center_to_edge(self,direction='y'):
+        newfield = copy.deepcopy(self)
+        if direction.count('y') > 0:
+            newfield.data = vstack( (newfield.data, newfield.data[-1,:]) )
+            newfield.data = .5*(newfield.data[1:,:]+  newfield.data[:-1,:])
+            newfield.staggered='y'
+        if direction.count('x') > 0:
+            newfield.data = hstack( (newfield.data[:,-1].reshape(len(newfield.data[:,-1]),1), newfield.data, newfield.data[:,0].reshape(len(newfield.data[:,0]),1)) )
+            newfield.data = .5*(newfield.data[:,1:]+  newfield.data[:,:-1])
+            newfield.staggered += 'x'
+        newfield.avg = newfield.data.mean(axis=1)
+        return newfield
+    def edge_to_center(self):
+        newfield = copy.deepcopy(self)
+        if newfield.staggered.count('y') > 0:
+            newfield.data = vstack( (newfield.data, newfield.data[-1,:]) )
+            newfield.data = .5*(newfield.data[1:,:] + newfield.data[:-1,:])
+            newfield.staggered.strip('y')
+        if newfield.staggered.count('x') > 0:
+            newfield.data = hstack( (newfield.data[:,-1].reshape(len(newfield.data[:,-1]),1), newfield.data, newfield.data[:,0].reshape(len(newfield.data[:,0]),1)) )
+            newfield.data = .5*(newfield.data[:,1:] + newfield.data[:,:-1])
+            newfield.staggered.strip('x')
+        newfield.avg = newfield.data.mean(axis=1)
+        return newfield
+
+
+#    def center_to_edge(self,direction='y'):
+#        dqm = zeros(rho.shape)
+#        dqp = zeros(rho.shape)
+#        slope = zeros(rho.shape)
+#        mdot = zeros(rho.shape)
+#
+#
+#        dqm[1:-1,:] =(rho[1:-1,:]  - rho[:-2,:])/dy[1:-1,:]
+#        dqp[1:-1,:] =(rho[2:,:]  - rho[1:-1,:])/dy[2:,:]
+#        ind = sign(dqm*dqp)
+#        slope = (ind>0).astype(int) * 2*dqm*dqp/(dqm+dqp)
+#        mdot[1:-1,:] = (vy>0).astype(int)*(rho[:-2,:]+.5*slope[:-2,:]*dy[:-2,:]) + (vy<=0).astype(int)*(rho[1:,:]-.5*slope[1:,:]*dy[1:,:])
+
+    def plotmode(self,m,ax=None,norm=1,shift=0,planet=None,xlims=None,ylims=None,logx=False,**karg):
+
+        try:
+            m[0]
+        except TypeError:
+            m= array([m])
+
+
+        if planet is None:
+            y = copy.copy(self.y)
+            xstr = '$r$'
+        else:
+            y = (self.y-planet)/(self.aspectratio*planet)
+            xstr = '$(r-a)/H$'
+
+        fontsize=karg.pop('fontsize',20)
+        figsize = karg.pop('figsize',(10,8))
+        if ax is None:
+            fig=figure(figsize=figsize)
+            ax=fig.add_subplot(111)
+
+        color = karg.pop('color','k')
+        for i in m:
+            ax.plot(y,self.ft[:,i].real,'-',label='$m=%d$'%i,**karg)
+        ax.set_prop_cycle(None)
+        for i in m:
+            ax.plot(y,self.ft[:,i].imag,'--',**karg)
+
+        ax.set_xlabel(xstr,fontsize=fontsize)
+        ax.set_ylabel('$\\hat{' + self.math_name.strip('$') + '}$' ,fontsize=fontsize)
+        if len(m) < 6:
+            ax.set_title('$m=$' + ','.join(['%d'%i for i in m]),fontsize=fontsize)
+            ax.legend(loc='best')
+        else:
+            ax.set_title('$m = %d...%d$'%(min(m),max(m)),fontsize=fontsize)
+
+        if logx and planet is None:
+            ax.set_xscale('log')
+
+        ax.minorticks_on()
+        if xlims is not None:
+            ax.set_xlim(xlims)
+        if ylims is not None:
+            ax.set_ylim(ylims)
+
+    def plotavg(self,ax=None,log=False,logx=False,logy=False,xlims=None,ylims=None,planet=None,norm=1,shift=0,**karg):
+        fontsize=karg.pop('fontsize',20)
+        figsize = karg.pop('figsize',(10,8))
+
+
+        if ax is None:
+            fig=figure(figsize=figsize)
+            ax=fig.add_subplot(111)
+
+        if self.staggered.count('y')>0:
+            y = copy.copy(self.ym[:-1])
+        else:
+            y = copy.copy(self.ymed)
+
+        xstr = '$r$'
+        if planet is not None:
+            y = (y - planet)/(self.aspectratio*planet)
+            xstr = '$ (r-a)/H $'
+            logx=False
+            if log:
+                logy=True
+                log=False
+
+        ax.plot(y,(self.avg-shift)/norm,**karg)
+        if logx or log:
+            ax.set_xscale('log'),
+        if logy or log:
+            ax.set_yscale('log')
+        ax.set_xlabel(xstr,fontsize=fontsize)
+        ax.set_ylabel(self.math_name,fontsize=fontsize)
+        ax.minorticks_on()
+        if xlims is not None:
+            ax.set_xlim(xlims)
+        if ylims is not None:
+            ax.set_ylim(ylims)
+
+
+
+    def plot(self, norm=1,shift=0,ax=None,log=False,logx=False, abslog=False,cartesian=False, cmap=viridis, **karg):
         """
         A layer to plt.imshow or pcolormesh function.
         if cartesian = True, pcolormesh is launched.
         """
+
+#        if self.x[0] == pi or self.x[-1] != pi:
+#            dp = diff(self.x)[0]
+#            dp *= 2
+#            yn = self.data[:,-1] + (pi - self.x[-1])*(self.data[:,0]-self.data[:,-1])/dp
+#            data = copy.copy(self.data)
+#            data[:,-1] = yn
+#            data[:,0] = yn
+#            x = copy.copy(self.x)
+#            x[-1] = pi
+#            x[0] = -pi
+#
+#        x = copy(self.x)
+        data = (copy.copy(self.data)-shift)/norm
+        x =copy.copy(self.x)
+        shading = karg.pop('shading','gouraud')
+        interpolation = karg.pop('interpolation','bilinear')
+        fontsize = karg.pop('fontsize',20)
+        xlims = karg.pop('xlims',None)
+        ylims = karg.pop('ylims',None)
+        T,R = meshgrid(x,self.y)
         if ax == None:
-            ax = gca()
+            fig=figure()
+            ax=fig.add_subplot(111)
         if log:
-            data = np.log(self.data)
-        else:
-            data = self.data
+            data = np.log10(data)
+        if abslog:
+            data = np.log10(np.abs(data))
         if cartesian:
-            T,R = meshgrid(self.x,self.y)
             X = R*cos(T)
             Y = R*sin(T)
-            pcolormesh(X,Y,data,cmap=cmap,**karg)
+            line2d=ax.pcolormesh(X,Y,data,cmap=cmap,shading=shading,**karg)
+            if xlims is not None:
+                ax.set_xlim(xlims)
+            if ylims is not None:
+                ax.set_ylim(ylims)
+
         else:
-            ax.imshow(data, cmap = cmap, origin='lower',aspect='auto',
-                      extent=[self.x[0],self.x[-1],self.y[0],self.y[-1]],
-                      **karg)
+            if logx:
+                line2d=ax.pcolormesh(log10(R),T,data, cmap = cmap,shading=shading,**karg)
+                ax.set_xlabel('$\\log_{10}(r)$',fontsize=fontsize)
+                if xlims is not None:
+                    ax.set_xlim(log10(xlims[0]),log10(xlims[1]))
+                else:
+                    ax.set_xlim(log10(self.y[0]),log10(self.y[-1]))
+            else:
+                line2d=ax.pcolormesh(R,T,data, cmap = cmap,shading=shading,**karg)
+                ax.set_xlabel('$r$',fontsize=fontsize)
+                if xlims is not None:
+                    ax.set_xlim(xlims)
+                else:
+                    ax.set_xlim(self.y[0],self.y[-1])
+
+            #origin='lower',aspect='auto',interpolation=interpolation,extent=[x[0],x[-1],self.y[0],self.y[-1]],**karg)
+            ax.set_ylabel('$\\phi$',fontsize=fontsize)
+            if ylims is not None:
+                ax.set_ylim(ylims)
+            else:
+                ax.set_ylim(self.x[0],self.x[-1])
+        cbar = colorbar(line2d,ax=ax)
+        if log:
+            ax.set_title('$\\log_{10}$'+self.math_name,fontsize=fontsize)
+        elif abslog:
+            ax.set_title('$\\log_{10}|$'+self.math_name+'$|$',fontsize=fontsize)
+        else:
+            ax.set_title(self.math_name,fontsize=fontsize)
 
     def contour(self, log=False, cartesian=False, **karg):
         if log:
@@ -431,7 +708,6 @@ class Field(Mesh, Parameters):
                axis  --> 'x', 'y' or 'xy'
                side  --> 'p' (plus), 'm' (minnus), 'pm' (plus/minnus)
         """
-        import copy
 
         cutted_field = copy.deepcopy(Field)
         ny,nx = Field.ny, Field.nx
@@ -657,65 +933,351 @@ class Field(Mesh, Parameters):
 from scipy.interpolate import interp1d,interp2d
 
 
-class Sim():
+class Sim(Mesh,Parameters):
     def __init__(self,i,directory='',p=0):
-    	if directory != '':
-    		if directory[-1] != '/':
-    			directory += '/'
+        if directory != '':
+            if directory[-1] != '/':
+                directory += '/'
         self.directory = directory
-    	self.dens = Field('gasdens{0:d}.dat'.format(i),directory=directory)
-    	self.vp = Field('gasvx{0:d}.dat'.format(i),directory=directory,staggered='x')
-    	self.vr = Field('gasvy{0:d}.dat'.format(i),directory=directory,staggered='y')
+        self.dens = Field('dens',i,directory=directory)
+        self.vp = Field('vx',i,directory=directory,staggered='x')
+        self.vr = Field('vy',i,directory=directory,staggered='y')
 
-        # self.vp.data = 0.5*(self.vp.data[:,1:]+self.vp.data[:,:-1])
-        # self.vp.x = 0.5*(self.vp.x[1:]+self.vp.x[:-1])
-        # self.vr.data = 0.5*(self.vr.data[1:,:]+self.vr.data[:-1,:])
-        # self.vr.y = 0.5*(self.vr.y[1:]+self.vr.y[:-1])
-        #
-        # self.vr.nx = len(self.vr.x)
-        # self.vr.ny = len(self.vr.y)
-        # self.vp.nx = len(self.vp.x)
-        # self.vp.ny = len(self.vp.y)
+        Mesh.__init__(self,directory)
 
-        self.vp = self.vp.shift_field('x')
-        self.vr = self.vr.shift_field('y')
-        self.vp = self.vp.cut_field(direction='y',side='p')
-        self.vr = self.vr.cut_field(direction='x',side='p')
-        self.dens = self.dens.cut_field(direction='xy', side='p')
 
-    	self.r  = self.dens.y
-    	self.phi = self.dens.x
-        self.pp, self.rr = meshgrid(self.phi,self.r)
-    	self.dbar = self.dens.data.mean(axis=1)
-    	self.vrbar = self.vr.data.mean(axis=1)
-    	self.vpbar = self.vp.data.mean(axis=1)
-    	self.mdot = -2*pi*self.r*(self.vr.data*self.dens.data).mean(axis=1)
-    	_,self.px,self.py,self.pz,self.pvx,self.pvy,self.pvz,self.mp,self.t,self.omf  = loadtxt(directory+'planet{0:d}.dat'.format(p))[i,:]
+        self.mdot,self.rhos,self.rhosp = self.calc_flux()
+        self.vrf = self.mdot.avg/(-2*pi*self.mdot.y*self.rhos.avg)
+        self.sig0  = self.dens.mdot/(3*pi*self.nu(self.dens.y))
+#        self.vp = self.vp.shift_field('x')
+#        self.vr = self.vr.shift_field('y')
+#        self.vp = self.vp.cut_field(direction='y',side='p')
+#        self.vr = self.vr.cut_field(direction='x',side='p')
+#        self.dens = self.dens.cut_field(direction='xy', side='p')
+        self.r  = self.dens.y
+        self.phi = self.dens.x
+        self.dphi = self.dx
+#        self.dlr = diff(log(self.r))[0]
+#        self.dr = self.dlr*self.r
+        self.dr = self.dy
+        self.dlr = self.dy/self.ymed
+
+        self.dlr = self.dlr[:self.dens.ny-1]
+        self.dr = self.dr[:self.dens.ny-1]
+
+
+
+#        self.pp, self.rr = meshgrid(self.phi,self.r)
+#    	self.dbar = self.dens.data.mean(axis=1)
+#        self.vrbar0 = self.vr.data.mean(axis=1)
+#    	self.vrbar = (self.dens.data*self.vr.data).mean(axis=1)
+#    	self.vpbar = (self.dens.data*self.vp.data).mean(axis=1)
+#    	self.mdot_full = -2*pi*self.rr*(self.vr.data*self.dens.data)
+#        self.mdot = self.mdot_full.mean(axis=1)
+        try:
+    	    _,self.px,self.py,self.pz,self.pvx,self.pvy,self.pvz,self.mp,self.t,self.omf  = loadtxt(directory+'planet{0:d}.dat'.format(p))[i,:]
+        except IndexError:
+            try:
+    	        _,self.px,self.py,self.pz,self.pvx,self.pvy,self.pvz,self.mp,self.t,self.omf  = loadtxt(directory+'planet{0:d}.dat'.format(p))[-1,:]
+            except IndexError:
+    	        _,self.px,self.py,self.pz,self.pvx,self.pvy,self.pvz,self.mp,self.t,self.omf  = loadtxt(directory+'planet{0:d}.dat'.format(p))
+
+
     	self.a = sqrt(self.px**2  + self.py**2)
+        self.K = self.mp**2 / (self.dens.alpha * self.dens.aspectratio**5)
+
+        self.vp.data += self.vp.y[:,newaxis]*self.omf
+        self.vp.recalculate()
+
         try:
             self.nu0 = self.dens.alpha*self.dens.aspectratio*self.dens.aspectratio
         except AttributeError:
             self.nu0 = self.dens.alphaviscosity*self.dens.aspectratio*self.dens.aspectratio
-    	self.tvisc = self.dens.ymax**2/self.nu(self.dens.ymax)
-        self.rh = (self.mp/3)**(1./3) * self.a
-    	self.omega = zeros(self.vp.data.shape)
-    	self.vpc = zeros(self.vp.data.shape)
-    	for i in range(len(self.r)):
-    		self.omega[i,:] = self.vp.data[i,:]/self.r[i] + self.a**(-1.5)
-    		self.vpc[i,:] = self.omega[i,:]*self.r[i]
 
-        self.dTr = (-2*pi*self.dens.data * self.dp_potential(self.rr,self.pp))
-        self.dTr_mean = self.dTr.mean(axis=1)
-        self.safety_fac  = .5
-        self.steady_state_calc()
-    def nu(self,r):
-    	return self.nu0 * r**(2*self.dens.flaringindex+.5)
-    def scaleH(self,r):
-        return self.dens.aspectratio * r**(self.dens.flaringindex + 1)
+
+    	self.tvisc = self.dens.ymax**2/self.nu(self.dens.ymax)
+        self.tviscp = self.a**2/(self.nu(self.a))
+        self.torb = 2*np.pi * self.a**(1.5)
+        self.rh = (self.mp/3)**(1./3) * self.a
+
+        self.dTr,self.Lambda,self.Fh=self.calc_torques()
+
+##    	self.omega = zeros(self.vp.data.shape)
+##    	self.vpc = zeros(self.vp.data.shape)
+##        self.l = zeros(self.vp.data.shape)
+##        for i in range(len(self.r)):
+##            self.omega[i,:] = self.vp.data[i,:]/self.r[i] + self.a**(-1.5)
+##            self.vpc[i,:] = self.omega[i,:]*self.r[i]
+##            self.l[i,:] = self.r[i] * self.vpc[i,:]
+##
+##        self.Fj_full = -2*pi*self.dens.data*self.nu(self.rr)*self.rr**3 * self.grad(self.omega)
+##        self.Fj = self.Fj_full.mean(axis=1)
+##        ind_excl = (self.r>=self.a*(1-self.dens.thicknesssmoothing*self.dens.aspectratio))&(self.r<=self.a*(1+self.dens.thicknesssmoothing*self.dens.aspectratio))
+##        self.dTr = (-self.rr*self.dens.data * self.dp_potential(self.rr,self.pp))
+##        self.dTr_excl = self.dTr.mean(axis=1)
+##        self.dTr_excl[ind_excl] = 0
+##        self.dTr_tot_excl = 2*pi*trapz(self.dTr_excl* self.dr)
+##        self.dTr_mean = self.dTr.mean(axis=1)
+##        self.dTr_total = 2*pi*trapz(self.dTr_mean*self.dr)
+##        self.dTr_out = self.dphi*trapz((self.dTr.sum(axis=1)*self.dr)[self.r>=self.a],x=self.r[self.r>=self.a])
+##        self.dTr_in = self.dphi*trapz((self.dTr.sum(axis=1)*self.dr)[self.r<=self.a],x=self.r[self.r<=self.a])
+##
+##        self.mdotdlr = (self.mdot_full * self.grad(self.l)).mean(axis=1)
+##
+##        self.safety_fac  = .5
+##        try:
+##            self.dbar0 = self.dens.mdot/(3*pi*self.nu(self.r))
+##        except AttributeError:
+##            pass
+##        self.vr_visc = -1.5*self.nu(self.r)/self.r
+##        self.steady_state_calc()
+##        self.mdoti,self.dbar0=self.inner_disk_sol((self.dens.ymin*1.2,self.a*.5))
+##
+##        self.A = self.dTr_total/self.mdoti
+##        self.A_excl = self.dTr_tot_excl/self.mdoti
+    def fpred(self,x):
+        scalar = False
+        try:
+            x[1]
+        except IndexError:
+            scalar = True
+        ind = self.r<=x
+        res = self.dTr_mean*2*pi + self.mdotdlr
+        if scalar:
+            return trapz( (res*self.dr)[ind])
+        else:
+            return array([trapz( (res*self.dr)[self.r<=i]) for i in x])
+    def calc_torques(self):
+        res_dTr = copy.deepcopy(self.rhos)
+
+        xx,yy = meshgrid(res_dTr.x,res_dTr.y)
+        res_dTr.data *=  (-yy * self.dp_potential(yy,xx))
+
+        res_dTr.name = 'Lambda_ex'
+        res_dTr.math_name = '$\\Lambda_{ex}$'
+        res_dTr.recalculate()
+
+
+        res_fH = copy.deepcopy(self.rhosp)
+        res_dep = copy.deepcopy(self.dens)
+        # Assume a keplerian rotation for now
+        res_fH.data *=  (3*pi*self.nu(yy) * yy**(.5))
+        res_fH.name = 'Fh'
+        res_fH.math_name = '$F_{H,\\nu}$'
+        res_fH.recalculate()
+        res_dep.data  = -self.mdot.data /(2*sqrt(yy)) + res_fH.grad()
+        res_dep.name = 'Lambda_dep'
+        res_dep.math_name = '$\\Lambda_{dep}$'
+        res_dep.recalculate()
+
+        return res_dTr,res_dep,res_fH
+
+    def calc_flux(self):
+        res = copy.deepcopy(self.vr)
+        res1 = copy.deepcopy(self.vr)
+        rho = copy.copy(self.dens.data)
+        vy = copy.copy(self.vr.data)
+        surfy = copy.copy(self.surfy)
+
+        dqm = zeros(rho.shape)
+        dqp = zeros(rho.shape)
+        slope = zeros(rho.shape)
+        mdot = zeros(rho.shape)
+        rhos = copy.copy(self.dens.data)
+        _,dyy = meshgrid(self.dx,self.dy)
+
+        dqm[1:-1,:] = (rho[1:-1,:]-rho[:-2,:])/dyy[1:-1,:]
+        dqp[1:-1,:] = (rho[2:,:]-rho[1:-1,:])/dyy[2:,:]
+        slope[1:-1,:] = ( (dqm*dqp)[1:-1,:] > 0).astype(int) * (2*(dqp*dqm)/(dqp+dqm))[1:-1,:]
+        rhos[1:-1,:] = (vy[1:-1,:]>0).astype(int) * (rho[:-2,:]+.5*slope[:-2,:]*dyy[:-2,:])
+        rhos[1:-1,:] += (vy[1:-1,:]<=0).astype(int) * (rho[1:-1,:]-.5*slope[1:-1,:]*dyy[1:-1,:])
+        mdot[1:-1,:] = -self.nx*vy[1:-1,:] * rhos[1:-1,:] * surfy[1:-1,:]
+        mdot[0,:] = mdot[1,:]
+        mdot[-1,:] = mdot[-2,:]
+
+        res.data = mdot
+        res.name = 'Mdot'
+        res.math_name = '$\\dot{M}$'
+        res1.data = rhos
+        res1.name = 'Rhostar'
+        res1.math_name = '$\\Sigma^*$'
+        res.recalculate()
+        res1.recalculate()
+
+        # phi direction
+        res2 = copy.deepcopy(self.vp)
+        rho = copy.copy(self.dens.data)
+        ns = (len(rho[:,0]),1)
+        dx = self.dx[0]
+
+
+        nrho = hstack( (rho[:,-1].reshape(ns),rho,rho[:,0].reshape(ns)) )
+
+        dqm = zeros(nrho.shape)
+        dqp = zeros(nrho.shape)
+        slopep = zeros(nrho.shape)
+
+        dqm[:,1:] = (nrho[:,1:]-nrho[:,:-1])/dx
+        dqp[:,:-1] = (nrho[:,1:]-nrho[:,:-1])/dx
+        dqm[:,0] = (nrho[:,0]-rho[:,-2])/dx
+        dqp[:,-1] = (rho[:,1]-nrho[:,-1])/dx
+
+        slopep = ( (dqm*dqp) > 0).astype(int) * (2*(dqp*dqm)/(dqp+dqm))
+
+        res2.data = nrho[:,:-2] + .5*slopep[:,:-2]*dx
+#        res2.data[:,:-1] = .5*(self.dens.data[:,1:] + self.dens.data[:,:-1])
+#        res2.data[:,-1] = .5*(self.dens.data[:,-1] + self.dens.data[:,0])
+        res2.name = 'Rhostarp'
+        res2.math_name = '$\\Sigma_\\phi^*$'
+        res2.recalculate()
+
+
+        return res,res1,res2
+    def grad(self,q):
+        res = zeros(q.shape)
+        one_dim = False
+        try:
+            q.shape[1]
+        except IndexError:
+            one_dim = True
+
+
+        for i in range(1,q.shape[0]-1):
+            if one_dim:
+                res[i] = (q[i+1]-q[i-1])/(self.r[i+1]-self.r[i-1])
+            else:
+                res[i,:] = (q[i+1,:]-q[i-1,:])/(self.r[i+1]-self.r[i-1])
+
+        if one_dim:
+            res[0] = (q[1]-q[0])/(self.r[1]-self.r[0])
+            res[-1] = (q[-1]-q[-2])/(self.r[-1]-self.r[-2])
+        else:
+            res[0,:] = (q[1,:]-q[0,:])/(self.r[1]-self.r[0])
+            res[-1,:] = (q[-1,:]-q[-2,:])/(self.r[-1]-self.r[-2])
+        return res
+    def nu(self,x):
+        return self.dens.aspectratio**2 * self.dens.alpha  * x**(2*self.dens.flaringindex+.5)
+    def vr_nu(self,x):
+        return -1.5*self.nu(x)/x
+    def scaleH(self,x):
+        return self.dens.aspectratio * x**(self.dens.flaringindex + 1)
+
+    def inner_disk_sol(self,rlims):
+        ind = (self.r>=rlims[0])&(self.r<=rlims[1])
+        popt,pcov = curve_fit(lambda x,a: a/(3*pi*self.nu(x)),self.r[ind],self.dbar[ind])
+        return popt[0],popt[0]/(3*pi*self.nu(self.r))
+
+    def plot2d(self,q,axex=None,fig=None,logscale=False,logr=True,rlims=None,plims=None,norm=False,**kargs):
+        if fig == None:
+            #fig,axes=subplots(1,2)
+            figsize = kargs.pop('figsize',(20,15))
+            fig = figure(figsize=figsize);
+            gs = gridspec.GridSpec(3,4)
+            axcart = fig.add_subplot(gs[:2,:-2])
+            axcyl = fig.add_subplot(gs[:2,-2:])
+            axdbar = fig.add_subplot(gs[-1,:])
+
+
+        if q=='dens':
+            fld=self.dens
+            dat = copy.copy(self.dens.data.transpose())
+            dstr0 = '$\\Sigma(r)$'
+            dbar = copy.copy(self.dbar)
+            if norm:
+                dat0 = copy.copy(self.dbar0)
+        elif q=='vr':
+            fld =self.vr
+            dat = copy.copy(self.vr.data.transpose())
+            dstr0 = '$v_r$'
+
+            dbar = copy.copy(self.vrbar)
+            if norm:
+                dat0 = copy.copy(self.vr_visc)
+        elif q=='vp':
+            fld=self.vp
+            dat = copy.copy(self.vp.data.transpose())
+            dbar = copy.copy(self.vpbar)
+            dstr0 = '$v_\\phi$'
+            if norm:
+                dat0 = pow(self.r,-1.5)
+
+        else:
+            print '%s is not a valid option' % q
+            return
+
+        if logscale:
+            dstr = '$\\log_{10}$'+ dstr0
+        else:
+            dstr = dstr0
+        if rlims == None:
+            rlims = (self.dens.ymin,self.dens.ymax)
+        if plims == None:
+            plims = (-pi,pi)
+
+        print rlims,plims
+
+        rinds = (self.r<=rlims[1])&(self.r>=rlims[0])
+        pinds = (self.phi<=plims[1])&(self.phi>=plims[0])
+
+        print self.phi[pinds]
+        dat = dat[:,rinds][pinds,:]
+
+        if norm:
+            if q=='vp':
+                dbar = (dbar- dat0)[rinds]
+                for i in range(dat.shape[0]):
+                    dat[i,:] -= dat0[rinds]
+            else:
+                dbar =  (dbar/dat0)[rinds]
+                for i in range(dat.shape[0]):
+                    dat[i,:] /= dat0[rinds]
+
+
+        if logscale:
+            dat = log10(dat)
+        r = self.r[rinds]
+        lr = log(r)
+        phi = self.phi[pinds]
+
+        print r,phi
+        rlims0 = copy.copy(rlims)
+        if logr:
+            rstr = '$\\ln r$'
+            rlims = (log(rlims[0]),log(rlims[1]))
+            rr,pp = meshgrid(lr,phi)
+        else:
+            rstr = '$r$'
+            rr,pp = meshgrid(r,phi)
+
+        print rlims
+
+        cmap = kargs.pop('cmap',viridis)
+        line2d = axcyl.pcolormesh(rr,pp,dat,cmap=cmap,shading='gouraud')
+        cbar = colorbar(line2d,ax=axcyl)
+        cbar.set_label(dstr,fontsize=20)
+        axcyl.set_xlim(rlims)
+        axcyl.set_ylim(plims)
+        axcyl.set_xlabel(rstr,fontsize=20)
+        axcyl.set_ylabel('$\\phi$',fontsize=20)
+
+        axdbar.plot(r,dbar)
+        axdbar.set_xlabel('$r$',fontsize=20)
+        axdbar.set_ylabel(dstr0,fontsize=20)
+        if norm:
+            axdbar.axhline(1,color='k')
+        if logr:
+            axdbar.set_xscale('log')
+        if logscale:
+            axdbar.set_yscale('log')
+        axdbar.set_xlim(rlims0)
+        fld.plot(cartesian=True,ax=axcart,log=logscale)
+
+
+        return fig,[axcart,axcyl,axdbar]
 
     def potential(self,r,phi):
-        if self.dens.rochesmoothing:
-            smoothing = self.dens.thicknesssmoothing*self.scaleH(r)
+        if not self.dens.rochesmoothing:
+            smoothing = self.dens.thicknesssmoothing*self.scaleH(self.a)
         else:
             smoothing = self.dens.thicknesssmoothing*self.rh
         smoothing *= smoothing
@@ -723,15 +1285,31 @@ class Sim():
         rad = sqrt(rad)
         return -self.mp/rad
     def dp_potential(self,r,phi):
-        if self.dens.rochesmoothing:
-            smoothing = self.dens.thicknesssmoothing*self.scaleH(r)
+        if not self.dens.rochesmoothing:
+            smoothing = self.dens.thicknesssmoothing*self.scaleH(self.a)
         else:
             smoothing = self.dens.thicknesssmoothing*self.rh
         smoothing *= smoothing
-        rad = r**2 + self.a**2 - 2*r*self.a*cos(phi) + self.dens.thicknesssmoothing*self.scaleH(r)**2
+        rad = r**2 + self.a**2 - 2*r*self.a*cos(phi) + smoothing
         rad = rad**(1.5)
         return self.mp * r*self.a*sin(phi)/rad
+    def dr_potential(self,r,phi):
+        if not self.dens.rochesmoothing:
+            smoothing = self.dens.thicknesssmoothing*self.scaleH(self.a)
+        else:
+            smoothing = self.dens.thicknesssmoothing*self.rh
+        smoothing *= smoothing
+        rad = r**2 + self.a**2 - 2*r*self.a*cos(phi) + smoothing
+        rad = rad**(1.5)
+        return self.mp * (r-self.a*cos(phi))/rad
 
+
+    def conv_fargo_tq_1d(self,r,tq):
+        tq *= -self.mp/(r**2 * self.dlr*2*pi)
+        return tq
+    def conv_fargo_tq_tot(self,tq):
+        tq *= -self.mp/(2*pi)
+        return tq
 
     def animate_mdot(self,irange,logspacing=True,cmap=viridis,**kargs):
 
@@ -839,10 +1417,12 @@ class Sim():
     #		axm.set_yscale('symlog',linthreshy=1e-7)
     #		axv.set_ylim(-.001,.001)
     	axd.set_title('t = %.1f = %.1f P = %.1f t_visc' % (self.t,self.t/(2*pi*self.a**(1.5)),self.t/self.tvisc))
-    def streams(self,rlims=None,plims=None,ax=None,noise=.1,**kargs):
+    def streams(self,rlims=None,plims=None,ax=None,noise=.1,clrbar=True,**kargs):
+        draw_flag = False
         if ax == None:
             fig=figure()
             ax=fig.add_subplot(111)
+            draw_flag = True
 
         if rlims == None:
             rlims = (self.dens.ymin,self.dens.ymax)
@@ -860,9 +1440,10 @@ class Sim():
         phi = self.phi[pinds]
         cmap = kargs.pop('cmap',viridis)
 
-        line2d= ax.pcolormesh(log(rr),pp,log10(dens.transpose()),cmap=cmap)
-        cbar = colorbar(line2d,ax=ax)
-        cbar.set_label('$\\log_{10}{\\Sigma}$',fontsize=20)
+        line2d= ax.pcolormesh(log(rr),pp,log10(dens.transpose()),cmap=cmap,shading='gouraud')
+        if clrbar:
+            cbar = colorbar(line2d,ax=ax)
+            cbar.set_label('$\\log_{10}{\\Sigma}$',fontsize=20)
         ax.streamplot(log(self.r[rinds]),self.phi[pinds],vr.transpose(),vp.transpose(),**kargs)
         ax.set_xlabel('$\ln(r)$',fontsize=20)
         ax.set_ylabel('$\phi$',fontsize=20)
@@ -881,7 +1462,8 @@ class Sim():
         sep_lines = self.separatrix(lr,phi,vr.transpose(),vp.transpose(),noise=noise,npoints=10)
         for line in sep_lines:
             ax.plot(line[:,0],line[:,1],'-w',linewidth=2)
-        fig.canvas.draw()
+        if draw_flag:
+            fig.canvas.draw()
 #        return log(self.r[rinds]),self.phi[pinds],rr,pp,vr.transpose(),vp.transpose()
 
     def calculate_circle(self,d,rlims=None):
@@ -1067,6 +1649,132 @@ class Sim():
         self.dbar0_ss = self.lam0_ss/(2*pi*self.r)
 
 
+    def refine_grid(self,levels=3,logspacing=True,fname='domain_y.dat',save=False,savedir='./'):
+        if levels > 3:
+            print 'Too many levels, maximum is 3'
+            return
+        rad = loadtxt(fname)
+        hs_zone = lambda r: abs(r-self.a) <= self.rh*2
+        rh_zone = lambda r: abs(r-self.a) <= self.rh
+        eps = self.dens.thicknesssmoothing * self.dens.aspectratio * self.a
+        soft_zone = lambda r: abs(r-self.a) <= eps
+
+        print 'Planet at %f\nHs zone at %f\nHill zone at %f\nSoft zone at %f' %(self.a,2*self.rh,self.rh,eps)
+
+        if eps > self.rh:
+            if eps > 2*self.rh:
+                ind_func = [soft_zone,hs_zone,rh_zone]
+            else:
+                ind_func = [hs_zone,soft_zone,rh_zone]
+            print 'smoothing zone larger than hill zone'
+        else:
+            ind_func = [hs_zone,rh_zone,soft_zone]
+
+        for j in range(levels):
+            ind = ind_func[j](rad)
+            ri = rad[ind][0]
+            ro = rad[ind][-1]
+
+            if logspacing:
+                spacing = self.dlr * 2.**(-(j+1))
+                rad1 = np.exp(np.linspace(np.log(ri),np.log(ro),np.log(ro/ri)/spacing+1))
+            else:
+                spacing = self.dr[0] * 2.**(-(j+1))
+                rad1 = np.linspace(ri,ro,(ro-ri)/spacing+1)
+
+            leftr = rad[ rad < ri]
+            rightr = rad[ rad > ro]
+
+            rad = np.hstack( (leftr,rad1,rightr) )
+
+        print 'Went from %d points to %d points' % (self.dens.ny,len(rad)-7)
+
+        if save:
+            call(['cp',fname,fname+'.backup'])
+            with open(savedir+fname,'w') as f:
+                f.write('\n'.join(rad.astype(str)))
+
+        return rad
+    def refine_phi(self,j=2,fname='domain_x.dat',save=False,savedir='./'):
+        x = np.loadtxt(fname)
+        dx = diff(x)[0]
+        x = np.linspace(x[0],x[-1],(x[-1]-x[0])/(dx/j)+1)
+
+
+        print 'Went from %d points to %d points' % (self.dens.ny,len(x)-1)
+
+        if save:
+            call(['cp',fname,fname+'.backup'])
+            with open(savedir+fname,'w') as f:
+                f.write('\n'.join(x.astype(str)))
+
+        return x
+    def linear_torque(self,r,eps=.2,c=2./3):
+        norm = eps*pi*self.mp**2
+        ha = self.a*self.dens.aspectratio
+        x = (r-self.a)/ha
+
+        sgn = (x>=0).astype(int)
+        sgn[ sgn == 0 ] = -1
+
+        indR = x >=c
+        indL = x <= -c
+        res = zeros(r.shape)
+        res[indR] = (self.a/(r[indR]-self.a))**4
+        res[indL] = (r[indL]/(r[indL]-self.a))**4
+
+        return res * norm * sgn
+
+
+    def load_torques(self):
+        try:
+            dat=fromfile('torq_1d_Y_raw_planet_0.dat')
+            nt = len(dat)/self.dens.ny
+        except IOError:
+            print "Can't find torque profile file"
+            dat = np.zeros((1,self.dens.ny))
+            nt = 1
+
+        try:
+            tq=loadtxt('torq_planet_0.dat')
+        except IOError:
+            print "Can't find total torque file"
+            tq = np.zeros((nt,2))
+
+        try:
+            mass=fromfile('mass_1d_Y_raw.dat')
+            mass = mass.reshape(nt,self.dens.ny)
+        except IOError:
+            print "Can't find mass profile"
+            mass = np.ones((nt,self.dens.ny))
+
+
+        dat = dat.reshape(nt,self.dens.ny)
+        tq[:,-1] *= -self.mp
+        dat *= -self.mp
+
+
+        self.int_lambda = zeros(dat.shape)
+        self.int_lambda[:,1:] = cumtrapz(dat,axis=1)
+        for i in range(nt):
+            dat[i,:] *= self.dphi[0]*self.dens.ymed/self.vol[:,0]
+            mass[i,:] *= self.dphi[0]/self.vol[:,0]
+            mass[i,:] /= 2*pi
+        self.total_torque = tq
+        self.lambda_prof = dat
+        self.mass_prof = mass
+        self.torque_dens_prof = dat/mass
+        return
+    def compute_fft(self):
+        import numpy.fft as ft
+        dhat = ft.rfft(self.dens.data,axis=1)/(self.dens.nx-1)
+        vrhat = ft.rfft(self.vr.data,axis=1)/(self.dens.nx-1)
+        vphat = ft.rfft(self.vp.data,axis=1)/(self.dens.nx-1)
+        p_dhat = trapz(dhat*conj(dhat)*self.dr[:,np.newaxis],axis=0)
+        p_vrhat = trapz(vrhat*conj(vrhat)*self.dr[:,np.newaxis],axis=0)
+        p_vphat = trapz(vphat*conj(vphat)*self.dr[:,np.newaxis],axis=0)
+        return dhat,vrhat,vphat,p_dhat,p_vrhat,p_vphat
+
 def ccw(a,b,c):
     return (c[1]-a[1])*(b[0]-a[0]) > (b[1]-a[1])*(c[0]-a[0])
 
@@ -1089,4 +1797,426 @@ def get_intersection(segment_1, segment_2):
     else:
 #        print 'Lines do not intersect'
         return False
+def boundary_progress(i,fig=None,axes=None,j=0,alpha=0.01,h=0.05,flaringindex=0):
+    config_flag = True
+    if fig is None:
+        fig,axes=subplots(3,1,sharex=True)
+        config_flag = False
+    try:
+        rho = fromfile('gasdens{0:d}_0.dat'.format(i))
+        vr = fromfile('gasvy{0:d}_0.dat'.format(i))
+        ym = loadtxt('domain_y.dat')
+        xm = loadtxt('domain_x.dat')
+        ymed = (ym[1:] + ym[:-1])/2
+        xmed = (xm[1:] + xm[:-1])/2
+        ny = len(ymed)-6
+        nx = len(xmed)
+        vr = vr.reshape(ny+6,nx)
+        rho = rho.reshape(ny+6,nx)
+    except IOError:
+        rho = fromfile('gasdens{0:d}.dat'.format(i))
+        vr = fromfile('gasvy{0:d}.dat'.format(i))
+        ym = loadtxt('domain_y.dat')
+        xm = loadtxt('domain_x.dat')
+        ymed = (ym[1:] + ym[:-1])/2
+        xmed = (xm[1:] + xm[:-1])/2
+        ny = len(ymed)-6
+        nx = len(xmed)
+        rho = rho.reshape(ny,nx)
+        vr = vr.reshape(ny,nx)
+#    mdot = 2*pi*ymed * (rho*vr).mean(axis=1)
+    #mdot = 2*ymed[:-1]*pi*(rho[:-1,:]*((vr[:1,:]+vr[:-1,:])/2)).mean(axis=1)
+    rho = rho.mean(axis=1)
+    vr = vr.mean(axis=1)
+    nu = alpha*h*h*ymed**(2*flaringindex+0.5)
+    fj = 3*pi*nu*rho*sqrt(ymed)
+
+    axes[0].plot(ymed,rho,'.-')
+    axes[1].plot(ymed,fj,'.-')
+    axes[2].plot(ym[:-1],vr,'.-')
+
+    axes[0].set_ylabel('$\\Sigma$',fontsize=20)
+    axes[1].set_ylabel('$F_\\nu$',fontsize=20)
+    axes[2].set_ylabel('$v_r$',fontsize=20)
+
+
+    axes[2].set_xlabel('$r$',fontsize=20)
+#    axes[2].plot(ymed,mdot)
+
+    if not config_flag:
+        for ax in axes:
+            ax.minorticks_on()
+#            ax.set_xscale('log')
+#        axes[0].set_yscale('log')
+        subplots_adjust(hspace=0)
+    return fig,axes,ymed,ym,rho,fj,vr
+
+
+
+def time_avg_mdot(irange):
+
+    ym = loadtxt('domain_y.dat')[3:-3]
+    ymed = .5*(ym[1:] + ym[:-1])
+    ymed = ymed[:-1]
+    fac = 2*pi*ymed
+    facm = 2*pi*ym[1:-1]
+    res = zeros((len(ymed),len(irange)))
+    res_rho = zeros((len(ymed),len(irange)))
+    for i,t in enumerate(irange):
+        rho,momy,_,_,_,momys = load_single_time_data(t)
+        res[:,i] = (momys).mean(axis=1)
+        res_rho[:,i] = rho.mean(axis=1)
+
+    return -facm*res.mean(axis=1), -fac*res.std(axis=1),res_rho.mean(axis=1)*fac,res_rho.std(axis=1)*fac,ymed
+
+
+
+def load_single_time_data(i):
+    vx,vy,rho = load_single_time(i)
+
+    vxc = 0.5*(vx.data[:,:-1] + vx.data[:,1:])
+    vyc = 0.5*(vy.data[:-1,:] + vy.data[1:,:])
+
+    momy = vyc*rho.data[:-1,:]
+    momx = vxc*rho.data[:,:-1]
+
+    momys = .5*(rho.data[1:,:] + rho.data[:-1,:])*vy.data[1:,:]
+
+
+
+    return rho.data[:-1,:],momy,vxc,vyc,rho.ymed[:-1],momys
+
+def vortencity(rho,vx,vy):
+    Tx,Rx = meshgrid(vx.x,vx.y)
+    Ty,Ry = meshgrid(vy.x,vy.y)
+    rvx = Rx*(vx.data)
+
+    curldata = (( rvx[1:,1:]-rvx[:-1,1:])/(Rx[1:,1:]-Rx[:-1,1:]) -
+            (vy.data[1:,1:] - vy.data[1:,:-1])/(Ty[1:,1:]-Ty[1:,:-1]))
+
+    curl = copy.deepcopy(vx)
+    curl.nx = curl.nx-1
+    curl.ny = curl.ny-1
+    curl.x = vx.x[:-1]
+    curl.y = vy.y[:-1]
+
+    rho_corner = .25*(rho.data[1:,1:] + rho.data[:-1,:-1] + rho.data[1:,:-1] + rho.data[:-1,1:])
+
+    T,R = meshgrid(curl.x,curl.y)
+    curl.data = (curldata/R + 2*rho.omegaframe)/rho_corner
+    return curl
+
+def load_single_time(i):
+
+    rho = Field('gasdens{0:d}.dat'.format(i))
+    vx = Field('gasvx{0:d}.dat'.format(i),staggered='x')
+    vy = Field('gasvy{0:d}.dat'.format(i),staggered='y')
+
+
+    return vx,vy,rho
+
+def load_flux(i):
+
+    ym = loadtxt('domain_y.dat')[3:-3]
+    ymed = .5*(ym[1:] + ym[:-1])
+
+    xm = loadtxt('domain_x.dat')
+    xmed = .5*(xm[1:] + xm[:-1])
+    dx = diff(xm)
+    dy = diff(ym)
+
+    ny = len(ymed)
+    nx  = len(xmed)
+
+
+    rho = fromfile('gasdens{0:d}.dat'.format(i)).reshape(ny,nx)
+    vy = fromfile('gasvy{0:d}.dat'.format(i)).reshape(ny,nx)
+
+    dqm = zeros(rho.shape)
+    dqp = zeros(rho.shape)
+    slope = zeros(rho.shape)
+    mdot = zeros(rho.shape)
+
+    surfy = outer(ym,dx)
+    dxx,dyy = meshgrid(dx,dy)
+    dqm = zeros(rho.shape)
+    dqp = zeros(rho.shape)
+    slope1 = zeros(rho.shape)
+    mdot1=zeros(rho.shape)
+    surfy1 = outer(ym,dx)
+    dqm[1:-1] = (rho[1:-1,:]-rho[:-2,:])/dyy[1:-1,:]
+    dqp[1:-1] = (rho[2:,:]-rho[1:-1,:])/dyy[2:,:]
+    slope1[1:-1,:] = ( (dqm*dqp)[1:-1,:] > 0).astype(int) * (2*(dqp*dqm)/(dqp+dqm))[1:-1,:]
+    mdot[1:-1,:] = (vy[1:-1,:]>0).astype(int) * vy[1:-1,:]*(rho[:-2,:]+.5*slope[:-2,:]*dyy[:-2,:])*surfy1[1:-2,:]
+    mdot[1:-1,:] += (vy[1:-1,:]<=0).astype(int) * vy[1:-1,:]*(rho[1:-1,:]-.5*slope[1:-1,:]*dyy[1:-1,:])*surfy1[1:-2,:]
+
+    return ym[1:-2],-mdot.sum(axis=1)[1:-1]
+
+def calc_mass_flux(i,cfl=0.5,h=0.05,dt=None,fac=1,plot_flag=False):
+
+
+    ym = loadtxt('domain_y.dat')[3:-3]
+    ymed = .5*(ym[1:] + ym[:-1])
+
+    xm = loadtxt('domain_x.dat')
+    xmed = .5*(xm[1:] + xm[:-1])
+    dx = diff(xm)
+    dy = diff(ym)
+
+    ny = len(ymed)
+    nx  = len(xmed)
+
+    rho = fromfile('gasdens{0:d}.dat'.format(i)).reshape(ny,nx)
+    vx = fromfile('gasvx{0:d}.dat'.format(i)).reshape(ny,nx)
+    vy = fromfile('gasvy{0:d}.dat'.format(i)).reshape(ny,nx)
+    rho1 = fromfile('gasdens{0:d}.dat'.format(i+1)).reshape(ny,nx)
+    vy1 = fromfile('gasvy{0:d}.dat'.format(i+1)).reshape(ny,nx)
+
+
+
+    flux_simple = zeros(rho.shape)
+    rhonew_simple = copy.copy(rho)
+
+
+
+    if dt is None:
+        dt = cfl * min( dy/(h/sqrt(ymed)))
+
+    print 'Using dt = %f' % dt
+
+    rhostar = zeros(rho.shape)
+    slope = zeros(rho.shape)
+
+    zone_size_y = lambda j: ym[j+1]-ym[j]
+
+    for i,yc in enumerate(ymed[1:-1],start=1):
+        for j,xc in enumerate(xmed):
+            dqm = (rho[i,j]-rho[i-1,j]) / zone_size_y(i)
+            dqp = (rho[i+1,j]-rho[i,j]) / zone_size_y(i+1)
+            if dqm*dqp <= 0:
+                slope[i,j] = 0
+            else:
+                slope[i,j] = 2*dqp*dqm/(dqp+dqm)
+
+
+ #   dqm = zeros(rho.shape)
+ #   dqp = zeros(rho.shape)
+ #   slope = zeros(rho.shape)
+ #   mdot = zeros(rho.shape)
+
+ #   surfy = outer(dy,dx)
+ #   dxx,dyy = meshgrid(dx,dy)
+ #   vol = outer(.5*(ym[1:]**2-ym[:-1]**2),dx)
+
+ #   dqm[1:-1,:] =(rho[1:-1,:]  - rho[:-2,:])/dy[1:-1,:]
+ #   dqp[1:-1,:] =(rho[2:,:]  - rho[1:-1,:])/dy[2:,:]
+ #   ind = sign(dqm*dqp)
+ #   slope = (ind>0).astype(int) * 2*dqm*dqp/(dqm+dqp)
+ #   mdot[1:-1,:] = (vy>0).astype(int)*(rho[:-2,:]+.5*slope[:-2,:]*dy[:-2,:]) + (vy<=0).astype(int)*(rho[1:,:]-.5*slope[1:,:]*dy[1:,:])
+ #   mdot[1:-1,:] *= surfy[1:-1,:]*vy[1:-1,:]
+
+
+
+    for i,yc in enumerate(ymed[1:-1],start=1):
+        for j,xc in enumerate(xmed):
+            if vy[i,j] > 0:
+                rhostar[i,j] = rho[i-1,j] + .5*slope[i-1,j]*( zone_size_y(i-1) - vy[i,j]*dt)
+            else:
+                rhostar[i,j] = rho[i,j] - .5*slope[i,j]*( zone_size_y(i) + vy[i,j]*dt)
+
+
+    rhonew = copy.copy(rho)
+    flux = zeros(rho.shape)
+    vol = (2*pi/ny)*.5*(ym[1:]**2 - ym[:-1]**2)
+    surfy = (2*pi/ny)*ym
+    inv = 1./vol
+
+    for i,yc in enumerate(ymed[1:-1],start=1):
+        for j,xc in enumerate(xmed):
+            flux[i,j] = -(vy[i,j]*rhostar[i,j]*surfy[i]-vy[i+1,j]*rhostar[i+1,j]*surfy[i+1])
+            rhonew[i,j] -= dt*inv[i]*flux[i,j]
+
+    for i,yc in enumerate(ymed[1:-1],start=1):
+        for j,xc in enumerate(xmed):
+            flux_simple[i,j] = surfy[i+1]*.5*(rho[i,j] + rho[i+1,j])*vy[i+1,j] - surfy[i]*.5*(rho[i-1,j]+rho[i,j])*vy[i,j]
+            rhonew_simple[i,j] += - dt*inv[i] * flux_simple[i,j]
+
+
+    fluxSp = zeros(rho.shape)
+    fluxSm = zeros(rho.shape)
+    fluxp = zeros(rho.shape)
+    fluxm = zeros(rho.shape)
+    for i,yc in enumerate(ymed[1:-1],start=1):
+        for j,xc in enumerate(xmed):
+            fluxSp[i,j] = surfy[i+1]*.5*(rho[i,j] + rho[i+1,j])*vy[i+1,j]
+            fluxSm[i,j] = surfy[i]*.5*(rho[i-1,j]+rho[i,j])*vy[i,j]
+            fluxp[i,j] = vy[i+1,j]*rhostar[i+1,j]*surfy[i+1]
+            fluxm[i,j] = vy[i,j]*rhostar[i,j]*surfy[i]
+
+
+    indt = (vy>0).astype(int)
+    indf = (~(vy>0)).astype(int)
+
+    pi_p = zeros(rho.shape)
+    pi_m = zeros(rho.shape)
+    fluxup = zeros(rho.shape)
+    for i,yc in enumerate(ymed[1:-1],start=1):
+        for j,xc in enumerate(xmed):
+            pi_p[i,j] = vy[i,j] * rho[i,j]*surfy[i]
+            pi_m[i,j] = vy[i,j] * rho[i-1,j]*surfy[i]
+            ap = slope[i-1,j]
+            am = slope[i,j]
+            if vy[i,j] > 0:
+                fluxup[i,j] = vy[i,j]*(rho[i-1,j] + .5*ap*zone_size_y(i-1) ) * surfy[i]
+            else:
+                fluxup[i,j] = vy[i,j]* (rho[i,j] - .5*am*zone_size_y(i) )*surfy[i]
+
+    if plot_flag:
+        fig,axes=subplots(5,1,sharex=True)
+        axes[0].set_title('$\\Delta t = %f$'%dt,fontsize=20)
+
+
+        axes[4].plot(ym[:-1],vy.mean(axis=1),'-b')
+        axes[4].set_ylabel('$v_r$',fontsize=20)
+
+        axes[3].plot(ym[1:][1:-1],fluxp.mean(axis=1)[1:-1],'-b')
+        axes[3].plot(ym[:-1][1:-1],fluxm.mean(axis=1)[1:-1],'--b')
+        axes[3].plot(ym[1:][1:-1],fluxSp.mean(axis=1)[1:-1],'-r')
+        axes[3].plot(ym[:-1][1:-1],fluxSm.mean(axis=1)[1:-1],'--r')
+    #    axes[3].plot(ymed[:-1][1:-1],(ymed[:-1]*(2*pi/nx)* (.5*(vy[1:,:]+vy[:-1,:])*rho[:-1,:]).mean(axis=1))[1:-1],'--r')
+    #    axes[3].plot(ym[1:-2],pi_p.mean(axis=1)[1:-1],'-k')
+    #    axes[3].plot(ym[1:-2],pi_m.mean(axis=1)[1:-1],'--k')
+        axes[3].plot(ym[1:-2],fluxup.mean(axis=1)[1:-1],'-m')
+        axes[3].set_ylabel('$F$',fontsize=20)
+
+        axes[2].plot(ymed[1:-1], 1.e-16 +abs( ( (rhonew-rho1)/rho1 ).mean(axis=1))[1:-1],'-b')
+        axes[2].plot(ymed[1:-1], 1.e-16 +abs( ( (rhonew_simple-rho1)/rho1 ).mean(axis=1))[1:-1],'-r')
+        axes[2].set_yscale('log')
+        axes[2].set_ylabel('Relative Error',fontsize=15)
+
+        axes[0].plot(ymed[1:-1],(rhonew-rho).mean(axis=1)[1:-1],'-b')
+        axes[0].plot(ymed[1:-1],(rhonew_simple-rho).mean(axis=1)[1:-1],'-r')
+        axes[0].plot(ymed[1:-1],(rho1-rho).mean(axis=1)[1:-1]*fac,'-g')
+        axes[0].set_ylabel('$\\Delta\\Sigma$',fontsize=20)
+        axes[0].legend(['Mock step', '$\\Sigma^*=\\Sigma_{avg}$','FARGO'],loc='upper right')
+
+
+        axes[1].plot(ymed[1:-1],flux.mean(axis=1)[1:-1],'-b')
+        axes[1].plot(ymed[1:-1],flux_simple.mean(axis=1)[1:-1],'-r')
+        axes[1].set_ylabel('$\\Delta F$',fontsize=20)
+
+        axes[-1].set_xlabel('$r$',fontsize=20)
+        for ax in axes:
+            ax.minorticks_on()
+
+    return ym[:-1][1:-1],-fluxup.sum(axis=1)[1:-1]
+
+def check_mdot():
+    t = loadtxt('mass.dat')
+    rho = fromfile('mass_1d_Y_raw.dat')
+    momy = fromfile('momy_1d_Y_raw.dat')
+
+    ym = loadtxt('domain_y.dat')[3:-3]
+    xm = loadtxt('domain_x.dat')
+
+    ymed = .5*(ym[:-1]+ym[1:])
+    xmed = .5*(xm[:-1] + xm[1:])
+
+    surf = .5*(ym[1:]**2 - ym[:-1]**2)
+    vol = surf * diff(xm)[0] # Uniform gird in phi
+
+    dy = diff(ym)
+    dly = dy/ymed
+
+    ny = len(ymed)
+    nx = len(xmed)
+    nt = len(rho)/ny
+
+    if len(rho)/ny != len(momy)/ny or len(rho)/ny != len(t[:,0]) or len(momy)/ny != len(t[:,0]):
+        print "File's loaded at different times! Try again."
+        return
+
+    rho = rho.reshape(nt,ny)
+    momy = momy.reshape(nt,ny)
+    t = t[:,0]
+
+
+    for i in range(rho.shape[0]):
+        rho[i,:] /= vol
+        momy[i,:] /= vol
+        momy[i,:] *= -2*pi*ymed
+    rho /= nx
+
+    momy /= nx
+
+
+
+    return ymed,rho,momy,t
+
+
+def check_mdot_single(i):
+    rho = fromfile('gasdens{0:d}.dat'.format(i))
+    vy = fromfile('gasvy{0:d}.dat'.format(i))
+
+    rho0 = fromfile('gasdens{0:d}.dat'.format(i-1))
+
+    ym = loadtxt('domain_y.dat')[3:-3]
+    xm = loadtxt('domain_x.dat')
+
+    ymed = .5*(ym[:-1]+ym[1:])
+    xmed = .5*(xm[:-1] + xm[1:])
+
+    surf = .5*(ym[1:]**2 - ym[:-1]**2)
+    vol = surf * diff(xm)[0] # Uniform gird in phi
+
+    dy = diff(ym)
+    dly = dy/ymed
+
+    ny = len(ymed)
+    nx = len(xmed)
+
+    rho = rho.reshape(ny,nx)
+    rho0 = rho0.reshape(ny,nx)
+    vy = vy.reshape(ny,nx)
+
+
+ #   dbar = rho.mean(axis=1)
+
+#    momy = -2*pi*ymed[:-1]*(rho[:-1,:]*.5*(vy[1:,:] + vy[:-1,:])).mean(axis=1)
+
+
+#    momys = -2*pi*ym[1:-1]*(  .5*(rho[1:,:] + rho[:-1,:])*vy[1:,:] ).mean(axis=1)
+
+
+ #   rho_1 = interp1d(ymed,rho,axis=0,kind='slinear')
+ #   rho_2 = interp1d(ymed,rho,axis=0,kind='quadratic')
+    rho_3 = interp1d(ymed,rho,axis=0,kind='cubic')
+
+
+#    momy1 =-2*pi*ym[1:-1]* (rho_1(ym[1:-1])*vy[1:,:]).mean(axis=1)
+#    momy2 =-2*pi*ym[1:-1]* (rho_2(ym[1:-1])*vy[1:,:]).mean(axis=1)
+    momy3 =-2*pi*ym[1:-1]* (rho_3(ym[1:-1])*vy[1:,:]).mean(axis=1)
+
+
+    params = Parameters()
+
+    dt = params.dt * params.ninterm
+
+    dlamdt = 2*pi*ymed*(rho-rho0).mean(axis=1)/dt
+
+
+    figure()
+    plot(ymed,dlamdt*dy)
+    figure();
+    plot(ym[1:-2],diff(momy3))
+
+
+
+    return ym[1:-1],momy3
+
+
+
+def grab_axis(i):
+    return figure(i).get_axes()[0]
+
 

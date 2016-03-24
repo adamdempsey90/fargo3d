@@ -160,6 +160,7 @@ ex void mon_torq_cpu(void);
 ex void mon_reynolds_cpu(void);
 ex void mon_maxwell_cpu(void);
 ex void mon_bxflux_cpu(void);
+ex void total_torque_cpu(void);
 
 //Monitoring management Prototypes
 ex void MonitorFunction (int, int, char*, int);
@@ -216,6 +217,7 @@ ex void planet2d(void);
 ex void compute_potential(real);
 //planets.c Prototypes
 ex void Potential_cpu(void);
+ex void init_potential_m(void);
 ex Force ComputeForce(real, real, real, real, real);
 ex void  _ComputeForce_cpu(real, real, real, real, real);
 ex void AdvanceSystemFromDisk(real);
@@ -233,6 +235,7 @@ ex void Sod1d(void);
 
 //stockholm.c Prototypes
 ex void init_stockholm(void);
+ex void init_stockholm_acc(void);
 ex void StockholmBoundary_cpu(real);
 
 //substep1.c Prototypes
@@ -341,6 +344,8 @@ ex void InitVariables(void);
 
 //fargo.c Prototypes
 ex void ComputeVmed (Field*);
+ex void ComputeVymed (Field*);
+ex void ComputeRhomed (Field*);
 ex void ComputeResidual_cpu(real);
 ex void AdvectSHIFT_cpu(Field*, FieldInt2D*);
 ex void ChangeFrame_cpu(int, Field*, Field2D*);
