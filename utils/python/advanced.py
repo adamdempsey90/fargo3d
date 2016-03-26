@@ -380,7 +380,7 @@ class Field(Mesh, Parameters):
             print '%s not a valid Field'%Q
             print 'Please choose one of:, ',self.Q_dict.keys()
             raise
-
+        self.xx,self.yy = meshgrid(self.x,self.y)
         self.name = Q
         self.math_name = self.name_dict[Q]
         self.data = self.__open_field(directory+field.format(num),dtype) #The scalar data is here.
@@ -471,15 +471,18 @@ class Field(Mesh, Parameters):
 
     def center_to_edge(self,direction='y'):
         newfield = copy.deepcopy(self)
+        newfield.staggered = ''
         if direction.count('y') > 0:
             newfield.data = vstack( (newfield.data, newfield.data[-1,:]) )
             newfield.data = .5*(newfield.data[1:,:]+  newfield.data[:-1,:])
-            newfield.staggered='y'
+            newfield.staggered += 'y'
+            newfield.y = newfield.ym[:-1]
         if direction.count('x') > 0:
-            newfield.data = hstack( (newfield.data[:,-1].reshape(len(newfield.data[:,-1]),1), newfield.data, newfield.data[:,0].reshape(len(newfield.data[:,0]),1)) )
+            newfield.data = hstack( ( newfield.data, newfield.data[:,0].reshape(len(newfield.data[:,0]),1)) )
             newfield.data = .5*(newfield.data[:,1:]+  newfield.data[:,:-1])
+            newfield.x = newfield.xm[:-1]
             newfield.staggered += 'x'
-        newfield.avg = newfield.data.mean(axis=1)
+        newfield.recalculate()
         return newfield
     def edge_to_center(self):
         newfield = copy.deepcopy(self)
@@ -933,6 +936,118 @@ class Field(Mesh, Parameters):
 from scipy.interpolate import interp1d,interp2d
 
 
+class Tensor(Mesh,Parameters):
+    def __init__(self,rho,vx,vy,directory=''):
+        if directory != '':
+            if directory[-1] != '/':
+                directory += '/'
+        self.directory = directory
+
+        Mesh.__init__(self,directory)
+        self.params=Parameters(directory)
+
+        self.rr = copy.deepcopy(rho)
+        self.pp = copy.deepcopy(rho)
+        self.rp = copy.deepcopy(vy)
+        self.divp = copy.deepcopy(vx)
+        self.divr = copy.deepcopy(vy)
+        self.drFnu = copy.deepcopy(vx)
+        nx = rho.nx
+        ny = rho.ny
+        vol = rho.vol
+        ym = rho.ym
+        xm  =rho.xm
+        ymed = rho.ymed
+        xmed =rho.xmed
+        dx = diff(xm)[0]
+        dy = diff(ym)
+        dly = (dy/ymed)[0]
+
+
+        nu = lambda x: self.params.alpha*self.params.aspectratio*self.params.aspectratio*(x)**(2*self.params.flaringindex+.5)
+
+
+        rho = copy.copy(rho.data)
+        vx = copy.copy(vx.data)
+        vy = copy.copy(vy.data)
+
+        for j in range(1,ny+2-1):   # 2 Ghost zones
+            for i in range(nx):
+                im = i-1 if i-1>=0 else nx-1
+                ip = i+1 if i+1<nx else 0
+
+                visc = nu(ymed[j])
+                viscm = nu(ym[j])
+                surfx = ym[j+1]-ym[j]
+                surfy = ym[j]*dx
+                surfyp = ym[j+1]*dx
+                inv = 2/((ym[j+1]**2 - ym[j]**2)*dx)
+                cs2 = self.params.aspectratio * ymed[j]**(self.params.flaringindex-.5)
+                cs2 *= cs2
+                div_v = 0
+
+                div_v += (vx[j,ip]-vx[j,i])*surfx;
+                div_v += (vy[j+1,i]*surfyp-vy[j,i]*surfy);
+                div_v *= 2.0/3.0*inv;
+                self.pp.data[j,i] = -rho[j,i]*cs2
+                self.pp.data[j,i] += visc*rho[j,i]*(2.0*(vx[j,ip]-vx[j,i])/dx- div_v);
+                self.pp.data[j,i] += visc*rho[j,i]*(vy[j+1,i]+vy[j,i])/ymed[j];
+                self.rr.data[j,i] = -rho[j,i]*cs2
+                self.rr.data[j,i] = visc*rho[j,i]*(2.0*(vy[j+1,i]-vy[j,i])/(ym[j+1]-ym[j]) - div_v);
+                self.rp.data[j,i] = viscm*.25*(rho[j,i]+rho[j,im]+rho[j-1,i]+rho[j-1,im])*((vy[j,i]-vy[j,im])/(dx*ym[j]) + (vx[j,i]-vx[j-1,i])/(ymed[j]-ymed[j-1])-.5*(vx[j,i]+vx[j-1,i])/ym[j]);
+
+        self.pp.data[0,:] = self.pp.data[2,:]
+        self.pp.data[1,:] = self.pp.data[2,:]
+        self.pp.data[-1,:] = self.pp.data[-2,:]
+        self.rr.data[0,:] = self.rr.data[2,:]
+        self.rr.data[1,:] = self.rr.data[2,:]
+        self.rr.data[-1,:] = self.rr.data[-2,:]
+        self.rp.data[0,:] = self.rp.data[2,:]
+        self.rp.data[1,:] = self.rp.data[2,:]
+        self.rp.data[-1,:] = self.rp.data[-2,:]
+
+        for j in range(1,ny+2-1):   # 2 Ghost zones
+            for i in range(nx):
+                im = i-1 if i-1>=0 else nx-1
+                ip = i+1 if i+1<nx else 0
+
+
+                self.drFnu.data[j,i]  = (ym[j+1]*ym[j+1]*self.rp.data[j+1,i]-ym[j]*ym[j]*self.rp.data[j,i])/(ym[j+1]-ym[j]);
+                self.divp.data[j,i] = 2.0*(self.pp.data[j,i]-self.pp.data[j,im])/(dx*(rho[j,i]+rho[j,im]));
+                self.divp.data[j,i]  += 2.0*self.drFnu.data[j,i]/(ymed[j]*ymed[j]*(rho[j,im]+rho[j,i]));
+                self.divp.data[j,i]  += 2.0*(ymed[j]*self.rr.data[j,i]-ymed[j-1]*self.rr.data[j-1,i])/((ymed[j]-ymed[j-1])*(rho[j,i]+rho[j-1,i])*ym[j]);
+                self.divr.data[j,i] = 2.0*(ymed[j]*self.rr.data[j,i]-ymed[j-1]*self.rr.data[j-1,i])/((ymed[j]-ymed[j-1])*(rho[j,i]+rho[j-1,i])*ym[j]);
+                self.divr.data[j,i]  += 2.0*(self.rp.data[j,ip]-self.rp.data[j,i])/(dx*ym[j]*(rho[j,i]+rho[j-1,i]));
+                self.divr.data[j,i]  -= (self.pp.data[j,i]+self.pp.data[j-1,i])/(ym[j]*(rho[j,i]+rho[j-1,i]));
+
+        self.divp.data[0,:] = self.divp.data[2,:]
+        self.divp.data[1,:] = self.divp.data[2,:]
+        self.divp.data[-1,:] = self.divp.data[-2,:]
+        self.divr.data[0,:] = self.divr.data[2,:]
+        self.divr.data[1,:] = self.divr.data[2,:]
+        self.divr.data[-1,:] = self.divr.data[-2,:]
+        self.drFnu.data[0,:] = self.drFnu.data[2,:]
+        self.drFnu.data[1,:] = self.drFnu.data[2,:]
+        self.drFnu.data[-1,:] = self.drFnu.data[-2,:]
+
+        self.rr.recalculate()
+        self.rr.name = 'Pirr'
+        self.rr.math_name = '$\\Pi_{rr}$'
+        self.pp.recalculate()
+        self.pp.name = 'Pipp'
+        self.pp.math_name = '$\\Pi_{\\phi\\phi}$'
+        self.rp.recalculate()
+        self.rp.name = 'Pirp'
+        self.rp.math_name = '$\\Pi_{r\\phi}$'
+        self.divr.recalculate()
+        self.divp.name = 'divPip'
+        self.divp.math_name = '$\\frac{(\\nabla \\cdot \\Pi)_\\phi}{\\Sigma}$'
+        self.divp.recalculate()
+        self.divr.name = 'divPir'
+        self.divr.math_name = '$\\frac{(\\nabla \\cdot \\Pi)_r}{\\Sigma}$'
+        self.drFnu.recalculate()
+        self.drFnu.name = 'drFnu'
+        self.drFnu.math_name = '$\\partial_r(r^2 \\Pi_{r\phi})$'
 class Sim(Mesh,Parameters):
     def __init__(self,i,directory='',p=0):
         if directory != '':
@@ -944,9 +1059,11 @@ class Sim(Mesh,Parameters):
         self.vr = Field('vy',i,directory=directory,staggered='y')
 
         Mesh.__init__(self,directory)
+        self.params=Parameters(directory)
 
-
+        self.Pi = Tensor(self.dens,self.vp,self.vr)
         self.mdot,self.rhos,self.rhosp = self.calc_flux()
+        self.Fw,self.Fd,self.Lambda,self.dTr = self.calc_torques()
         self.vrf = self.mdot.avg/(-2*pi*self.mdot.y*self.rhos.avg)
         self.sig0  = self.dens.mdot/(3*pi*self.nu(self.dens.y))
 #        self.vp = self.vp.shift_field('x')
@@ -1000,7 +1117,7 @@ class Sim(Mesh,Parameters):
         self.torb = 2*np.pi * self.a**(1.5)
         self.rh = (self.mp/3)**(1./3) * self.a
 
-        self.dTr,self.Lambda,self.Fh=self.calc_torques()
+#        self.dTr,self.Lambda,self.Fh=self.calc_torques()
 
 ##    	self.omega = zeros(self.vp.data.shape)
 ##    	self.vpc = zeros(self.vp.data.shape)
@@ -1047,30 +1164,204 @@ class Sim(Mesh,Parameters):
             return trapz( (res*self.dr)[ind])
         else:
             return array([trapz( (res*self.dr)[self.r<=i]) for i in x])
+
+
     def calc_torques(self):
         res_dTr = copy.deepcopy(self.rhos)
 
-        xx,yy = meshgrid(res_dTr.x,res_dTr.y)
-        res_dTr.data *=  (-yy * self.dp_potential(yy,xx))
+        res_dTr.data *=  (-res_dTr.yy * self.dp_potential(yy,xx))
 
         res_dTr.name = 'Lambda_ex'
         res_dTr.math_name = '$\\Lambda_{ex}$'
         res_dTr.recalculate()
 
+        ym = self.dens.ym
+        xm = self.dens.xm
+        ymed = self.dens.ymed
+        xmed = self.dens.xmed
 
-        res_fH = copy.deepcopy(self.rhosp)
+        vx = copy.copy(self.vp.data)
+        vy = copy.copy(self.vr.data)
+        rho = copy.copy(self.dens.data)
+
+        for j in range(1,self.dens.ny+2-1):
+            for i in range(nx):
+                im = i-1 if i-1>=0 else nx-1
+                ip = i+1 if i+1<nx else 0
+                l_ed = (ym[j]*vx[j,im] + ym[j]*vx[j,ip] + ym[j-1]*vx[j-1,ip] + ym[j-1]*vx[j-1,im])*.25
+                dlr_ed = .5*((ym[j]*vx[j,im] - ym[j-1]*vx[j-1,im])/(ym[j]-ym[j-1]) + (ym[j]*vx[j,ip] - ym[j-1]*vx[j-1,ip])/(ym[j]-ym[j-1]))
+                prp = .5*(self.Pi.rp[j,im] + self.Pi.rp[j,ip])
+                dpp = .25*( self.Pi.divp[j,im] + self.Pi.divp[j,ip] + self.Pi.divp[j-1,im] + self.Pi.divp[j-1,ip] )
+
+                mdl = self.mdot.avg[j]*dlr_ed
+                res_Fw[j,i] = -self.mdot[j,i] + mdl
+                res_Fd[j,i] =  - 2*pi*ym[j]*ym[j]*prp - mdl
+                res_dep = dlr_ed*(-mdot[j,i] - rhosa[j]*vya[j]) - rhosa[j]*(vy[j,i]*
+                res_dep[j,i] =
+
+
+        res_Trp = copy.deepcopy(self.Pi.rp)
+        res_Fd = copy.deepcopy(self.rhosp)
+        res_Fw = copy.deepcopy(self.rhosp)
+
+        fac = -self.mdot.avg*self.vp.avg*self.vp.y
+        res_Fd.data = -fac[:,newaxis] - 2*pi*self.Pi.rp.data *self.Pi.rp.yy
+        res_Fw.data  =  - (self.mdot*self.vp*self.vp.yy +fac[:,newaxis])
+        res_Trp.data = res_Fd.data + res_Fw.data
+
+        drl = self.vp.
+        res_dep.data = (
+
         res_dep = copy.deepcopy(self.dens)
         # Assume a keplerian rotation for now
-        res_fH.data *=  (3*pi*self.nu(yy) * yy**(.5))
-        res_fH.name = 'Fh'
-        res_fH.math_name = '$F_{H,\\nu}$'
-        res_fH.recalculate()
+        res_Fd.data = self.mdot.avg*self.rhos.avg (3*pi*self.nu(yy) * yy**(.5))
+        res_Fd.name = 'Fh'
+        res_Fd.math_name = '$F_{H,\\nu}$'
+        res_Fd.recalculate()
         res_dep.data  = -self.mdot.data /(2*sqrt(yy)) + res_fH.grad()
         res_dep.name = 'Lambda_dep'
         res_dep.math_name = '$\\Lambda_{dep}$'
         res_dep.recalculate()
 
         return res_dTr,res_dep,res_fH
+    def calc_dt(self):
+        cfl = self.params.cfl
+        c2 = 4*sqrt(2)
+        vy = abs(self.vr.data)
+        vx = self.vp.data - self.omf*self.vp.yy
+        vx = (vx - vx.mean(axis=1)[:,newaxis])
+        visc = 4*self.nu(self.dens.yy)
+
+        dt2_y = (self.vr.surfy/vy).min()
+        dt2_x = (self.vp.surfx/vx).min()
+        dt4_y = (self.dens.surfy/visc).min()
+        dt4_x = (self.dens.surfx/visc).min()
+
+        dt3_x = (c2*abs(self.vp.surfx[:,:-1]/(vx[:,1:]-vx[:,:-1]))).min()
+        dt3_y = (c2*abs(self.vr.surfy[:-1,:]/(vy[1:,:]-vx[:-1,:]))).min()
+
+        dt_x = sqrt( dt2_x**(-2) + dt3_x**(-2) + dt4_x**(-2) )
+        dt_y = sqrt( dt2_y**(-2) + dt3_y**(-2) + dt4_y**(-2) )
+
+        return cfl*min(1/dt_x,1/dt_y)
+
+    def momentum_flux(self):
+
+        rho = copy.copy(self.dens.data)
+        vy = copy.copy(self.vr.data)
+        vx = copy.copy(self.vp.data)
+
+        surfx = self.dens.surfx
+        surfy = self.dens.surfy
+        vol = self.dens.vol
+        ymed = self.dens.ymed
+        ym = self.vr.ym[:-1]
+        xmed =self.dens.xmed
+        xm = self.vp.xm[:-1]
+
+        vx -= vx.mean(axis=1)[:,newaxis]
+
+        Piy_m = rho[:-1,:]*vy[:-1,:]
+        Piy_p = rho[:-1,:]*vy[1:,:]
+        Pix_m = rho[:,:-1]*vx[:,:-1]
+        Pix_p = rho[:,:-1]*vx[:,1:]
+
+
+
+
+
+        # First y
+        dxx,dyy = meshgrid(self.dx,self.dy)
+        fluxp = self.transport(Piy_p,vy[1:,:],dyy[:-1,:],surfy[1:,:])
+        fluxm = self.transport(Piy_m,vy[1:,:],dyy[:-1,:],surfy[1:,:])
+
+#        Q =  copy.copy(Piy_p)
+#        Qs = copy.copy(Piy_p)
+#        v = vy[:-1,:]
+#        dqm = zeros(Q.shape)
+#        dqp = zeros(Q.shape)
+#        slope = zeros(Q.shape)
+#        flux = zeros(Q.shape)
+#        _,dyy = meshgrid(self.dx,self.dy[:-1])
+#        surfy = copy.copy(surfy[:-1,:])
+#
+#
+#        dqm[1:-1,:] = (Q[1:-1,:]-Q[:-2,:])/dyy[1:-1,:]
+#        dqp[1:-1,:] = (Q[2:,:]-Q[1:-1,:])/dyy[2:,:]
+#        slope[1:-1,:] = ( (dqm*dqp)[1:-1,:] > 0).astype(int) * (2*(dqp*dqm)/(dqp+dqm))[1:-1,:]
+#        Qs[1:-1,:] = (v[1:-1,:]>0).astype(int) * (Q[:-2,:]+.5*slope[:-2,:]*dyy[:-2,:])
+#        Qs[1:-1,:] += (v[1:-1,:]<=0).astype(int) * (Q[1:-1,:]-.5*slope[1:-1,:]*dyy[1:-1,:])
+#        flux[1:-1,:] = -self.nx*v[1:-1,:] * Qs[1:-1,:] * surfy[1:-1,:]
+
+        return fluxp,fluxm
+
+    def transport(self,Q,v,dx,surfx):
+        Qs = copy.copy(Q)
+        dqm = zeros(Q.shape)
+        dqp = zeros(Q.shape)
+        slope = zeros(Q.shape)
+        flux = zeros(Q.shape)
+
+
+        dqm[1:-1,:] = (Q[1:-1,:]-Q[:-2,:])/dx[1:-1,:]
+        dqp[1:-1,:] = (Q[2:,:]-Q[1:-1,:])/dx[2:,:]
+        slope[1:-1,:] = ( (dqm*dqp)[1:-1,:] > 0).astype(int) * (2*(dqp*dqm)/(dqp+dqm))[1:-1,:]
+        Qs[1:-1,:] = (v[1:-1,:]>0).astype(int) * (Q[:-2,:]+.5*slope[:-2,:]*dx[:-2,:])
+        Qs[1:-1,:] += (v[1:-1,:]<=0).astype(int) * (Q[1:-1,:]-.5*slope[1:-1,:]*dx[1:-1,:])
+        flux[1:-1,:] = -v[1:-1,:] * Qs[1:-1,:] * surfx[1:-1,:]
+        return flux
+
+    def calc_visc_tens(self):
+        vr = copy.copy(self.vp.data)/self.vp.yy
+        vp = copy.copy(self.vr.data)
+        rho = copy.copy(self.dens.data)
+        taurp = self.dens.center_to_edge('xy')
+
+        #ddx,ddy=meshgrid(self.dx,self.dy)
+        #dlr = log(self.dy)[0]
+        #rho = self.dens.center_to_edge('xy')
+
+        #dvrdp = (vy[:,1:]-vy[:,:-1])/self.dx[0]
+        #dvrdp /= self.vr.yy[:,:-1]
+        #dvpdr = (vx[1:,:]-vx[:-1,:])/dlr
+        #taurp.data[1:-1,1:-1] = self.nu(taurp.yy[1:-1,:1:-1])*rho.data[1:-1,1:-1]*(dvrdp[1:-1,:-1]+dvpdr[:-1,1:-1])
+
+
+        dx = self.dx[0]
+        dy = self.dy
+        ymed = self.dens.ymed
+        ym = self.vr.ym[:-2]
+        surfx = self.dens.surfx
+        surfy = self.dens.surfy
+        vol = self.dens.vol
+        invym = 1./ym
+        rhoc = .25*(rho[1:,1:] + rho[:-1,1:] + rho[:-1,:-1] + rho[1:,:-1])
+        dvp = vp[1:,:-1]-vp[:-1,:-1]
+        dvp /= (ymed[1:]-ymed[:-1])[:,newaxis]
+        dvr = vr[:-1,1:]-vr[:-1,:-1]
+        dvr *= invym[:,newaxis]
+        dvr /= dx
+        visc = self.nu(ym)
+        taurp.data[1:,1:] =rhoc*( dvr + dvp -.5*(vp[1:,:-1]+vp[:-1,:-1])*invym[:,newaxis])*visc[:,newaxis]
+        taurp.data[0,:] = taurp.data[1,:]
+        taurp.data[:,0] = taurp.data[:,1]
+        taurp.staggered='xy'
+        taurp.y = taurp.ym[:-1]
+        taurp.x = taurp.xm[:-1]
+        taurp.recalculate()
+
+        taupp = copy.deepcopy(self.dens)
+        div_v = (vp[1:,1:]-vp[1:,:-1])*surfx[1:,:]
+        div_v += (vr[2:,:-1]*surfy[2:,:-1] - vr[1:,:-1]*surfy[1:,:-1])
+        div_v *= (2./3)/vol[1:,:-1]
+        visc = self.nu(self.dens.yy[1:,:-1])
+        taupp.data[1:,:-1] = 2*(vp[1:,1:]-vp[1:,:-1])/dx - div_v
+        taupp.data[1:,:-1] += (vr[2:,:-1]-vr[1:,:-1])/self.dens.yy[1:,:-1]
+        taupp.data[1:,:-1] *= visc*self.dens.data[1:,:-1]
+        taupp.recalculate()
+
+
+        return taurp,taupp
 
     def calc_flux(self):
         res = copy.deepcopy(self.vr)
@@ -1161,7 +1452,8 @@ class Sim(Mesh,Parameters):
         return -1.5*self.nu(x)/x
     def scaleH(self,x):
         return self.dens.aspectratio * x**(self.dens.flaringindex + 1)
-
+    def cs(self,x):
+        return self.scaleH(x) * x**(-1.5)
     def inner_disk_sol(self,rlims):
         ind = (self.r>=rlims[0])&(self.r<=rlims[1])
         popt,pcov = curve_fit(lambda x,a: a/(3*pi*self.nu(x)),self.r[ind],self.dbar[ind])
@@ -2218,5 +2510,20 @@ def check_mdot_single(i):
 
 def grab_axis(i):
     return figure(i).get_axes()[0]
+
+def problem_size(nx,ny):
+    return 168. * nx*ny/(1e9)
+def get_num_cells(Nh,h,ri,ro):
+    ny = int( Nh * log(ro/ri)/h)
+    nx = int(2*pi/h * Nh)
+    return nx,ny
+def get_optimal_num_points(h,ri,ro,totsize):
+    totsize *= .9
+    psize = 2*pi*log(ro/ri)/(h*h)
+    Nh = int(sqrt( totsize * 1e9 /(168*psize) ))
+    nx,ny = get_num_cells(Nh,h,ri,ro)
+    psize = problem_size(nx,ny)
+    print 'For a total memory of %.1f GB, total snapshot size of %.3f GB, you can have nx=%d, ny=%d, Nh=%d' % (psize,4*8*nx*ny/(1e9),nx,ny,Nh)
+    return nx,ny
 
 
