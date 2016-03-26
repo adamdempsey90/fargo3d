@@ -1061,10 +1061,10 @@ class Sim(Mesh,Parameters):
         Mesh.__init__(self,directory)
         self.params=Parameters(directory)
 
-        self.Pi = Tensor(self.dens,self.vp,self.vr)
+#        self.Pi = Tensor(self.dens,self.vp,self.vr)
         self.mdot,self.rhos,self.rhosp = self.calc_flux()
-        self.Fw,self.Fd,self.Lambda,self.dTr = self.calc_torques()
-        self.vrf = self.mdot.avg/(-2*pi*self.mdot.y*self.rhos.avg)
+#        self.Fw,self.Fd,self.Lambda,self.dTr = self.calc_torques()
+#        self.vrf = self.mdot.avg/(-2*pi*self.mdot.y*self.rhos.avg)
         self.sig0  = self.dens.mdot/(3*pi*self.nu(self.dens.y))
 #        self.vp = self.vp.shift_field('x')
 #        self.vr = self.vr.shift_field('y')
@@ -1152,6 +1152,22 @@ class Sim(Mesh,Parameters):
 ##
 ##        self.A = self.dTr_total/self.mdoti
 ##        self.A_excl = self.dTr_tot_excl/self.mdoti
+    def test_reader(self):
+        lines = '%d\n'%self.nx
+        lines += '%d\n'%self.ny
+        lines += '%d\n'%(1)
+        lines += '%f\n'%self.params.alpha
+        lines += '%f\n'%self.mp
+        lines += '%f\n'%self.a
+        lines += '%f\n'%self.omf
+        lines += '%f\n'%self.params.aspectratio
+        lines += '%f\n'%self.params.flaringindex
+        lines += '%f\n'%self.params.mdot
+        lines += '%f\n'%self.params.thicknesssmoothing
+        with open('param_reader.txt','w') as f:
+            f.write(''.join(lines))
+        call(['mkdir','temp_files'])
+
     def fpred(self,x):
         scalar = False
         try:
@@ -1196,8 +1212,6 @@ class Sim(Mesh,Parameters):
                 mdl = self.mdot.avg[j]*dlr_ed
                 res_Fw[j,i] = -self.mdot[j,i] + mdl
                 res_Fd[j,i] =  - 2*pi*ym[j]*ym[j]*prp - mdl
-                res_dep = dlr_ed*(-mdot[j,i] - rhosa[j]*vya[j]) - rhosa[j]*(vy[j,i]*
-                res_dep[j,i] =
 
 
         res_Trp = copy.deepcopy(self.Pi.rp)
@@ -1208,9 +1222,6 @@ class Sim(Mesh,Parameters):
         res_Fd.data = -fac[:,newaxis] - 2*pi*self.Pi.rp.data *self.Pi.rp.yy
         res_Fw.data  =  - (self.mdot*self.vp*self.vp.yy +fac[:,newaxis])
         res_Trp.data = res_Fd.data + res_Fw.data
-
-        drl = self.vp.
-        res_dep.data = (
 
         res_dep = copy.deepcopy(self.dens)
         # Assume a keplerian rotation for now
@@ -2525,5 +2536,7 @@ def get_optimal_num_points(h,ri,ro,totsize):
     psize = problem_size(nx,ny)
     print 'For a total memory of %.1f GB, total snapshot size of %.3f GB, you can have nx=%d, ny=%d, Nh=%d' % (psize,4*8*nx*ny/(1e9),nx,ny,Nh)
     return nx,ny
+
+
 
 
