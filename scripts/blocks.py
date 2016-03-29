@@ -10,7 +10,7 @@ SRCDIR     = "src"
 BINDIR     = "bin"
 C2CUDA     = "scripts/c2cuda.py"
 
-    
+
 def usage():
     print '\n(blocks.py) Usage: -s --setup  --> SETUP NAME'
     print '                   -f --force  --> Force new profiling of functions that already exist in the .blocks file.'
@@ -32,7 +32,7 @@ def opt_reader():
 
     force = False
     silent =" > /dev/null"
-        
+
     for opt,arg in options:
         if opt in ('-s', '--setup'):
             setup = arg
@@ -40,7 +40,6 @@ def opt_reader():
         if opt in ('-f', '--force'):
             force = True
             continue
-
     global SETUPNAME; SETUPNAME = setup
     global FORCE; FORCE = force
 

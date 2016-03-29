@@ -286,7 +286,7 @@ class Mesh():
             print "IOError with domain_x.dat"
         try:
             #We have to avoid ghost cells!
-            domain_y = np.loadtxt(directory+"domain_y.dat")[2:-2]
+            domain_y = np.loadtxt(directory+"domain_y.dat")[3:-3]
         except IOError:
             print "IOError with domain_y.dat"
         self.xm = domain_x #X-Edge
@@ -355,8 +355,28 @@ class Field(Mesh, Parameters):
            dtype='float64' (numpy dtype) -> 'float64', 'float32',
                                              depends if FARGO_OPT+=-DFLOAT is activated
     """
-    Q_dict = {'dens':'gasdens{0:d}.dat','vx':'gasvx{0:d}.dat','vy':'gasvy{0:d}.dat','momx':['dens','vx'],'momy':['dens','vy'],'pres':['dens']}
+    Q_dict = {'dens':'gasdens{0:d}.dat','vx':'gasvx{0:d}.dat','vy':'gasvy{0:d}.dat'}
+    Q_dict['mdot'] = 'temp_files/mdot.dat'
+    Q_dict['fd'] = 'temp_files/fd.dat'
+    Q_dict['fw'] = 'temp_files/fw.dat'
+    Q_dict['lambda_dep'] = 'temp_files/lambda_dep.dat'
+    Q_dict['lambda_ex'] = 'temp_files/lambda_ex.dat'
+    Q_dict['rhostar'] = 'temp_files/rhostar.dat'
+    Q_dict['taurr'] = 'temp_files/tensor.dat'
+    Q_dict['taupp'] = 'temp_files/tensor.dat'
+    Q_dict['taurp'] = 'temp_files/tensor.dat'
+
     name_dict={'dens':'$\\Sigma$', 'vx': '$v_\\phi$', 'vy': '$v_r$'}
+    name_dict['mdot'] = '$\\dot{M}$'
+    name_dict['fd'] = '$F_{d}$'
+    name_dict['fw'] = '$F_{w}$'
+    name_dict['lambda_dep'] = '$\\Lambda_{dep}$'
+    name_dict['lambda_ex'] = '$\\Lambda_{ex}$'
+    name_dict['rhostar'] = '$\\Sigma^*$'
+    name_dict['taurr'] = '$\\Pi_{rr}$'
+    name_dict['taupp'] = '$\\Pi_{\\phi\\phi$'
+    name_dict['taurp'] = '$\\Pi_{r\\phi}$'
+
     def __init__(self, Q, num, staggered='c', directory='', dtype='float64'):
         if len(directory) > 1:
             if directory[-1] != '/':
@@ -383,15 +403,20 @@ class Field(Mesh, Parameters):
         self.xx,self.yy = meshgrid(self.x,self.y)
         self.name = Q
         self.math_name = self.name_dict[Q]
-        self.data = self.__open_field(directory+field.format(num),dtype) #The scalar data is here.
-        self.data = self.set_boundary()
+        if 'tau' in self.name.lower():
+            tens=self.name
+        else:
+            tens=None
+
+        self.data = self.__open_field(directory+field.format(num),dtype,tens=tens) #The scalar data is here.
+      #  self.data = self.set_boundary()
         self.avg = self.data.mean(axis=1)
         self.wkz = self.ymin + (self.ymax-self.ymin)*self.wkzin
         self.wkzr = self.ymax - (self.ymax-self.ymin)*self.wkzout
         self.ft = fft.rfft(self.data,axis=1)/self.nx
 
 
-    def __open_field(self, f, dtype):
+    def __open_field(self, f, dtype,tens=None):
         """
         Reading the data
         """
@@ -403,8 +428,18 @@ class Field(Mesh, Parameters):
                 field = fromfile(f.replace('.dat','_0.dat'),dtype=dtype)
             except IOError:
                 raise
-
-        return field.reshape(self.ny, self.nx)
+        if tens is None:
+            return field.reshape(self.ny, self.nx)
+        else:
+            if tens == 'taurr':
+                return field[:self.nx*self.ny].reshape(self.ny, self.nx)
+            elif tens == 'taupp':
+                return field[self.nx*self.ny:2*self.nx*self.ny].reshape(self.ny, self.nx)
+            elif tens == 'taurp':
+                return field[2*self.nx*self.ny:3*self.nx*self.ny].reshape(self.ny, self.nx)
+            else:
+                print 'Invalid tensor specified'
+                return None
 
 
     def recalculate(self):
@@ -564,11 +599,11 @@ class Field(Mesh, Parameters):
         if ax is None:
             fig=figure(figsize=figsize)
             ax=fig.add_subplot(111)
-
-        if self.staggered.count('y')>0:
-            y = copy.copy(self.ym[:-1])
-        else:
-            y = copy.copy(self.ymed)
+        y = copy.copy(self.y)
+#        if self.staggered.count('y')>0:
+#            y = copy.copy(self.ym[:-1])
+#        else:
+#            y = copy.copy(self.ymed)
 
         xstr = '$r$'
         if planet is not None:
@@ -1055,17 +1090,17 @@ class Sim(Mesh,Parameters):
                 directory += '/'
         self.directory = directory
         self.dens = Field('dens',i,directory=directory)
-        self.vp = Field('vx',i,directory=directory,staggered='x')
+        self.vx = Field('vx',i,directory=directory,staggered='x')
         self.vr = Field('vy',i,directory=directory,staggered='y')
 
         Mesh.__init__(self,directory)
         self.params=Parameters(directory)
 
+
+
 #        self.Pi = Tensor(self.dens,self.vp,self.vr)
-        self.mdot,self.rhos,self.rhosp = self.calc_flux()
 #        self.Fw,self.Fd,self.Lambda,self.dTr = self.calc_torques()
 #        self.vrf = self.mdot.avg/(-2*pi*self.mdot.y*self.rhos.avg)
-        self.sig0  = self.dens.mdot/(3*pi*self.nu(self.dens.y))
 #        self.vp = self.vp.shift_field('x')
 #        self.vr = self.vr.shift_field('y')
 #        self.vp = self.vp.cut_field(direction='y',side='p')
@@ -1100,12 +1135,17 @@ class Sim(Mesh,Parameters):
     	        _,self.px,self.py,self.pz,self.pvx,self.pvy,self.pvz,self.mp,self.t,self.omf  = loadtxt(directory+'planet{0:d}.dat'.format(p))
 
 
+        self.t = i * self.params.dt * self.params.ninterm
     	self.a = sqrt(self.px**2  + self.py**2)
         self.K = self.mp**2 / (self.dens.alpha * self.dens.aspectratio**5)
 
+        self.load_fluxes(i)
+        self.vp = copy.deepcopy(self.vx)
         self.vp.data += self.vp.y[:,newaxis]*self.omf
         self.vp.recalculate()
 
+        self.mdot,self.rhos,self.rhosp = self.calc_flux()
+        self.sig0  = self.dens.mdot/(3*pi*self.nu(self.dens.y))
         try:
             self.nu0 = self.dens.alpha*self.dens.aspectratio*self.dens.aspectratio
         except AttributeError:
@@ -1116,6 +1156,7 @@ class Sim(Mesh,Parameters):
         self.tviscp = self.a**2/(self.nu(self.a))
         self.torb = 2*np.pi * self.a**(1.5)
         self.rh = (self.mp/3)**(1./3) * self.a
+        self.safety_fac  = .5
 
 #        self.dTr,self.Lambda,self.Fh=self.calc_torques()
 
@@ -1141,8 +1182,7 @@ class Sim(Mesh,Parameters):
 ##
 ##        self.mdotdlr = (self.mdot_full * self.grad(self.l)).mean(axis=1)
 ##
-##        self.safety_fac  = .5
-##        try:
+##        ##        try:
 ##            self.dbar0 = self.dens.mdot/(3*pi*self.nu(self.r))
 ##        except AttributeError:
 ##            pass
@@ -1152,21 +1192,45 @@ class Sim(Mesh,Parameters):
 ##
 ##        self.A = self.dTr_total/self.mdoti
 ##        self.A_excl = self.dTr_tot_excl/self.mdoti
-    def test_reader(self):
-        lines = '%d\n'%self.nx
-        lines += '%d\n'%self.ny
-        lines += '%d\n'%(1)
-        lines += '%f\n'%self.params.alpha
-        lines += '%f\n'%self.mp
-        lines += '%f\n'%self.a
-        lines += '%f\n'%self.omf
-        lines += '%f\n'%self.params.aspectratio
-        lines += '%f\n'%self.params.flaringindex
-        lines += '%f\n'%self.params.mdot
-        lines += '%f\n'%self.params.thicknesssmoothing
-        with open('param_reader.txt','w') as f:
-            f.write(''.join(lines))
-        call(['mkdir','temp_files'])
+    def load_fluxes(self,i):
+        execdir = '/projects/b1002/amd616/fargo3d/utils/python/'
+        execname = 'load_fluxes'
+        call(['mkdir',self.directory + 'temp_files'])
+
+        lines='%d\n' % self.params.nx
+        lines +='%d\n' % self.params.ny
+        lines +='%d\n' %  self.params.nz
+        lines +='%f\n' %  self.params.alpha
+        lines +='%f\n' %  self.mp
+        lines +='%f\n' %  self.a
+        lines +='%f\n' %  self.omf
+        lines +='%f\n' %  self.params.aspectratio
+        lines +='%f\n' %  self.params.flaringindex
+        lines +='%f\n' %  self.params.mdot
+        lines +='%f\n' %  self.params.thicknesssmoothing
+
+        with open(self.directory + 'param_file.txt','w') as f:
+            f.write(lines)
+
+        callstr = [execdir+execname,'%d'%i,self.directory+'param_file.txt']
+        print '\t'.join(callstr)
+        call(callstr)
+
+        self.fw = Field('fw',0,directory=self.directory,staggered='y')
+        self.fd = Field('fd',0,directory=self.directory,staggered='y')
+        self.lambda_dep = Field('lambda_dep',0,directory=self.directory,staggered='y')
+        self.lambda_ex = Field('lambda_ex',0,directory=self.directory,staggered='y')
+        self.mdot = Field('mdot',0,directory=self.directory,staggered='y')
+        self.rhostar = Field('rhostar',0,directory=self.directory,staggered='y')
+        self.taurr = Field('taurr',0,directory=self.directory)
+        self.taupp = Field('taurp',0,directory=self.directory)
+        self.taurp = Field('taupp',0,directory=self.directory,staggered='xy')
+
+        callstr = ['rm',self.directory+'param_file.txt',self.directory+'temp_files/*']
+        call(callstr)
+        callstr = ['rm','-rf',self.directory+'temp_files/']
+
+        return
 
     def fpred(self,x):
         scalar = False
@@ -1720,7 +1784,7 @@ class Sim(Mesh,Parameters):
     #		axm.set_yscale('symlog',linthreshy=1e-7)
     #		axv.set_ylim(-.001,.001)
     	axd.set_title('t = %.1f = %.1f P = %.1f t_visc' % (self.t,self.t/(2*pi*self.a**(1.5)),self.t/self.tvisc))
-    def streams(self,rlims=None,plims=None,ax=None,noise=.1,clrbar=True,**kargs):
+    def streams(self,rlims=None,plims=None,ax=None,planet=None,noise=.1,clrbar=True,**kargs):
         draw_flag = False
         if ax == None:
             fig=figure()
@@ -1732,28 +1796,44 @@ class Sim(Mesh,Parameters):
         if plims == None:
             plims = (-pi,pi)
 
-        rinds = (self.r<=rlims[1])&(self.r>=rlims[0])
-        pinds = (self.phi<=plims[1])&(self.phi>=plims[0])
 
-        vr = self.vr.data[rinds,:][:,pinds]
-        vp = self.vp.data[rinds,:][:,pinds]
-        dens = self.dens.data[rinds,:][:,pinds]
-        rr,pp = meshgrid(self.r[rinds],self.phi[pinds])
-        lr = log(self.r[rinds])
-        phi = self.phi[pinds]
+        vr = .5*(self.vr.data[1:,:-1] + self.vr.data[:-1,:-1])
+        vp = .5*(self.vx.data[:-1,1:] + self.vx.data[:-1,:-1])
+        dens = copy.copy(self.dens.data[:-1,:-1])
+        y = copy.copy(self.dens.y[:-1])
+        x = copy.copy(self.dens.x[:-1])
+        rinds = (y<=rlims[1])&(y>=rlims[0])
+        pinds = (x<=plims[1])&(x>=plims[0])
+        y = y[rinds]
+        x = x[pinds]
+        vr = vr[rinds,:][:,pinds]
+        vp = vp[rinds,:][:,pinds]
+        dens = dens[rinds,:][:,pinds]
+        #vr = self.vr.data[rinds,:][:,pinds]
+        #vp = self.vp.data[rinds,:][:,pinds]
+        #dens = self.dens.data[rinds,:][:,pinds]
+        rr,pp = meshgrid(y,x)
+        lr = log(y)
+        phi = x
+        #rr,pp = meshgrid(self.r[rinds],self.phi[pinds])
+        #lr = log(self.r[rinds])
+        #phi = self.phi[pinds]
+
         cmap = kargs.pop('cmap',viridis)
+        color = kargs.pop('color','w')
 
         line2d= ax.pcolormesh(log(rr),pp,log10(dens.transpose()),cmap=cmap,shading='gouraud')
         if clrbar:
             cbar = colorbar(line2d,ax=ax)
             cbar.set_label('$\\log_{10}{\\Sigma}$',fontsize=20)
-        ax.streamplot(log(self.r[rinds]),self.phi[pinds],vr.transpose(),vp.transpose(),**kargs)
+        ax.streamplot(lr,phi,vr.transpose(),vp.transpose(),color=color,**kargs)
         ax.set_xlabel('$\ln(r)$',fontsize=20)
         ax.set_ylabel('$\phi$',fontsize=20)
         ax.set_ylim(plims)
         ax.set_xlim((log(rlims[0]),log(rlims[1])))
         ax.axvline(log(self.a+2*self.rh),color='k',linewidth=3)
         ax.axvline(log(self.a-2*self.rh),color='k',linewidth=3)
+
 
 
         rh,ph = self.calculate_circle(self.rh,rlims)
@@ -1765,6 +1845,15 @@ class Sim(Mesh,Parameters):
         sep_lines = self.separatrix(lr,phi,vr.transpose(),vp.transpose(),noise=noise,npoints=10)
         for line in sep_lines:
             ax.plot(line[:,0],line[:,1],'-w',linewidth=2)
+
+        if planet is None:
+            xlbl = ['%.1f'%(exp(v)) for v in ax.get_xticks()]
+            ax.set_xticklabels(xlbl)
+            ax.set_xlabel('$r$',fontsize=20)
+        else:
+            xlbl = ['%.1f'%((exp(v)-planet)/(self.params.aspectratio*planet)) for v in ax.get_xticks()]
+            ax.set_xticklabels(xlbl)
+            ax.set_xlabel('$(r-a)/H$',fontsize=20)
         if draw_flag:
             fig.canvas.draw()
 #        return log(self.r[rinds]),self.phi[pinds],rr,pp,vr.transpose(),vp.transpose()
@@ -2217,6 +2306,9 @@ def load_single_time(i):
 
 
     return vx,vy,rho
+
+
+
 
 def load_flux(i):
 

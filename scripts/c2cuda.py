@@ -38,7 +38,7 @@ def opt_reader():
     #default values:
     verbose = False
     formated = False
-       
+
     try:
         options, remainder = getopt.getopt(sys.argv[1:],
                                            'i:o:s:vfp',
@@ -51,7 +51,7 @@ def opt_reader():
     except getopt.GetoptError, err:
         print str(err)
         usage()
-        
+
     if(options == []):
         usage()
 
@@ -63,7 +63,7 @@ def opt_reader():
 
     SETUP = ""
     profiling = False
-            
+
     for opt,arg in options:
         if opt in ('-o', '--output'):
             o_file = arg
@@ -92,7 +92,7 @@ def opt_reader():
            'setup':SETUP}
 
     return opt
-        
+
 def literal(lines, option, verbose = False):
 
     founded = False
@@ -100,7 +100,7 @@ def literal(lines, option, verbose = False):
 
     begin = '//<'   + option + '>'
     end   = '//<\\' + option + '>'
-    
+
     if verbose:
         print '\n---------------------------------'
         print 'Looking for ', option, ' lines.\n'
@@ -129,7 +129,7 @@ def main_func(lines, verbose=False, test=False):
     if verbose:
         print '\n---------------------------------'
         print 'Searching cpu main function...\n'
-    
+
     function = re.compile(r"""
                (\w+)         #function type "1"
                \s+           #1 or more whitespace
@@ -143,7 +143,7 @@ def main_func(lines, verbose=False, test=False):
         print 'TEST OF MAIN_FUNC'
         print '================='
         print
-        
+
         test_lines = ['void function_cpu (real dt, float b, string str_1) {',
                       'void function_cpu (real dt, float b){',
                       'void function_cpu(real dt, float b){',
@@ -152,7 +152,7 @@ def main_func(lines, verbose=False, test=False):
                       'void function_cpu(real dt,float b){',
                       'void     function_cpu    (real dt,   float b)    {']
         for line in test_lines:
-            s = function.search(line)     
+            s = function.search(line)
             if(s):
                 func_type = s.group(1)
                 func_name = s.group(2)
@@ -168,7 +168,7 @@ def main_func(lines, verbose=False, test=False):
         if(s):
             func_type = s.group(1)
             func_name = s.group(2)
-            func_var  = re.sub(',(\s+|\s?)',', ',s.group(4)) 
+            func_var  = re.sub(',(\s+|\s?)',', ',s.group(4))
             parsed_line = func_type + ' ' + func_name
             parsed_line += '_gpu' + '(' + func_var + ') {\n'
             if(verbose):
@@ -192,7 +192,7 @@ def gathering_data(lines,verbose):
     constant  = literal(lines,'CONSTANT',verbose)
     last_block = literal(lines, 'LAST_BLOCK',verbose)
     gpu_func  = main_func(lines,test=False,verbose=verbose)
-    
+
     data = {'flags':flags, 'includes':includes,'user_def':user_def,
             'loop':loop,'external':external,'variables':variables,
             'filling':filling,'main_loop':main_loop,'gpu_func':gpu_func,
@@ -206,7 +206,7 @@ def make_flags(flags):
     return new_flags
 
 def parsing_external(external):
-    
+
     ifdef_level=0
     declarations = []
     calls = []
@@ -219,7 +219,7 @@ def parsing_external(external):
                 (\s?|\s+)          #1 or more whitespace and = "4"
                 (.*);              #asign arguments "5"
                 """, re.VERBOSE)
-    
+
     externals = []
 
     for element in external:
@@ -242,7 +242,7 @@ def parsing_external(external):
 def make_launcher(gpu_func,calls):
 
     launcher = re.search("\w*\s*(.*)",gpu_func).group(1) #avoiding type
-    
+
     func_name = re.search("(.*)\(",launcher).group(1)
 
     variables = re.search("\((.*)\)",launcher).group(1).split(',')
@@ -265,9 +265,9 @@ def make_launcher(gpu_func,calls):
             launcher += element + ',\n'
 
     return launcher[:-2] + ") {\n", 'extern "C" ' + gpu_func
-    
+
 def make_kernel(gpu_func,declarations):
-    launcher = re.sub("_gpu","_kernel",gpu_func)        
+    launcher = re.sub("_gpu","_kernel",gpu_func)
     if re.search("\(\s*\)",launcher):
 #Avoiding problems if there is no argument.
         launcher = "__global__ " + launcher[:-4] + '\n'
@@ -282,7 +282,7 @@ def make_kernel(gpu_func,declarations):
     temporal1 = re.search("\(.*",launcher).group(0)
     temporal1 = re.sub("Field.*"," ",temporal1)
     launcher = re.search("(.*)\(",launcher).group(1) + \
-        temporal1   
+        temporal1
     for element in declarations:
         if(element[0] == '#'):
             launcher += element + '\n'
@@ -292,13 +292,13 @@ def make_kernel(gpu_func,declarations):
 
 
 def make_constant(symbols):
-    
+
     data = re.compile(r"""
                (\s?|\s+)//       #comments "1"
                (\s?|\s+)(\w+)    #type "3"
                (\s?|\s+)(\w+)    #name "5"
                (\s?|\s+)\(?      #whitespace? "6"
-               (.*)\);           #size "7"               
+               (.*)\);           #size "7"
                """, re.VERBOSE)
 
     cte_cpy = ''
@@ -317,7 +317,7 @@ def make_constant(symbols):
                 'sizeof(' + s.group(3) + ')' + \
                 '*(' + s.group(7) + '), ' + \
                 '0, cudaMemcpyHostToDevice);\n'
-        else:            
+        else:
             cte_cpy += 'CUDAMEMCPY(' + \
                 s.group(5) + '_s, ' + \
                 s.group(5) + '_d, ' + \
@@ -331,7 +331,7 @@ def make_constant(symbols):
     exact_size = 0
     vectors = 0
     for i in sizes:
-        try:            
+        try:
             exact_size +=int(i)
         except ValueError:
             vectors += 1
@@ -339,7 +339,7 @@ def make_constant(symbols):
         vector_size = int((15384/2-exact_size)/vectors)
     except ZeroDivisionError:
         vector_size = 0
-    
+
     cte_dec = ''
     defines = ''
     undefs  = ''
@@ -354,7 +354,7 @@ def make_constant(symbols):
             cte_dec += 'CONSTANT(' + \
                 s.group(3)+ ', ' + \
                 s.group(5) + '_s, ' + str(size) + ');\n'
-            defines += '#define ' + s.group(5) + "(i) " + s.group(5) + "_s[(i)]\n" 
+            defines += '#define ' + s.group(5) + "(i) " + s.group(5) + "_s[(i)]\n"
         else:
             cte_dec += '__device__ __constant__ ' + \
                 s.group(3) + ' ' + \
@@ -376,7 +376,7 @@ def make_mainloop(mainloop):
     var = []
 
     loop = False
-    
+
     begin = '//<'   + '#' + '>'
     end   = '//<\\' + '#' + '>'
 
@@ -426,10 +426,10 @@ def make_mainloop(mainloop):
     second_line += '#ifdef Y\n'
     second_line += 'if(' + var[1][0] + '>=' + var[1][1] + \
         ' && ' + var[1][0] + '<' + var[1][2] + ') {\n'
-    second_line += '#endif\n'    
+    second_line += '#endif\n'
     second_line += '#ifdef X\n'
     second_line += 'if(' + var[2][0] + '<' + var[2][2] + ') {\n'
-    second_line += '#endif\n'    
+    second_line += '#endif\n'
 
     return first_line, second_line, effective_loop, var
 
@@ -445,7 +445,7 @@ def output(data):
 
 def make_topology(var_loop, externals):
 
-    blocks_define = '' 
+    blocks_define = ''
 
     BLOCKS = analyze_blocks()
     if(BLOCKS != None):
@@ -457,7 +457,7 @@ def make_topology(var_loop, externals):
 
     #Matching loop variables with external variables
     for varex,asign in externals:
-        for index,minval,maxval in var_loop:            
+        for index,minval,maxval in var_loop:
             if varex == maxval:
                 if index == 'i':
                     size_x = asign
@@ -480,7 +480,7 @@ def analyze_blocks():
         blocks = open("../setups/"+SETUP+"/"+SETUP+".blocks","r")
     except IOError:
         return None
-    for line in blocks.readlines():        
+    for line in blocks.readlines():
         split = line.split()
         search = re.search(split[0],INPUT[:-2])
         if search:
@@ -494,16 +494,16 @@ def make_output(f,output_file, formated=False):
     output = ''
     for line in f['flags']:
         output += line + '\n'
-    
+
     output += '\n'
     for line in f['includes']:
         output += line + '\n'
 
     output += '\n' + f['defines']
 #    output += '\n' + f['blocks_define']
-    
+
     output += '\n' + f['cte_dec']
-    
+
     output += '\n' + f['kernel'] + '\n'
 
     for line in f['internal']:
@@ -511,10 +511,10 @@ def make_output(f,output_file, formated=False):
 
     output += '\n' + f['first_line']
     output += '\n' + f['second_line']
-    
+
     for line in f['effective_loop']:
         output += line + '\n'
-    
+
     output += '#ifdef X \n } \n #endif\n'
     output += '#ifdef Y \n } \n #endif\n'
     output += '#ifdef Z \n } \n #endif\n'
@@ -562,7 +562,7 @@ float time;
 
 cudaEventCreate(&start);
 cudaEventCreate(&stop);
- 
+
 int eex, ey, ez;
 
 #ifndef X
@@ -594,7 +594,7 @@ for (ez=0; ez < 7; ez++) {
 """
         output += '\n' + prof
 #=================================================================
-    
+
     output += '\n' + f['launcher'][:-3] + ';\n'
     if not profiling:
         output += '\n' + 'check_errors("' + kernel_name + '");\n'
@@ -627,7 +627,7 @@ printf ("{:s}\\t%d\\t%d\\t%d\\t%f\\n", block.x, block.y, block.z, time);
         pass
 
     output += '\n}'
-    
+
     if(len(output_file)==0):
         print output
     else:
@@ -644,7 +644,7 @@ def main():
     verbose     = options['verbose']
     input_file  = options['input']
     output_file = options['output']
-    
+
     if input_file == output_file:
         print "\nWARNING!!! You would overwrite your input file!!!"
         print "            This is not allowed...\n"
@@ -659,7 +659,7 @@ def main():
     input_lines = read_file(input_file) #Reading file
 
     data = gathering_data(input_lines,verbose)
-    
+
     declarations, calls,externals  = parsing_external(data['external'])
     flags                          = make_flags(data['flags'])
 
@@ -671,7 +671,7 @@ def main():
         cte_cpy,cte_dec,defines,undefs = make_constant(data['constant'])
     else:
         cte_cpy = cte_dec = defines = undefs = ''
-    
+
     first_line, second_line, effective_loop, var_loop \
         = make_mainloop(data['main_loop'])
 
@@ -680,7 +680,7 @@ def main():
     final = {'flags':flags, 'launcher':launcher, 'def_launcher':def_launcher,
              'kernel':kernel, 'includes':data['includes'], 'defines':defines,
              'internal':data['internal'], 'var_loop':var_loop,
-             'user_def':data['user_def'],'filling':data['filling'], 
+             'user_def':data['user_def'],'filling':data['filling'],
              'cte_cpy':cte_cpy,'cte_dec':cte_dec, 'first_line':first_line,
              'second_line':second_line, 'effective_loop':effective_loop,
              'blocks_define':blocks_define, 'blocks':blocks,'grid':grid,

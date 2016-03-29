@@ -293,7 +293,7 @@ BOUNDARIES =  boundparser.py boundaries.txt 			    \
 	      boundary_template.c
 
 MPIDUMMY = mpi_dummy.o #dummy file, for sequential runs.
-EXENAME  = ../fargo3d_nowk  #Name and location of the executable file
+EXENAME  = ../fargo3d_748x1382  #Name and location of the executable file
 
 VPATH=${SETUPSDIR}/${SETUP}:${STDDIR}:${SCRIPTSDIR}:${SRCDIR}
 

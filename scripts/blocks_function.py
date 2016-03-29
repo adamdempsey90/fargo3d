@@ -9,8 +9,8 @@ SCRIPTSDIR = "scripts"
 SRCDIR     = "src"
 BINDIR     = "bin"
 C2CUDA     = "scripts/c2cuda.py"
+EXENAME = "fargo3d_748x1382"
 
-    
 def usage():
     print '\n(blocks.py) Usage: -s --setup=  --> SETUP NAME'
     print '         -g --filename= --> CPU/GPU FILE NAME'
@@ -33,7 +33,7 @@ def opt_reader():
 
     force = False
     silent =" > /dev/null 2>&1"
-        
+
     for opt,arg in options:
         if opt in ('-s', '--setup'):
             setup = arg
@@ -55,7 +55,7 @@ def append_blocks(x,y,z):
         blocks = open(SETUPDIR+'/'+SETUPNAME+'/'+SETUPNAME+".blocks",'a+')
     except IOError:
         print "(blocks.py): Error opening "+SETUPNAME+".blocks"
-    
+
     found = False
     for line in blocks.readlines():
         new_line = line.split()
@@ -68,7 +68,7 @@ def append_blocks(x,y,z):
         print FILENAME[:-2]+'\t{0:d}\t{1:d}\t{2:d}'.format(x,y,z) + "\t not appended"
 
     blocks.close()
-        
+
 def analyze_data():
     temp = open(FILENAME[:-2]+'_blocks.temp',"r")
     lines = temp.readlines()
@@ -86,16 +86,16 @@ def analyze_data():
     return nx[index], ny[index], nz[index]
 
 def test_function():
-    os.system("python "+ 
-              C2CUDA+' -i ' + 
-              SRCDIR +'/'+FILENAME + ' -o ' + 
+    os.system("python "+
+              C2CUDA+' -i ' +
+              SRCDIR +'/'+FILENAME + ' -o ' +
               FILENAME + 'u -p'+SILENT)
 
     os.system("mv "+FILENAME+'u '+BINDIR+'/')
     os.system("make GPU=1 MPICUDA=0 PARALLEL=0 DEBUG=0 FULLDEBUG=0 FARGO_DISPLAY=0 SETUP="+SETUPNAME+SILENT)
     os.system("rm "+BINDIR+'/'+FILENAME[:-2]+"_gpu.o")
     os.system("rm -f "+BINDIR+'/'+FILENAME+'u ')
-    os.system("./fargo3d -f "+SETUPDIR+'/'+SETUPNAME+'/'+SETUPNAME+'.par > '+ FILENAME[:-2]+'_blocks.temp 2>&1')
+    os.system("./"+EXENAME+" -f "+SETUPDIR+'/'+SETUPNAME+'/'+SETUPNAME+'.par > '+ FILENAME[:-2]+'_blocks.temp 2>&1')
     skip = False
     try:
         blocks = analyze_data()
