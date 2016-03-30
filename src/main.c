@@ -287,8 +287,16 @@ OMEGAFRAME (which is used afterwards to build the initial Vx field. */
 #else
   masterprint ("Standard version with no ghost zones in X\n");
 #endif
-  
+#ifdef TIMER
+    clock_t begin_timer_time, end_timer_time;
+    real timer_time_elapsed;
+#endif
   for (i = begin_i; i<=NTOT; i++) { // MAIN LOOP
+#ifdef TIMER
+    if (i==begin_i) {
+        begin_timer_time = clock();
+    }
+#endif
     if (NINTERM * (TimeStep = (i / NINTERM)) == i) {
 
 #if defined(MHD) && defined(DEBUG)
@@ -323,6 +331,12 @@ OMEGAFRAME (which is used afterwards to build the initial Vx field. */
       WritePlanetSystemFile(TimeStep, YES);
       SolveOrbits (Sys);
     }
+#ifdef TIMER
+    end_timer_time = clock();
+    timer_time_elapsed =( (double)(end_timer_time-begin_timer_time))/CLOCKS_PER_SEC;
+    masterprintf("time for time_step was %f\n",end_timer_time);
+#endif
+
   }
 
   MPI_Finalize();  
