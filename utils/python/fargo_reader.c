@@ -287,21 +287,21 @@ void transport(double *qs) {
     FILE *f;
     k = 0;
     
-    set_slopes(qs);   // Slope is in work array
-
     for(j=0;j<size_y;j++) {
         for(i=0;i<size_x;i++) {
             work1[l] = qs[l];
         }
     }
+    set_slopes(qs);   // Slope is in work array
+
     for (j=1; j<size_y-1; j++) {
       for (i=0; i<size_x; i++) {
 
     	if (vy[l]>0.) {
-            qs[l] = qs[lym] + 0.5 * (zone_size_y(j-1,k))*work[lym];
+            qs[l] = work1[lym] + 0.5 * (zone_size_y(j-1,k))*work[lym];
         }
 	    else {
-	        qs[l] = qs[l] - 0.5 * (zone_size_y(j,k))*work[l];
+	        qs[l] = work1[l] - 0.5 * (zone_size_y(j,k))*work[l];
         }
 
       }
@@ -348,7 +348,7 @@ void set_lstar(void) {
     transport(momm);
     // Now momenta are on the edge.
 
-    for(j=1;j<size_y-1;j++) {
+    for(j=0;j<size_y;j++) {
         for(i=0;i<size_x;i++) {
             lstar[l] = ymin(j)*.5*(momp[l] + momm[l])/rhos[l];
         }
@@ -356,6 +356,14 @@ void set_lstar(void) {
 
     FILE *f = fopen("temp_files/lstar.dat","w");
     fwrite(&lstar[l_f(0,NGHY,0)],sizeof(double),nx*ny,f);
+    fclose(f);
+
+    f = fopen("momp.dat","w");
+    if (f==NULL) printf("Something bad\n");
+    fwrite(&momp[l_f(0,NGHY,0)],sizeof(double),nx*ny,f);
+    fclose(f);
+    f = fopen("momm.dat","w");
+    fwrite(&momm[l_f(0,NGHY,0)],sizeof(double),nx*ny,f);
     fclose(f);
     return;
 
@@ -597,16 +605,11 @@ void add_boundary(void) {
 
             }
     }
-    for(j=0;j<size_y-1;j++) {
-            for(i=0;i<size_x;i++) {
-                momp[l] = vx[lyp]*rho[l]; 
-                momm[l] = vx[l]*rho[l];
-            }
-    }
-    jact=size_y-1;
-    for(i=0;i<size_x;i++) {
-        momp[lact] = vx[lact-pitch]*pow(ymed(jact)/ymed(jact-1),-.5)*rho[lact-pitch];
-        momm[lact] = vx[lact]*rho[lact];
+    for(j=0;j<size_y;j++) {
+       for(i=0;i<size_x;i++) {
+        momp[l] = vx[lxp]*rho[l]; 
+        momm[l] = vx[l]*rho[l];
+       }
     }
     return;
 

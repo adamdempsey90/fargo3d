@@ -365,6 +365,7 @@ class Field(Mesh, Parameters):
     Q_dict['taurr'] = 'temp_files/tensor.dat'
     Q_dict['taupp'] = 'temp_files/tensor.dat'
     Q_dict['taurp'] = 'temp_files/tensor.dat'
+    Q_dict['lstar'] = 'temp_files/lstar.dat'
 
     name_dict={'dens':'$\\Sigma$', 'vx': '$v_\\phi$', 'vy': '$v_r$'}
     name_dict['mdot'] = '$\\dot{M}$'
@@ -376,6 +377,7 @@ class Field(Mesh, Parameters):
     name_dict['taurr'] = '$\\Pi_{rr}$'
     name_dict['taupp'] = '$\\Pi_{\\phi\\phi}$'
     name_dict['taurp'] = '$\\Pi_{r\\phi}$'
+    name_dict['lstar'] = '$l^*$'
 
     def __init__(self, Q, num, staggered='c', directory='', dtype='float64'):
         if len(directory) > 1:
@@ -1090,11 +1092,12 @@ class Tensor(Mesh,Parameters):
         self.drFnu.name = 'drFnu'
         self.drFnu.math_name = '$\\partial_r(r^2 \\Pi_{r\phi})$'
 class Sim(Mesh,Parameters):
-    def __init__(self,i,directory='',p=0):
+    def __init__(self,i,directory='',p=0,fargodir='/projects/b1002/amd616/fargo3d/'):
         if directory != '':
             if directory[-1] != '/':
                 directory += '/'
         self.directory = directory
+        self.fargodir = fargodir
         self.dens = Field('dens',i,directory=directory)
         self.vx = Field('vx',i,directory=directory,staggered='x')
         self.vr = Field('vy',i,directory=directory,staggered='y')
@@ -1199,7 +1202,7 @@ class Sim(Mesh,Parameters):
 ##        self.A = self.dTr_total/self.mdoti
 ##        self.A_excl = self.dTr_tot_excl/self.mdoti
     def load_fluxes(self,i):
-        execdir = '/projects/b1002/amd616/fargo3d/utils/python/'
+        execdir = self.fargodir+'utils/python/'
         execname = 'load_fluxes'
         call(['mkdir',self.directory + 'temp_files'])
 
@@ -1219,7 +1222,7 @@ class Sim(Mesh,Parameters):
             f.write(lines)
 
         callstr = [execdir+execname,'%d'%i,self.directory+'param_file.txt']
-        print '\t'.join(callstr)
+        print ' '.join(callstr)
         call(callstr)
 
         self.fw = Field('fw',0,directory=self.directory,staggered='y')
@@ -1231,6 +1234,7 @@ class Sim(Mesh,Parameters):
         self.taurr = Field('taurr',0,directory=self.directory)
         self.taupp = Field('taupp',0,directory=self.directory)
         self.taurp = Field('taurp',0,directory=self.directory,staggered='xy')
+        self.lstar = Field('lstar',0,directory=self.directory,staggered='y')
 
         callstr = ['rm',self.directory+'param_file.txt']
         call(callstr)
