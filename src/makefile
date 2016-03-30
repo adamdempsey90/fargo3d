@@ -120,7 +120,7 @@ CXXPARA_LINUX = mpic++ -stdlib=libstdc++
 ##---------------------------------------------------------------------
 #MACOSX PLATFORM (GENERIC, default)
 #FARGO_ARCH must be set to MACOSX
-CC_MACOSX      = gcc-4.9
+CC_MACOSX      = gcc
 SEQOPT_MACOSX  = -O3 -ffast-math -fopenmp
 PARAOPT_MACOSX = -O3 -ffast-math
 PARACC_MACOSX  = mpicc

@@ -1,0 +1,3 @@
+#!/bin/bash
+
+gcc -O3 fargo_reader.c -lm -o load_fluxes 

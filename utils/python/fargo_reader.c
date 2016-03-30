@@ -358,13 +358,6 @@ void set_lstar(void) {
     fwrite(&lstar[l_f(0,NGHY,0)],sizeof(double),nx*ny,f);
     fclose(f);
 
-    f = fopen("momp.dat","w");
-    if (f==NULL) printf("Something bad\n");
-    fwrite(&momp[l_f(0,NGHY,0)],sizeof(double),nx*ny,f);
-    fclose(f);
-    f = fopen("momm.dat","w");
-    fwrite(&momm[l_f(0,NGHY,0)],sizeof(double),nx*ny,f);
-    fclose(f);
     return;
 
 }

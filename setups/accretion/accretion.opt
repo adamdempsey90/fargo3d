@@ -19,7 +19,7 @@ FARGO_OPT += -DNOWAVEKILLRHO
 FARGO_OPT += -DSTOCKHOLMACC
 
 #Time the first time-step, excluding all startup and shutdown procedures
-#FARGO_OPT += -DTIMER
+FARGO_OPT += -DTIMER
 
 #Use only a single mode of the potential
 #FARGO_OPT += -DFTPOTENTIAL
