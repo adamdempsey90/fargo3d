@@ -82,14 +82,9 @@ int main(int arc, char *argv[]) {
   char directory[50];
   char param_fname[100];
 
-  printf("reading arguments\n");
   n = atoi(argv[1]);
-  printf("Using %d file\n",n);
   strcpy(param_fname,argv[2]);
-  printf("File name %s\n",param_fname);
 
-  //sprintf(directory,"%s","");
-  printf("reading param file\n");
   read_param_file(param_fname);
 
   
@@ -146,19 +141,13 @@ int main(int arc, char *argv[]) {
   read_files(n,NULL);
   add_boundary();
   set_mdot();
-  printf("Added mdot\n");
   set_lstar();
-  printf("Added lstar\n");
   clear_work();
   set_tensor();
-  printf("Added tensor\n");
   set_lam_ex();
   clear_work();
-  printf("Added dTr\n");
   set_Fd();
-  printf("Added Fd\n");
   set_Twd();
-  printf("Added Twd\n");
   
   free(Xmin);
   free(Ymin);
@@ -400,7 +389,7 @@ void set_lam_ex(void) {
             rad = ymin(j)*ymin(j) + params.a*params.a -2*params.a*ymin(j)*cos(xmed(i))+smoothing;
             rad *= sqrt(rad);
             pot = params.mp * ymin(j)*params.a*sin(xmed(i))/rad;
-            res = 2*M_PI*ymin(j)*rhos[l]*pot;
+            res = -2*M_PI*ymin(j)*rhos[l]*pot;
             fwrite(&res,sizeof(double),1,f);
 
         }
@@ -444,10 +433,10 @@ void set_Twd(void) {
         dbar[j] = res5/(double)nx;
     }
     for(j=1;j<size_y-1;j++) {
-        dlbar[j] = (lbar[j]-lbar[j-1])/(ymed(j)-ymed(j-1));
+        dlbar[j] = (lbar[j+1]-lbar[j-1])/(ymin(j+1)-ymin(j-1));
     }
-    dlbar[0] = (lbar[1]-lbar[0])/(ymed(1)-ymed(0));
-    dlbar[size_y-1] = (lbar[size_y-1]-lbar[size_y-2])/(ymed(size_y-1)-ymed(size_y-2));
+    dlbar[0] = (lbar[1]-lbar[0])/(ymin(1)-ymin(0));
+    dlbar[size_y-1] = (lbar[size_y-1]-lbar[size_y-2])/(ymin(size_y-1)-ymin(size_y-2));
 
     double fac,fac1;
     double rho_bar, rho_edge;
@@ -455,8 +444,8 @@ void set_Twd(void) {
         rho_bar = rhobar[j];
         for(i=0;i<size_x;i++) {
             rho_edge = rhos[l]; //(rho[lym]+rho[l])*.5;
-            fac1 = .5*(ymin(j+1)*ymin(j+1)*(tauxy[lyp]+tauxy[lxp+pitch])-.5*ymin(j-1)*ymin(j-1)*(tauxy[lym]+tauxy[lxp-pitch]))/(ymin(j+1)-ymin(j-1));
-            work[l] = ( .25*(tauxx[lxp]-tauxx[lxm]+tauxx[lxp-pitch]-tauxx[lxm-pitch])/(dx) + fac1/(ymin(j)))*2*M_PI*ymin(j)*rho_bar/rho_edge;//(dbar[j]+dbar[j-1])*.5;
+            fac1 = .5*(ymin(j+1)*ymin(j+1)*(tauxy[lyp]+tauxy[lxp+pitch])-ymin(j-1)*ymin(j-1)*(tauxy[lym]+tauxy[lxp-pitch]))/(ymin(j+1)-ymin(j-1));
+            work[l] = ( .25*(tauxx[lxp]-tauxx[lxm]+tauxx[lxp-pitch]-tauxx[lxm-pitch])/(dx) + fac1/ymin(j))*2*M_PI*ymin(j)*rho_bar/rho_edge;//(dbar[j]+dbar[j-1])*.5;
             work[l] -= 2*M_PI*fac1;
             work[l] += (-mdot[l]-rho_bar*vybar[j]*2*M_PI*ymin(j))*dlbar[j];
             work[l] -= 2*M_PI*ymin(j)*rho_bar*(vy[l]*(lstar[l]-lstar[lym])/zone_size_y(j,k) - vybar[j]*dlbar[j]);
@@ -498,7 +487,6 @@ void set_Fd(void) {
     double *mdbar = (double *)malloc(sizeof(double)*(size_y));
     double *lbar = (double *)malloc(sizeof(double)*(size_y));
     double res1, res2;
-    printf("Allocated\n");
     for(j=0;j<size_y;j++) {
         res1=0;
         res2=0;
@@ -512,7 +500,6 @@ void set_Fd(void) {
         mdbar[j] = res1;//res1/(double)nx;
         lbar[j] = res2;//res2/(double)nx;
     }
-    printf("Average\n"); 
     for(j=NGHY;j<size_y-NGHY;j++) {
         for(i=0;i<size_x;i++) {
             work[l] = -mdbar[j]*lbar[j] - M_PI*ymin(j)*ymin(j)*(tauxy[l]+tauxy[lxp]);
@@ -522,7 +509,6 @@ void set_Fd(void) {
         }
     }
 
-    printf("opening file\n");
     f = fopen("temp_files/fd.dat","w");
 
     fwrite(&work[l_f(0,NGHY,0)],sizeof(double),nx*ny,f);
@@ -644,14 +630,12 @@ void read_domain(char *directory) {
     char filename[512];
     double temp;
     int i,j;
-    printf("Reading domain\n");
     fx = fopen("domain_x.dat","r");
     if (fx == NULL) printf("Error reading %s\n",filename);
 
     for(i=0;i<size_x+1;i++) {
         fscanf(fx,"%lg\n",&Xmin[i]);
     }
-    printf("Read xmin\n");
     fy = fopen("domain_y.dat","r");
     if (fy == NULL) printf("Error reading %s\n",filename);
     for(j=0;j<size_y+1;j++) {
@@ -667,17 +651,14 @@ void read_domain(char *directory) {
         }
     }
 */
-    printf("Read ymin\n");
    
 
     for(i=0;i<size_x;i++) {
         Xmed[i] = .5*(Xmin[i] + Xmin[i+1]);
     }
-    printf("Read xmed\n");
     for(j=0;j<size_y;j++) {
         Ymed[j] = .5*(Ymin[j] + Ymin[j+1]);
     }
-    printf("Read ymed\n");
 
     fclose(fx);
     fclose(fy);
