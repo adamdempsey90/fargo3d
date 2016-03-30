@@ -374,7 +374,7 @@ class Field(Mesh, Parameters):
     name_dict['lambda_ex'] = '$\\Lambda_{ex}$'
     name_dict['rhostar'] = '$\\Sigma^*$'
     name_dict['taurr'] = '$\\Pi_{rr}$'
-    name_dict['taupp'] = '$\\Pi_{\\phi\\phi$'
+    name_dict['taupp'] = '$\\Pi_{\\phi\\phi}$'
     name_dict['taurp'] = '$\\Pi_{r\\phi}$'
 
     def __init__(self, Q, num, staggered='c', directory='', dtype='float64'):
@@ -410,10 +410,11 @@ class Field(Mesh, Parameters):
 
         self.data = self.__open_field(directory+field.format(num),dtype,tens=tens) #The scalar data is here.
       #  self.data = self.set_boundary()
-        self.avg = self.data.mean(axis=1)
+        self.recalculate()
         self.wkz = self.ymin + (self.ymax-self.ymin)*self.wkzin
         self.wkzr = self.ymax - (self.ymax-self.ymin)*self.wkzout
-        self.ft = fft.rfft(self.data,axis=1)/self.nx
+        #self.ft = fft.rfft(self.data,axis=1)/self.nx
+        #self.avg = self.data.mean(axis=1)
 
 
     def __open_field(self, f, dtype,tens=None):
@@ -436,7 +437,7 @@ class Field(Mesh, Parameters):
             elif tens == 'taupp':
                 return field[self.nx*self.ny:2*self.nx*self.ny].reshape(self.ny, self.nx)
             elif tens == 'taurp':
-                return field[2*self.nx*self.ny:3*self.nx*self.ny].reshape(self.ny, self.nx)
+                return field[-self.nx*self.ny:].reshape(self.ny, self.nx)
             else:
                 print 'Invalid tensor specified'
                 return None
@@ -445,8 +446,9 @@ class Field(Mesh, Parameters):
     def recalculate(self):
         self.avg = self.data.mean(axis=1)
         self.ft = fft.rfft(self.data,axis=1)/self.nx
+        self.grad = self.gradient()
 
-    def grad(self):
+    def gradient(self):
         q = copy.copy(self.data)
         res = zeros(q.shape)
         one_dim = False
@@ -694,12 +696,16 @@ class Field(Mesh, Parameters):
             else:
                 ax.set_ylim(self.x[0],self.x[-1])
         cbar = colorbar(line2d,ax=ax)
-        if log:
-            ax.set_title('$\\log_{10}$'+self.math_name,fontsize=fontsize)
-        elif abslog:
-            ax.set_title('$\\log_{10}|$'+self.math_name+'$|$',fontsize=fontsize)
+
+        if title is None:
+            if log:
+                ax.set_title('$\\log_{10}$'+self.math_name,fontsize=fontsize)
+            elif abslog:
+                ax.set_title('$\\log_{10}|$'+self.math_name+'$|$',fontsize=fontsize)
+            else:
+                ax.set_title(self.math_name,fontsize=fontsize)
         else:
-            ax.set_title(self.math_name,fontsize=fontsize)
+            ax.set_title(title,fontsize=fontsize)
 
     def contour(self, log=False, cartesian=False, **karg):
         if log:
@@ -1223,13 +1229,13 @@ class Sim(Mesh,Parameters):
         self.mdot = Field('mdot',0,directory=self.directory,staggered='y')
         self.rhostar = Field('rhostar',0,directory=self.directory,staggered='y')
         self.taurr = Field('taurr',0,directory=self.directory)
-        self.taupp = Field('taurp',0,directory=self.directory)
-        self.taurp = Field('taupp',0,directory=self.directory,staggered='xy')
+        self.taupp = Field('taupp',0,directory=self.directory)
+        self.taurp = Field('taurp',0,directory=self.directory,staggered='xy')
 
-        callstr = ['rm',self.directory+'param_file.txt',self.directory+'temp_files/*']
+        callstr = ['rm',self.directory+'param_file.txt']
         call(callstr)
         callstr = ['rm','-rf',self.directory+'temp_files/']
-
+        call(callstr)
         return
 
     def fpred(self,x):
