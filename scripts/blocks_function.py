@@ -9,7 +9,7 @@ SCRIPTSDIR = "scripts"
 SRCDIR     = "src"
 BINDIR     = "bin"
 C2CUDA     = "scripts/c2cuda.py"
-EXENAME = "fargo3d_748x1382"
+EXENAME = "fargo3d_5600x4096"# "fargo3d_700x512" #"fargo3d_748x1382"
 
 def usage():
     print '\n(blocks.py) Usage: -s --setup=  --> SETUP NAME'

@@ -366,6 +366,8 @@ class Field(Mesh, Parameters):
     Q_dict['taupp'] = 'temp_files/tensor.dat'
     Q_dict['taurp'] = 'temp_files/tensor.dat'
     Q_dict['lstar'] = 'temp_files/lstar.dat'
+    Q_dict['Ld'] = 'temp_files/Ld.dat'
+    Q_dict['Lw'] = 'temp_files/Lw.dat'
 
     name_dict={'dens':'$\\Sigma$', 'vx': '$v_\\phi$', 'vy': '$v_r$'}
     name_dict['mdot'] = '$\\dot{M}$'
@@ -378,6 +380,9 @@ class Field(Mesh, Parameters):
     name_dict['taupp'] = '$\\Pi_{\\phi\\phi}$'
     name_dict['taurp'] = '$\\Pi_{r\\phi}$'
     name_dict['lstar'] = '$l^*$'
+    name_dict['Ld'] = '$L_d$'
+    name_dict['Lw'] = '$L_w$'
+
 
     def __init__(self, Q, num, staggered='c', directory='', dtype='float64'):
         if len(directory) > 1:
@@ -409,8 +414,8 @@ class Field(Mesh, Parameters):
             tens=self.name
         else:
             tens=None
-
-        self.data = self.__open_field(directory+field.format(num),dtype,tens=tens) #The scalar data is here.
+        print 'Loading ',directory+field
+        self.data = self.__open_field(directory+field,dtype,tens=tens) #The scalar data is here.
       #  self.data = self.set_boundary()
         self.recalculate()
         self.wkz = self.ymin + (self.ymax-self.ymin)*self.wkzin
@@ -633,26 +638,26 @@ class Field(Mesh, Parameters):
 
 
 
-    def plot(self, norm=1,shift=0,ax=None,log=False,logx=False, abslog=False,cartesian=False, cmap=viridis, **karg):
+    def plot(self, norm=1,shift=0,ax=None,log=False,logx=False, abslog=False,cartesian=False, title=None,cmap=viridis, **karg):
         """
         A layer to plt.imshow or pcolormesh function.
         if cartesian = True, pcolormesh is launched.
         """
 
-#        if self.x[0] == pi or self.x[-1] != pi:
-#            dp = diff(self.x)[0]
-#            dp *= 2
-#            yn = self.data[:,-1] + (pi - self.x[-1])*(self.data[:,0]-self.data[:,-1])/dp
-#            data = copy.copy(self.data)
-#            data[:,-1] = yn
-#            data[:,0] = yn
-#            x = copy.copy(self.x)
-#            x[-1] = pi
-#            x[0] = -pi
-#
-#        x = copy(self.x)
-        data = (copy.copy(self.data)-shift)/norm
-        x =copy.copy(self.x)
+        if self.x[0] == pi or self.x[-1] != pi:
+            dp = diff(self.x)[0]
+            dp *= 2
+            yn = self.data[:,-1] + (pi - self.x[-1])*(self.data[:,0]-self.data[:,-1])/dp
+            data = (copy.copy(self.data)-shift)/norm
+            data[:,-1] = yn
+            data[:,0] = yn
+            x = copy.copy(self.x)
+            x[-1] = pi
+            x[0] = -pi
+
+        else:
+            data = (copy.copy(self.data)-shift)/norm
+            x =copy.copy(self.x)
         shading = karg.pop('shading','gouraud')
         interpolation = karg.pop('interpolation','bilinear')
         fontsize = karg.pop('fontsize',20)
@@ -1221,9 +1226,10 @@ class Sim(Mesh,Parameters):
         with open(self.directory + 'param_file.txt','w') as f:
             f.write(lines)
 
-        callstr = [execdir+execname,'%d'%i,self.directory+'param_file.txt']
+        callstr = [execdir+execname,'%d'%i,self.directory]
         print ' '.join(callstr)
         call(callstr)
+
 
         self.fw = Field('fw',0,directory=self.directory,staggered='y')
         self.fd = Field('fd',0,directory=self.directory,staggered='y')
@@ -1236,10 +1242,25 @@ class Sim(Mesh,Parameters):
         self.taurp = Field('taurp',0,directory=self.directory,staggered='xy')
         self.lstar = Field('lstar',0,directory=self.directory,staggered='y')
 
+        self.Ld = Field('Ld',0,directory=self.directory)
+        self.Lw = Field('Lw',0,directory=self.directory)
+
         callstr = ['rm',self.directory+'param_file.txt']
         call(callstr)
         callstr = ['rm','-rf',self.directory+'temp_files/']
         call(callstr)
+
+
+
+        indL = self.lambda_ex.y<=self.lambda_ex.wkz
+        indR = self.lambda_ex.y>self.lambda_ex.wkz
+        self.lambda_ex.integral = cumtrapz(self.lambda_ex.avg[indR]*self.lambda_ex.dy[indR])
+        self.lambda_ex.integral = hstack( ( zeros(self.lambda_ex.ny-len(self.lambda_ex.integral)),self.lambda_ex.integral))
+        indL = self.lambda_dep.y<=self.lambda_dep.wkz
+        indR = self.lambda_dep.y>self.lambda_dep.wkz
+        self.lambda_dep.integral = cumtrapz(self.lambda_dep.avg[indR]*self.lambda_dep.dy[indR])
+        self.lambda_dep.integral = hstack( ( zeros(self.lambda_dep.ny-len(self.lambda_dep.integral)),self.lambda_dep.integral))
+
         return
 
     def fpred(self,x):

@@ -27,8 +27,8 @@ void InitVariables() {
   init_var("ASPECTRATIO", (char*)&ASPECTRATIO, REAL, NO, "0.05");
   init_var("NINTERM", (char*)&NINTERM, INT, NO, "20");
   init_var("NTOT", (char*)&NTOT, INT, NO, "10000");
-  init_var("NX", (char*)&NX, INT, NO, "1382");
-  init_var("NY", (char*)&NY, INT, NO, "748");
+  init_var("NX", (char*)&NX, INT, NO, "1400");
+  init_var("NY", (char*)&NY, INT, NO, "1024");
   init_var("MEND", (char*)&MEND, INT, NO, "2");
   init_var("MSTART", (char*)&MSTART, INT, NO, "2");
   init_var("PLANETCONFIG", (char*)&PLANETCONFIG, STRING, NO, "planets/jupiter.cfg");

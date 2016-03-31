@@ -64,26 +64,28 @@ void read_param_file(char *filename);
 void add_boundary(void);
 double Nu(double x);
 double Cs(double x);
-void set_lam_ex(void);
-void set_tensor(void);
-void set_mdot(void);
+void set_lam_ex(char *directory);
+void set_tensor(char *directory);
+void set_mdot(char *directory);
 void set_slopes(double *q); 
-void set_rhostar(void);
+void set_rhostar(char *directory);
 void clear_work(void);
-void set_Fd(void);
-void set_Twd(void);
-void set_lstar(void);
+void set_Fd(char *directory);
+void set_Twd(char *directory);
+void set_lstar(char *directory);
 void transport(double *q);
-
+void set_Ld(char *directory);
 
 int main(int arc, char *argv[]) { 
   int n;
   int i,j,k;
-  char directory[50];
+  char directory[256];
   char param_fname[100];
 
   n = atoi(argv[1]);
-  strcpy(param_fname,argv[2]);
+  strcpy(directory,argv[2]);
+  sprintf(param_fname,"%sparam_file.txt",directory);
+//strcpy(param_fname,argv[2]);
 
   read_param_file(param_fname);
 
@@ -116,6 +118,7 @@ int main(int arc, char *argv[]) {
   tauyy =     (double*)malloc(sizeof(double)*size_x*size_y*size_z);
   tauxy = (double*)malloc(sizeof(double)*size_x*size_y*size_z);
 
+
   work = (double*)malloc(sizeof(double)*size_x*size_y*size_z);
   work1 = (double*)malloc(sizeof(double)*size_x*size_y*size_z);
 
@@ -137,18 +140,20 @@ int main(int arc, char *argv[]) {
     }
   }
 
-  read_domain(NULL); 
-  read_files(n,NULL);
+  read_domain(directory); 
+  read_files(n,directory);
   add_boundary();
-  set_mdot();
-  set_lstar();
+  set_rhostar(directory);
+  set_mdot(directory);
+  set_lstar(directory);
   clear_work();
-  set_tensor();
-  set_lam_ex();
+  set_tensor(directory);
+  set_lam_ex(directory);
   clear_work();
-  set_Fd();
-  set_Twd();
-  
+  set_Fd(directory);
+  set_Twd(directory);
+  set_Ld(directory);
+
   free(Xmin);
   free(Ymin);
   free(Xmed);
@@ -175,12 +180,68 @@ double Cs(double x) {
     return params.h*pow(x,params.flaringindex-0.5);
 }
 
-void set_tensor(void) {
+void set_Ld(char *directory) {
+    int i,j,k;
+    k=0;
+
+    double Ld,Lw,Ltot;
+    double rhoavg, lavg;
+    double fac;
+    char filename[256];
+    sprintf(filename,"%stemp_files/Ld.dat",directory);
+    printf("Writing %s\n",filename);
+    FILE *f= fopen(filename,"w");
+
+/*
+    for(j=NGHY;j<size_y-NGHY;j++) {
+        for(i=0;i<size_x;i++) {
+            fwrite(&work[l],sizeof(double),1,f);
+        }
+    }
+*/
+
+    char filename2[256]; 
+    sprintf(filename2,"%stemp_files/Lw.dat",directory);
+    printf("Writing %s\n",filename2);
+    FILE *f1= fopen(filename2,"w");
+
+    for(j=NGHY;j<size_y-NGHY;j++) {
+        rhoavg = 0;
+        lavg = 0;
+        fac  = 2*M_PI*ymed(j);
+        for(i=0;i<size_x;i++) {
+            rhoavg += rho[l];
+            lavg += .5*(vx[l]+vx[lxm])*ymed(j);
+        }
+        rhoavg /=(double)nx;
+        lavg /=(double)nx;
+
+        for(i=0;i<size_x;i++) {
+            
+            Ld = fac*rhoavg*lavg;
+            Lw = fac*(rho[l]-rhoavg)*( (vx[l]+vx[lxm])*.5*ymed(j)-lavg);
+
+
+            fwrite(&Ld,sizeof(double),1,f);
+            fwrite(&Lw,sizeof(double),1,f1);
+        }
+
+        }
+    fclose(f);
+    fclose(f1);
+
+    return;
+}
+void set_tensor(char *directory) {
     int i,j,k;
     double visc, viscm, div_v;
+    double cs, csm;
     k = 0;
 
     for(j=1;j<size_y-1;j++) {
+        cs = Cs(ymed(j));
+        csm = Cs(ymin(j));
+        cs *= cs; csm *= csm;
         for(i=0;i<size_x;i++) {
             visc = Nu(ymed(j));
             viscm = Nu(ymin(j));
@@ -191,55 +252,28 @@ void set_tensor(void) {
 
             tauxx[l] = visc*rho[l]*(2.0*(vx[lxp]-vx[l])/zone_size_x(j,k) - div_v);
             tauxx[l] += visc*rho[l]*(vy[lyp]+vy[l])/ymed(j);
+            tauxx[l] += -cs*rho[l]; // Isothermal Pressure
             tauyy[l] = visc*rho[l]*(2.0*(vy[lyp]-vy[l])/(ymin(j+1)-ymin(j)) - div_v);
+            tauyy[l] += -cs*rho[l]; // Isothermal Pressure
 
 
-            tauxy[l] = viscm*.5*(rhos[l]+rhos[lxm])*((vy[l]-vy[lxm])/(dx*ymin(j)) + (vx[l]-vx[lym])/(ymed(j)-ymed(j-1))-.5*(vx[l]+vx[lym])/ymin(j)); //centered on left, inner vertical edge in z
-//            tauxy[l] = viscm*.25*(rho[l]+rho[lxm]+rho[lym]+rho[lxm-pitch])*((vy[l]-vy[lxm])/(dx*ymin(j)) + (vx[l]-vx[lym])/(ymed(j)-ymed(j-1))-.5*(vx[l]+vx[lym])/ymin(j)); //centered on left, inner vertical edge in z
+           // tauxy[l] = viscm*.5*(rhos[l]+rhos[lxm])*((vy[l]-vy[lxm])/(dx*ymin(j)) + (vx[l]-vx[lym])/(ymed(j)-ymed(j-1))-.5*(vx[l]+vx[lym])/ymin(j)); //centered on left, inner vertical edge in z
+            tauxy[l] = viscm*.25*(rho[l]+rho[lxm]+rho[lym]+rho[lxm-pitch])*((vy[l]-vy[lxm])/(dx*ymin(j)) + (vx[l]-vx[lym])/(ymed(j)-ymed(j-1))-.5*(vx[l]+vx[lym])/ymin(j)); //centered on left, inner vertical edge in z
             
 
         }
     }
-    /*
-    j=0;
-    for(i=0;i<size_x;i++) {
-        tauxx[l] = tauxx[lyp];
-        tauyy[l] = tauyy[lyp];
-        tauxy[l] = tauxy[lyp];
-    }
-    printf("Finished 2.\n");
-    j=size_y-1;
-    for(i=0;i<size_x;i++) {
-        tauxx[l] = tauxx[lym];
-        tauyy[l] = tauyy[lym];
-        tauxy[l] = tauxy[lym];
-    }
-*/
 
-    FILE *f= fopen("temp_files/tensor.dat","w");
+    char filename[256];
+    sprintf(filename,"%stemp_files/tensor.dat",directory);
+    printf("Writing %s\n",filename);
+    FILE *f= fopen(filename,"w");
     if (f==NULL) printf("Error loading temp_files/tensor.dat\n");
     k=0;
 
     fwrite(&tauxx[l_f(0,NGHY,0)],sizeof(double),nx*ny,f);
     fwrite(&tauyy[l_f(0,NGHY,0)],sizeof(double),nx*ny,f);
     fwrite(&tauxy[l_f(0,NGHY,0)],sizeof(double),nx*ny,f);
-/*
-    for(j=NGHY;j<size_y-NGHY;j++) {
-        for(i=0;i<size_x;i++) {        
-            fwrite(&tauxx[l],sizeof(double),1,f);
-        }
-    }
-    for(j=NGHY;j<size_y-NGHY;j++) {
-        for(i=0;i<size_x;i++) {        
-            fwrite(&tauyy[l],sizeof(double),1,f);
-        }
-    }
-    for(j=NGHY;j<size_y-NGHY;j++) {
-        for(i=0;i<size_x;i++) {        
-            fwrite(&tauxy[l],sizeof(double),1,f);
-        }
-    }
-*/
     fclose(f);
 
     return;
@@ -299,9 +333,8 @@ void transport(double *qs) {
     return;
 }
     
-void set_rhostar(void) {
+void set_rhostar(char *directory) {
     int i,j,k;
-    FILE *f;
     k = 0;
     set_slopes(rho);
 
@@ -317,20 +350,16 @@ void set_rhostar(void) {
       }
 
     }
-    f = fopen("temp_files/rhostar.dat","w");
+    char filename[256];
+    sprintf(filename,"%stemp_files/rhostar.dat",directory);
+    printf("Writing %s\n",filename);
+    FILE *f= fopen(filename,"w");
     fwrite(&rhos[l_f(0,NGHY,0)],sizeof(double),nx*ny,f);
-/*
-    for(j=NGHY;j<size_y-NGHY;j++) {
-        for(i=0;i<size_x;i++) {
-            fwrite(&rhos[l],sizeof(double),1,f);
-        }
-    }
-*/
     fclose(f);
     return;
 }
 
-void set_lstar(void) {
+void set_lstar(char *directory) {
     int i,j,k;
     k=0;
     transport(momp);
@@ -343,7 +372,10 @@ void set_lstar(void) {
         }
     }
 
-    FILE *f = fopen("temp_files/lstar.dat","w");
+    char filename[256];
+    sprintf(filename,"%stemp_files/lstar.dat",directory);
+    printf("Writing %s\n",filename);
+    FILE *f= fopen(filename,"w");
     fwrite(&lstar[l_f(0,NGHY,0)],sizeof(double),nx*ny,f);
     fclose(f);
 
@@ -351,12 +383,10 @@ void set_lstar(void) {
 
 }
 
-void set_mdot(void) {
+void set_mdot(char *directory) {
     int i,j,k;
     k = 0;
-    FILE *f;
 
-    set_rhostar();
     
 
     for(j=1;j<size_y-1;j++) {
@@ -364,7 +394,10 @@ void set_mdot(void) {
 	        mdot[l] = -nx*vy[l]*rhos[l]*SurfY(j,k) ;
         }
     }
-    f = fopen("temp_files/mdot.dat","w");
+    char filename[256];
+    sprintf(filename,"%stemp_files/mdot.dat",directory);
+    printf("Writing %s\n",filename);
+    FILE *f= fopen(filename,"w");
 
     fwrite(&mdot[l_f(0,NGHY,0)],sizeof(double),nx*ny,f);
     fclose(f);
@@ -373,15 +406,18 @@ void set_mdot(void) {
 }
 
 
-void set_lam_ex(void) {
+void set_lam_ex(char *directory) {
     int i,j,k;
-    FILE *f;
+
     double smoothing = params.soft*params.h*pow(params.a,1 + params.flaringindex);
     smoothing *= smoothing;
     double rad,res;
     double pot;
 
-    f = fopen("temp_files/lambda_ex.dat","w");
+    char filename[256];
+    sprintf(filename,"%stemp_files/lambda_ex.dat",directory);
+    printf("Writing %s\n",filename);
+    FILE *f= fopen(filename,"w");
 
     k = 0;
     for(j=NGHY;j<size_y-NGHY;j++) {
@@ -399,8 +435,7 @@ void set_lam_ex(void) {
 
 }
 
-void set_Twd(void) {
-    FILE *f;
+void set_Twd(char *directory) {
     int i,j,k;
     double lc;
     k=0;
@@ -444,11 +479,14 @@ void set_Twd(void) {
         rho_bar = rhobar[j];
         for(i=0;i<size_x;i++) {
             rho_edge = rhos[l]; //(rho[lym]+rho[l])*.5;
-            fac1 = .5*(ymin(j+1)*ymin(j+1)*(tauxy[lyp]+tauxy[lxp+pitch])-ymin(j-1)*ymin(j-1)*(tauxy[lym]+tauxy[lxp-pitch]))/(ymin(j+1)-ymin(j-1));
-            work[l] = ( .25*(tauxx[lxp]-tauxx[lxm]+tauxx[lxp-pitch]-tauxx[lxm-pitch])/(dx) + fac1/ymin(j))*2*M_PI*ymin(j)*rho_bar/rho_edge;//(dbar[j]+dbar[j-1])*.5;
-            work[l] -= 2*M_PI*fac1;
-            work[l] += (-mdot[l]-rho_bar*vybar[j]*2*M_PI*ymin(j))*dlbar[j];
-            work[l] -= 2*M_PI*ymin(j)*rho_bar*(vy[l]*(lstar[l]-lstar[lym])/zone_size_y(j,k) - vybar[j]*dlbar[j]);
+            fac1 = M_PI*(ymin(j+1)*ymin(j+1)*(tauxy[lyp]+tauxy[lxp+pitch])-ymin(j-1)*ymin(j-1)*(tauxy[lym]+tauxy[lxp-pitch]))/(ymin(j+1)-ymin(j-1));
+            work[l] = ( .5*M_PI*ymin(j)*(tauxx[lxp]+tauxx[lxp-pitch]-(tauxx[lxm]+tauxx[lxm-pitch]))/(dx) + fac1)*rho_bar/rho_edge;//(dbar[j]+dbar[j-1])*.5;
+            work[l] -= fac1;
+
+            work[l] += 2*M_PI*ymin(j)*(rhos[l]-rhobar[j])*(vy[l]-vybar[j])*(lbar[j+1]-lbar[j-1])/(ymin(j+1)-ymin(j-1));
+            work[l] -= 2*M_PI*ymin(j)*rhobar[j]* (vy[l]-vybar[j])*(lstar[lyp]-lbar[j+1] - (lstar[lym]-lbar[j-1]))/(ymin(j+1)-ymin(j-1));
+            //work[l] += (-mdot[l]-rho_bar*vybar[j]*2*M_PI*ymin(j))*dlbar[j];
+           // work[l] -= 2*M_PI*ymin(j)*rho_bar*(vy[l]*(lstar[lyp]-lstar[lym])/(ymin(j+1)-ymin(j)) - vybar[j]*dlbar[j]);
             //work[l] -= 2*M_PI*ymin(j)*rho_bar*(vy[l]*.5*(ymed(j)*vx[l]-ymed(j-1)*vx[lym]+ymed(j)*vx[lxp]-ymed(j-1)*vx[lxp-pitch])/(ymed(j)-ymed(j-1)) - vybar[j]*dlbar[j]);
 
 //	        work1[l] = 2.0*(tauxx[l]-tauxx[lxm])/(zone_size_x(j,k)*(rho[l]+rho[lxm]));
@@ -456,7 +494,10 @@ void set_Twd(void) {
         }
     }
 
-    f = fopen("temp_files/lambda_dep.dat","w");
+    char filename[256];
+    sprintf(filename,"%stemp_files/lambda_dep.dat",directory);
+    printf("Writing %s\n",filename);
+    FILE *f= fopen(filename,"w");
 
     fwrite(&work[l_f(0,NGHY,0)],sizeof(double),nx*ny,f);
 /*
@@ -478,8 +519,8 @@ void set_Twd(void) {
 }
 
 
-void set_Fd(void) {
-    FILE *f;
+void set_Fd(char *directory) {
+
     int i,j,k;
     double lc;
     k=0;
@@ -504,14 +545,19 @@ void set_Fd(void) {
         for(i=0;i<size_x;i++) {
             work[l] = -mdbar[j]*lbar[j] - M_PI*ymin(j)*ymin(j)*(tauxy[l]+tauxy[lxp]);
             //work[l] = -mdbar[j]*.5*(lbar[j]+lbar[j+1]) - M_PI*ymin(j)*ymin(j)*(tauxy[l]+tauxy[lxp]);
-            work1[l] = -mdot[l]*lstar[l] + mdbar[j]*lbar[j];
-            //work1[l] = -mdot[l]*.5*(vx[l]*ymed(j)+vx[lyp]*ymed(j+1)) + mdbar[j]*.5*(lbar[j]+lbar[j+1]);
+
+            work1[l] = -( mdot[l]-mdbar[j])*(lstar[l]-lbar[j]);
         }
     }
 
-    f = fopen("temp_files/fd.dat","w");
+    char filename[256];
+    sprintf(filename,"%stemp_files/fd.dat",directory);
+    printf("Writing %s\n",filename);
+    FILE *f= fopen(filename,"w");
 
     fwrite(&work[l_f(0,NGHY,0)],sizeof(double),nx*ny,f);
+
+
 /*
     for(j=NGHY;j<size_y-NGHY;j++) {
         for(i=0;i<size_x;i++) {
@@ -521,7 +567,10 @@ void set_Fd(void) {
 */
     fclose(f);
 
-    f = fopen("temp_files/fw.dat","w");
+    char filename2[256]; 
+    sprintf(filename2,"%stemp_files/fw.dat",directory);
+    printf("Writing %s\n",filename);
+    f= fopen(filename2,"w");
 
     fwrite(&work1[l_f(0,NGHY,0)],sizeof(double),nx*ny,f);
 /*
@@ -597,6 +646,7 @@ void add_boundary(void) {
 void read_param_file(char *filename) {
     FILE *f;
     
+    printf("Reading %s\n",filename);
     f = fopen(filename,"r");
     if (f == NULL) {
         printf("Can't find parameter file, %s\n",filename);
@@ -628,19 +678,27 @@ void read_param_file(char *filename) {
 void read_domain(char *directory) {
     FILE *fx, *fy;
     char filename[512];
+    char filename2[512];
     double temp;
     int i,j;
-    fx = fopen("domain_x.dat","r");
+
+    sprintf(filename,"%sdomain_x.dat",directory);
+    printf("Reading %s\n",filename);
+    fx = fopen(filename,"r");
     if (fx == NULL) printf("Error reading %s\n",filename);
 
     for(i=0;i<size_x+1;i++) {
         fscanf(fx,"%lg\n",&Xmin[i]);
     }
-    fy = fopen("domain_y.dat","r");
+    fclose(fx);
+    sprintf(filename2,"%sdomain_y.dat",directory);
+    printf("Reading %s\n",filename2);
+    fy = fopen(filename2,"r");
     if (fy == NULL) printf("Error reading %s\n",filename);
     for(j=0;j<size_y+1;j++) {
             fscanf(fy,"%lg\n",&Ymin[j]);
     }
+    fclose(fy);
 /*
     for(j=0;j<ny+2*NGHY;j++) {
         if ( (j < NGHY) || j >= (ny+1+2*NGHY-NGHY) ) {
@@ -659,9 +717,6 @@ void read_domain(char *directory) {
     for(j=0;j<size_y;j++) {
         Ymed[j] = .5*(Ymin[j] + Ymin[j+1]);
     }
-
-    fclose(fx);
-    fclose(fy);
     return;
 }
 
@@ -669,17 +724,19 @@ void read_files(int n, char *directory) {
     char filename[512];
     FILE *fd,*fx,*fy;
     int i,j,k;
-    if (directory == NULL) {
-    sprintf(filename,"gasdens%d.dat",n);
+    
+    sprintf(filename,"%sgasdens%d.dat",directory,n);
+    printf("Reading %s\n",filename);
     fd = fopen(filename,"r");
     if (fd == NULL) printf("Error loading %s\n",filename); 
-    sprintf(filename,"gasvx%d.dat",n);
+    sprintf(filename,"%sgasvx%d.dat",directory,n);
+    printf("Reading %s\n",filename);
     fx = fopen(filename,"r");
     if (fx == NULL) printf("Error loading %s\n",filename); 
-    sprintf(filename,"gasvy%d.dat",n);
+    sprintf(filename,"%sgasvy%d.dat",directory,n);
+    printf("Reading %s\n",filename);
     fy = fopen(filename,"r");
     if (fy == NULL) printf("Error loading %s\n",filename); 
-    }
     for(k=0;k<size_z;k++) {
         for(j =NGHY; j<size_y-NGHY;j++) {
             for(i=0;i<size_x;i++) {
