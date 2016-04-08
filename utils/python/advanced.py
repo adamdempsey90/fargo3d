@@ -555,7 +555,7 @@ class Field(Mesh, Parameters):
 #        slope = (ind>0).astype(int) * 2*dqm*dqp/(dqm+dqp)
 #        mdot[1:-1,:] = (vy>0).astype(int)*(rho[:-2,:]+.5*slope[:-2,:]*dy[:-2,:]) + (vy<=0).astype(int)*(rho[1:,:]-.5*slope[1:,:]*dy[1:,:])
 
-    def plotmode(self,m,ax=None,norm=1,shift=0,planet=None,xlims=None,ylims=None,logx=False,**karg):
+    def plotmode(self,m,ax=None,norm=1,shift=0,mag=False,planet=None,xlims=None,ylims=None,logx=False,logy=False,**karg):
 
         try:
             m[0]
@@ -577,14 +577,24 @@ class Field(Mesh, Parameters):
             ax=fig.add_subplot(111)
 
         color = karg.pop('color','k')
-        for i in m:
-            ax.plot(y,self.ft[:,i].real,'-',label='$m=%d$'%i,**karg)
-        ax.set_prop_cycle(None)
-        for i in m:
-            ax.plot(y,self.ft[:,i].imag,'--',**karg)
+
+        if mag:
+            for i in m:
+                ax.plot(y,(self.ft[:,i]*conj(self.ft[:,i])).real,'-',label='$m=%d$'%i,**karg)
+            ax.set_ylabel('$|\\hat{' + self.math_name.strip('$') + '}|^2$' ,fontsize=fontsize)
+
+        else:
+            for i in m:
+                ax.plot(y,self.ft[:,i].real,'-',label='$m=%d$'%i,**karg)
+            ax.set_prop_cycle(None)
+            for i in m:
+                ax.plot(y,self.ft[:,i].imag,'--',**karg)
+            ax.set_ylabel('$\\hat{' + self.math_name.strip('$') + '}$' ,fontsize=fontsize)
+
+
 
         ax.set_xlabel(xstr,fontsize=fontsize)
-        ax.set_ylabel('$\\hat{' + self.math_name.strip('$') + '}$' ,fontsize=fontsize)
+
         if len(m) < 6:
             ax.set_title('$m=$' + ','.join(['%d'%i for i in m]),fontsize=fontsize)
             ax.legend(loc='best')
@@ -594,6 +604,8 @@ class Field(Mesh, Parameters):
         if logx and planet is None:
             ax.set_xscale('log')
 
+        if logy and mag:
+            ax.set_yscale('log')
         ax.minorticks_on()
         if xlims is not None:
             ax.set_xlim(xlims)
@@ -1103,13 +1115,14 @@ class Sim(Mesh,Parameters):
                 directory += '/'
         self.directory = directory
         self.fargodir = fargodir
-        self.dens = Field('dens',i,directory=directory)
-        self.vx = Field('vx',i,directory=directory,staggered='x')
-        self.vr = Field('vy',i,directory=directory,staggered='y')
 
         Mesh.__init__(self,directory)
         self.params=Parameters(directory)
 
+        self.t = i * self.params.dt * self.params.ninterm
+        self.dens = Field('dens',i,directory=directory)
+        self.vx = Field('vx',i,directory=directory,staggered='x')
+        self.vr = Field('vy',i,directory=directory,staggered='y')
 
 
 #        self.Pi = Tensor(self.dens,self.vp,self.vr)
@@ -1141,15 +1154,14 @@ class Sim(Mesh,Parameters):
 #    	self.mdot_full = -2*pi*self.rr*(self.vr.data*self.dens.data)
 #        self.mdot = self.mdot_full.mean(axis=1)
         try:
-    	    _,self.px,self.py,self.pz,self.pvx,self.pvy,self.pvz,self.mp,self.t,self.omf  = loadtxt(directory+'planet{0:d}.dat'.format(p))[i,:]
+    	    _,self.px,self.py,self.pz,self.pvx,self.pvy,self.pvz,self.mp,_,self.omf  = loadtxt(directory+'planet{0:d}.dat'.format(p))[i,:]
         except IndexError:
             try:
-    	        _,self.px,self.py,self.pz,self.pvx,self.pvy,self.pvz,self.mp,self.t,self.omf  = loadtxt(directory+'planet{0:d}.dat'.format(p))[-1,:]
+    	        _,self.px,self.py,self.pz,self.pvx,self.pvy,self.pvz,self.mp,_,self.omf  = loadtxt(directory+'planet{0:d}.dat'.format(p))[-1,:]
             except IndexError:
-    	        _,self.px,self.py,self.pz,self.pvx,self.pvy,self.pvz,self.mp,self.t,self.omf  = loadtxt(directory+'planet{0:d}.dat'.format(p))
+    	        _,self.px,self.py,self.pz,self.pvx,self.pvy,self.pvz,self.mp,_,self.omf  = loadtxt(directory+'planet{0:d}.dat'.format(p))
 
 
-        self.t = i * self.params.dt * self.params.ninterm
     	self.a = sqrt(self.px**2  + self.py**2)
         self.K = self.mp**2 / (self.dens.alpha * self.dens.aspectratio**5)
 
@@ -1158,7 +1170,7 @@ class Sim(Mesh,Parameters):
         self.vp.data += self.vp.y[:,newaxis]*self.omf
         self.vp.recalculate()
 
-        self.mdot,self.rhos,self.rhosp = self.calc_flux()
+        #self.mdot,self.rhos,self.rhosp = self.calc_flux()
         self.sig0  = self.dens.mdot/(3*pi*self.nu(self.dens.y))
         try:
             self.nu0 = self.dens.alpha*self.dens.aspectratio*self.dens.aspectratio
@@ -1172,6 +1184,7 @@ class Sim(Mesh,Parameters):
         self.rh = (self.mp/3)**(1./3) * self.a
         self.safety_fac  = .5
 
+        print 'The time is %.2e, %.2e outer viscous times, %.2e planet viscous times, %.2e planet orbits' %(self.t,self.t/self.tvisc, self.t/self.tviscp,self.t/self.torb)
 #        self.dTr,self.Lambda,self.Fh=self.calc_torques()
 
 ##    	self.omega = zeros(self.vp.data.shape)
