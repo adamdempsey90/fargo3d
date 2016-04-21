@@ -342,6 +342,10 @@ class Parameters():
         self._params = par             # A control atribute, actually not used, good for debbuging
         for name in par:               # Iterating over the dictionary
             exec("self."+name.lower()+"="+par[name]) #Making the atributes at runtime
+        try:
+            self.alpha
+        except AttributeError:
+            self.alpha = self.alphaviscosity
 
 
 class Field(Mesh, Parameters):
@@ -368,6 +372,8 @@ class Field(Mesh, Parameters):
     Q_dict['lstar'] = 'temp_files/lstar.dat'
     Q_dict['Ld'] = 'temp_files/Ld.dat'
     Q_dict['Lw'] = 'temp_files/Lw.dat'
+    Q_dict['pot'] = 'temp_files/pot.dat'
+    Q_dict['rhoslope'] = 'temp_files/rhoslope.dat'
 
     name_dict={'dens':'$\\Sigma$', 'vx': '$v_\\phi$', 'vy': '$v_r$'}
     name_dict['mdot'] = '$\\dot{M}$'
@@ -382,7 +388,9 @@ class Field(Mesh, Parameters):
     name_dict['lstar'] = '$l^*$'
     name_dict['Ld'] = '$L_d$'
     name_dict['Lw'] = '$L_w$'
+    name_dict['pot'] = '$\\partial_\\phi \\Phi$'
 
+    name_dict['rhoslope'] = '$\\partial_r \\Sigma^*$'
 
     def __init__(self, Q, num, staggered='c', directory='', dtype='float64'):
         if len(directory) > 1:
@@ -417,9 +425,17 @@ class Field(Mesh, Parameters):
         print 'Loading ',directory+field
         self.data = self.__open_field(directory+field,dtype,tens=tens) #The scalar data is here.
       #  self.data = self.set_boundary()
+        try:
+            self.alpha
+        except AttributeError:
+            self.alpha = self.alphaviscosity
         self.recalculate()
-        self.wkz = self.ymin + (self.ymax-self.ymin)*self.wkzin
-        self.wkzr = self.ymax - (self.ymax-self.ymin)*self.wkzout
+        try:
+            self.wkz = self.ymin + (self.ymax-self.ymin)*self.wkzin
+            self.wkzr = self.ymax - (self.ymax-self.ymin)*self.wkzout
+        except AttributeError:
+            self.wkzr = self.ymax
+            self.wkz = self.ymin
         #self.ft = fft.rfft(self.data,axis=1)/self.nx
         #self.avg = self.data.mean(axis=1)
 
@@ -454,6 +470,7 @@ class Field(Mesh, Parameters):
         self.avg = self.data.mean(axis=1)
         self.ft = fft.rfft(self.data,axis=1)/self.nx
         self.grad = self.gradient()
+        self.power = (self.ft*conj(self.ft)*self.dy[:,newaxis]).sum(axis=0).real
 
     def gradient(self):
         q = copy.copy(self.data)
@@ -555,6 +572,32 @@ class Field(Mesh, Parameters):
 #        slope = (ind>0).astype(int) * 2*dqm*dqp/(dqm+dqp)
 #        mdot[1:-1,:] = (vy>0).astype(int)*(rho[:-2,:]+.5*slope[:-2,:]*dy[:-2,:]) + (vy<=0).astype(int)*(rho[1:,:]-.5*slope[1:,:]*dy[1:,:])
 
+    def plotmode_summary(self,mag=False,planet=None,xlims=None,ylims=None,log=False,**karg):
+
+
+        fig,axes=subplots(3,3,sharex=True)
+        subplots_adjust(hspace=0)
+
+        for m,ax in zip(range(9),axes.flatten()):
+            self.plotmode(m,ax=ax,planet=planet,xlims=xlims,ylims=ylims,mag=mag,logy=log,**karg)
+
+        for ax in axes.flatten():
+            ax.set_title('')
+            ax.set_ylabel('')
+            ax.set_xlabel('')
+
+        for ax in axes.flatten()[-3:]:
+            if planet:
+                ax.set_xlabel('$(r-a)/H(a)$',fontsize=20)
+            else:
+                ax.set_xlabel('$r$',fontsize=20)
+
+        if mag:
+            axes[1,0].set_ylabel('$|$'+self.math_name+'$|^2$',fontsize=20,rotation=0,labelpad=20)
+        else:
+            axes[1,0].set_ylabel(self.math_name,fontsize=20,rotation=0,labelpad=20)
+        return fig,axes
+
     def plotmode(self,m,ax=None,norm=1,shift=0,mag=False,planet=None,xlims=None,ylims=None,logx=False,logy=False,**karg):
 
         try:
@@ -612,6 +655,30 @@ class Field(Mesh, Parameters):
         if ylims is not None:
             ax.set_ylim(ylims)
 
+    def plotpower(self,ax=None,log=False,logx=False,logy=False,xlims=None,ylims=None,norm=False,**karg):
+        if ax is None:
+            fig=figure()
+            ax=fig.add_subplot(111)
+
+        dat  = copy.copy(self.power)
+        if norm and dat[0] != 0:
+            dat /= dat[0]
+
+        ax.plot(dat,**karg)
+        ax.set_xlabel('$m$',fontsize=20)
+        ax.set_ylabel('$|$' + self.math_name + '$|_m^2$',fontsize=20)
+        if logx or log:
+            ax.set_xscale('log')
+        if logy or log:
+            ax.set_yscale('log')
+
+        if xlims is not None:
+            ax.set_xlim(xlims)
+        if ylims is not None:
+            ax.set_ylim(ylims)
+
+
+
     def plotavg(self,ax=None,log=False,logx=False,logy=False,xlims=None,ylims=None,planet=None,norm=1,shift=0,**karg):
         fontsize=karg.pop('fontsize',20)
         figsize = karg.pop('figsize',(10,8))
@@ -650,7 +717,7 @@ class Field(Mesh, Parameters):
 
 
 
-    def plot(self, norm=1,shift=0,ax=None,log=False,logx=False, abslog=False,cartesian=False, title=None,cmap=viridis, **karg):
+    def plot(self, norm=1,shift=0,ax=None,clrbar=True,log=False,logx=False, abslog=False,cartesian=False, title=None,cmap=viridis,sample=1, rasterized=False,**karg):
         """
         A layer to plt.imshow or pcolormesh function.
         if cartesian = True, pcolormesh is launched.
@@ -659,7 +726,7 @@ class Field(Mesh, Parameters):
         if self.x[0] == pi or self.x[-1] != pi:
             dp = diff(self.x)[0]
             dp *= 2
-            yn = self.data[:,-1] + (pi - self.x[-1])*(self.data[:,0]-self.data[:,-1])/dp
+            yn =self.data[:,-1] + (pi - self.x[-1])*(self.data[:,0]-self.data[:,-1])/dp
             data = (copy.copy(self.data)-shift)/norm
             data[:,-1] = yn
             data[:,0] = yn
@@ -670,12 +737,19 @@ class Field(Mesh, Parameters):
         else:
             data = (copy.copy(self.data)-shift)/norm
             x =copy.copy(self.x)
+
+        ny,nx = data.shape
+        indy = range(0,ny,sample)
+        indx = range(10) + range(10,nx-10,sample)+range(nx-10,nx)
+        data = data[indy,:][:,indx]
+        x = x[indx]
+        y = self.y[indy]
         shading = karg.pop('shading','gouraud')
         interpolation = karg.pop('interpolation','bilinear')
         fontsize = karg.pop('fontsize',20)
         xlims = karg.pop('xlims',None)
         ylims = karg.pop('ylims',None)
-        T,R = meshgrid(x,self.y)
+        T,R = meshgrid(x,y)
         if ax == None:
             fig=figure()
             ax=fig.add_subplot(111)
@@ -699,22 +773,23 @@ class Field(Mesh, Parameters):
                 if xlims is not None:
                     ax.set_xlim(log10(xlims[0]),log10(xlims[1]))
                 else:
-                    ax.set_xlim(log10(self.y[0]),log10(self.y[-1]))
+                    ax.set_xlim(log10(y[0]),log10(y[-1]))
             else:
                 line2d=ax.pcolormesh(R,T,data, cmap = cmap,shading=shading,**karg)
                 ax.set_xlabel('$r$',fontsize=fontsize)
                 if xlims is not None:
                     ax.set_xlim(xlims)
                 else:
-                    ax.set_xlim(self.y[0],self.y[-1])
+                    ax.set_xlim(y[0],y[-1])
 
-            #origin='lower',aspect='auto',interpolation=interpolation,extent=[x[0],x[-1],self.y[0],self.y[-1]],**karg)
+            #origin='lower',aspect='auto',interpolation=interpolation,extent=[x[0],x[-1],y[0],y[-1]],**karg)
             ax.set_ylabel('$\\phi$',fontsize=fontsize)
             if ylims is not None:
                 ax.set_ylim(ylims)
             else:
                 ax.set_ylim(self.x[0],self.x[-1])
-        cbar = colorbar(line2d,ax=ax)
+        if clrbar:
+            cbar = colorbar(line2d,ax=ax)
 
         if title is None:
             if log:
@@ -1109,7 +1184,7 @@ class Tensor(Mesh,Parameters):
         self.drFnu.name = 'drFnu'
         self.drFnu.math_name = '$\\partial_r(r^2 \\Pi_{r\phi})$'
 class Sim(Mesh,Parameters):
-    def __init__(self,i,directory='',p=0,fargodir='/projects/b1002/amd616/fargo3d/'):
+    def __init__(self,i,directory='',p=0,fargodir='/projects/p20783/amd616/fargo3d/'):
         if directory != '':
             if directory[-1] != '/':
                 directory += '/'
@@ -1254,6 +1329,8 @@ class Sim(Mesh,Parameters):
         self.taupp = Field('taupp',0,directory=self.directory)
         self.taurp = Field('taurp',0,directory=self.directory,staggered='xy')
         self.lstar = Field('lstar',0,directory=self.directory,staggered='y')
+        self.pot = Field('pot',0,directory=self.directory,staggered='y')
+        self.rhoslope = Field('rhoslope',0,directory=self.directory,staggered='y')
 
         self.Ld = Field('Ld',0,directory=self.directory)
         self.Lw = Field('Lw',0,directory=self.directory)
@@ -1828,7 +1905,7 @@ class Sim(Mesh,Parameters):
     #		axm.set_yscale('symlog',linthreshy=1e-7)
     #		axv.set_ylim(-.001,.001)
     	axd.set_title('t = %.1f = %.1f P = %.1f t_visc' % (self.t,self.t/(2*pi*self.a**(1.5)),self.t/self.tvisc))
-    def streams(self,rlims=None,plims=None,ax=None,planet=None,noise=.1,clrbar=True,**kargs):
+    def streams(self,rlims=None,plims=None,ax=None,planet=None,noise=.1,clrbar=True,softening=False,sample=1,rasterized=False,**kargs):
         draw_flag = False
         if ax == None:
             fig=figure()
@@ -1866,7 +1943,7 @@ class Sim(Mesh,Parameters):
         cmap = kargs.pop('cmap',viridis)
         color = kargs.pop('color','w')
 
-        line2d= ax.pcolormesh(log(rr),pp,log10(dens.transpose()),cmap=cmap,shading='gouraud')
+        line2d= ax.pcolormesh(log(rr[::sample,::sample]),pp[::sample,::sample],log10(dens[::sample,::sample].transpose()),cmap=cmap,shading='gouraud')
         if clrbar:
             cbar = colorbar(line2d,ax=ax)
             cbar.set_label('$\\log_{10}{\\Sigma}$',fontsize=20)
@@ -1879,16 +1956,16 @@ class Sim(Mesh,Parameters):
         ax.axvline(log(self.a-2*self.rh),color='k',linewidth=3)
 
 
+        if softening:
+            rh,ph = self.calculate_circle(self.rh,rlims)
+            rs,ps = self.calculate_circle(self.dens.aspectratio*self.a*self.dens.thicknesssmoothing,rlims)
 
-        rh,ph = self.calculate_circle(self.rh,rlims)
-        rs,ps = self.calculate_circle(self.dens.aspectratio*self.a*self.dens.thicknesssmoothing,rlims)
-
-        ax.plot(log(rh), ph,'-r',linewidth=3)
-        ax.plot(log(rs),ps,'--r',linewidth=3)
+            ax.plot(log(rh), ph,'-r',linewidth=3,rasterized=rasterized)
+            ax.plot(log(rs),ps,'--r',linewidth=3,rasterized=rasterized)
 
         sep_lines = self.separatrix(lr,phi,vr.transpose(),vp.transpose(),noise=noise,npoints=10)
         for line in sep_lines:
-            ax.plot(line[:,0],line[:,1],'-w',linewidth=2)
+            ax.plot(line[:,0],line[:,1],'-w',linewidth=2,rasterized=rasterized)
 
         if planet is None:
             xlbl = ['%.1f'%(exp(v)) for v in ax.get_xticks()]
@@ -2146,7 +2223,7 @@ class Sim(Mesh,Parameters):
 
         return x
     def linear_torque(self,r,eps=.2,c=2./3):
-        norm = eps*pi*self.mp**2
+        norm = eps*self.mp**2/(2*r)
         ha = self.a*self.dens.aspectratio
         x = (r-self.a)/ha
 
@@ -2156,11 +2233,100 @@ class Sim(Mesh,Parameters):
         indR = x >=c
         indL = x <= -c
         res = zeros(r.shape)
-        res[indR] = (self.a/(r[indR]-self.a))**4
+        res[indR] = (self.a/abs(r[indR]-self.a))**4
         res[indL] = (r[indL]/(r[indL]-self.a))**4
 
         return res * norm * sgn
 
+    def load_time_fluxes(self,trange):
+        execdir = self.fargodir+'utils/python/'
+        execname = 'load_fluxes'
+        call(['mkdir',self.directory + 'temp_files'])
+
+        lines='%d\n' % self.params.nx
+        lines +='%d\n' % self.params.ny
+        lines +='%d\n' %  self.params.nz
+        lines +='%f\n' %  self.params.alpha
+        lines +='%f\n' %  self.mp
+        lines +='%f\n' %  self.a
+        lines +='%f\n' %  self.omf
+        lines +='%f\n' %  self.params.aspectratio
+        lines +='%f\n' %  self.params.flaringindex
+        lines +='%f\n' %  self.params.mdot
+        lines +='%f\n' %  self.params.thicknesssmoothing
+
+        with open(self.directory + 'param_file.txt','w') as f:
+            f.write(lines)
+
+
+        fw = zeros((self.params.ny,len(trange)))
+        fd = zeros((self.params.ny,len(trange)))
+        lambda_dep = zeros((self.params.ny,len(trange)))
+        lambda_ex = zeros((self.params.ny,len(trange)))
+        mdot = zeros((self.params.ny,len(trange)))
+        rhostar = zeros((self.params.ny,len(trange)))
+
+        lstar = zeros((self.params.ny,len(trange)))
+        Ld = zeros((self.params.ny,len(trange)))
+        Lw = zeros((self.params.ny,len(trange)))
+
+        fpath = self.directory+'temp_files/'
+        for i,j in enumerate(trange):
+            callstr = [execdir+execname,'%d'%j,self.directory]
+            print ' '.join(callstr)
+            call(callstr)
+
+
+            fw[:,i] = fromfile(fpath+'fw.dat').reshape(self.params.ny,self.params.nx).mean(axis=1)
+            fd[:,i] = fromfile(fpath+'fd.dat').reshape(self.params.ny,self.params.nx).mean(axis=1)
+            lambda_dep[:,i] = fromfile(fpath+'lambda_dep.dat').reshape(self.params.ny,self.params.nx).mean(axis=1)
+            lambda_ex[:,i] = fromfile(fpath+'lambda_ex.dat').reshape(self.params.ny,self.params.nx).mean(axis=1)
+            mdot[:,i] = fromfile(fpath+'mdot.dat').reshape(self.params.ny,self.params.nx).mean(axis=1)
+            rhostar[:,i] = fromfile(fpath+'rhostar.dat').reshape(self.params.ny,self.params.nx).mean(axis=1)
+            lstar[:,i] = fromfile(fpath+'lstar.dat').reshape(self.params.ny,self.params.nx).mean(axis=1)
+            Ld[:,i] = fromfile(fpath+'Ld.dat').reshape(self.params.ny,self.params.nx).mean(axis=1)
+            Lw[:,i] = fromfile(fpath+'Lw.dat').reshape(self.params.ny,self.params.nx).mean(axis=1)
+
+        callstr = ['rm',self.directory+'param_file.txt']
+        call(callstr)
+        callstr = ['rm','-rf',self.directory+'temp_files/']
+        call(callstr)
+
+
+
+
+        return fw,fd,lambda_ex,lambda_dep,mdot,rhostar,lstar,Ld,Lw
+    def torque_split(self):
+        y = self.rhostar.y
+        lam = self.rhostar.ft * -2*pi*y[:,newaxis]
+        vr = self.vr.ft
+        l = self.lstar.ft
+
+    def torque_balance(self,ax=None,planet=None,xlims=None,ylims=None,logx=False):
+        if ax is None:
+            fig=figure()
+            ax = fig.add_subplot(111)
+
+        if planet is None:
+            x = self.lambda_ex.y
+            xstr = '$r$'
+        else:
+            x  = ( self.lambda_ex.y - planet)/(self.params.aspectratio*planet)
+            xstr = '$(r-a)/H(a)$'
+
+        ax.plot(x,self.lambda_ex.avg,'-b')
+        ax.plot(x,self.lambda_dep.avg,'-g')
+        ax.plot(x,self.fw.grad.mean(axis=1),'-r')
+        ax.plot(x,-self.fw.grad.mean(axis=1)+self.lambda_ex.avg,'-c')
+        ax.set_xlabel(xstr,fontsize=20)
+
+        if xlims is not None:
+            ax.set_xlim(xlims)
+
+        if ylims is not None:
+            ax.set_ylim(ylims)
+        if logx and planet is None:
+            ax.set_xscale('log')
 
     def load_torques(self):
         try:
@@ -2673,6 +2839,81 @@ def get_optimal_num_points(h,ri,ro,totsize):
     print 'For a total memory of %.1f GB, total snapshot size of %.3f GB, you can have nx=%d, ny=%d, Nh=%d' % (psize,4*8*nx*ny/(1e9),nx,ny,Nh)
     return nx,ny
 
+def torque_fit(sims=None,dirs=None,nt=None):
+    if sims is None:
+        sims=[]
+        if dirs is not None and nt is not None:
+            for n,d in dirs:
+                sims.append(Sim(n,directory=d))
+        else:
+            print 'Need directory list and snapshot time.'
+            return
+
+    torq = lambda x,mu,p,eps: eps*exp( -( log(abs(x)) - mu)**2/(2*p**2))/(sqrt(2*pi)*p)
 
 
+    lamf_list=[]
+    lamex_list=[]
+    x_list=[]
+    params=zeros((6,len(sims)))
+    eparams=zeros((6,len(sims)))
+    a_list=[]
+    for i,s in enumerate(sims):
+        lamex = s.lambda_ex.avg/(2*pi*s.lambda_ex.y*s.rhostar.avg)
+
+        x = (s.lambda_ex.y-s.a)/(s.params.aspectratio*s.a)
+
+        indR = (x>=2./3)&(x<=6)
+        indL = (x<=-2./3)&(x>=-6)
+        indm = (x>-2./3)&(x<2./3)
+        indfL = (x<-6)
+        indfR = (x>6)
+        pL,eL = curve_fit(torq,x[indL],lamex[indL],p0=(log(2),.3,.003))
+        eL = sqrt(diag(eL))
+        pR,eR = curve_fit(torq,x[indR],lamex[indR],p0=(log(2),.3,.003))
+        eR = sqrt(diag(eR))
+        lamf = hstack( (zeros(x[indfL].shape),torq(x[indL],*pL),zeros(x[indm].shape),torq(x[indR],*pR),zeros(x[indfR].shape)))
+        print 'Fit for sim %d'%i
+        print pL,pR
+        x_list.append(x)
+        lamf_list.append(lamf)
+        lamex_list.append(lamex)
+        params[:3,i] = pL
+        params[-3:,i] = pR
+        eparams[:3,i] = eL
+        eparams[-3:,i] = eR
+        a_list.append(s.params.alpha)
+
+
+    return x_list,lamf_list,lamex_list,params,eparams,a_list
+
+def split_conv(f1,f2):
+    res = real( f1.ft*conj(f2.ft) )
+    res[:,1:] *= 2
+    return res
+def split_power(f1,f2):
+    res = split_conv(f1,f2)
+    res *= conj(res)
+    return res.sum(axis=0)
+
+def convolve_field(f1, f2,m):
+
+    if m == 0:
+        res  = zeros(f1.ft[:,0].shape)
+        for n in range(1,f1.ft.shape[1]):
+            res += 2*real(f1.ft[:,n]*conj(f2.ft[:,n]))
+        return res
+    else:
+        res  = zeros(f1.ft[:,0].shape)
+        for n in range(m):
+            res += 2*real(f1.ft[:,n]*f2.ft[:,m-n])
+        for n in range(m,n):
+            res += 2*real(f1.ft[:,n]*f2.ft[:,n-m])
+        return res
+def avg(q,axis=0):
+    try:
+        res = trapz(q,axis=axis)/(q.shape[axis])
+        return res
+    except:
+        return q.mean(axis=axis)
 

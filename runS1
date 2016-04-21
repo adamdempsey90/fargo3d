@@ -17,4 +17,4 @@ ulimit -s unlimited
 
 nvidia-smi
 
-./fargo3d_748x1382  -S 126 -o "dt=6.28,ninterm=20,ntot=10000,alpha=0.1,outputdir=outputs/fung/sim1/" in/accretion.par >> fS1.out
+./fargo3d_748x1382  -S 0 -o "nx=1382,ny=768,dt=6.28,ninterm=20,ntot=10000,alpha=0.1,outputdir=outputs/fung/sim1/" in/accretion.par >> fS1.out
