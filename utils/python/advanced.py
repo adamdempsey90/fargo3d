@@ -1240,7 +1240,7 @@ class Sim(Mesh,Parameters):
     	self.a = sqrt(self.px**2  + self.py**2)
         self.K = self.mp**2 / (self.dens.alpha * self.dens.aspectratio**5)
 
-        self.load_fluxes(i)
+      #  self.load_fluxes(i)
         self.vp = copy.deepcopy(self.vx)
         self.vp.data += self.vp.y[:,newaxis]*self.omf
         self.vp.recalculate()
@@ -2259,8 +2259,9 @@ class Sim(Mesh,Parameters):
             f.write(lines)
 
 
-        fw = zeros((self.params.ny,len(trange)))
-        fd = zeros((self.params.ny,len(trange)))
+        fw = zeros((self.params.ny+1,len(trange)))
+        fd = zeros((self.params.ny+1,len(trange)))
+        ftot = zeros((self.params.ny+1,len(trange)))
         lambda_dep = zeros((self.params.ny,len(trange)))
         lambda_ex = zeros((self.params.ny,len(trange)))
         mdot = zeros((self.params.ny,len(trange)))
@@ -2269,6 +2270,7 @@ class Sim(Mesh,Parameters):
         lstar = zeros((self.params.ny,len(trange)))
         Ld = zeros((self.params.ny,len(trange)))
         Lw = zeros((self.params.ny,len(trange)))
+        Ltot = zeros((self.params.ny,len(trange)))
 
         fpath = self.directory+'temp_files/'
         for i,j in enumerate(trange):
@@ -2277,25 +2279,52 @@ class Sim(Mesh,Parameters):
             call(callstr)
 
 
-            fw[:,i] = fromfile(fpath+'fw.dat').reshape(self.params.ny,self.params.nx).mean(axis=1)
-            fd[:,i] = fromfile(fpath+'fd.dat').reshape(self.params.ny,self.params.nx).mean(axis=1)
-            lambda_dep[:,i] = fromfile(fpath+'lambda_dep.dat').reshape(self.params.ny,self.params.nx).mean(axis=1)
-            lambda_ex[:,i] = fromfile(fpath+'lambda_ex.dat').reshape(self.params.ny,self.params.nx).mean(axis=1)
+            fw[:,i] = fromfile(fpath+'Fw.dat').reshape(self.params.ny+1,self.params.nx).mean(axis=1)
+            fd[:,i] = fromfile(fpath+'Fd.dat').reshape(self.params.ny+1,self.params.nx).mean(axis=1)
+            ftot[:,i] = fromfile(fpath+'Ft.dat').reshape(self.params.ny+1,self.params.nx).mean(axis=1)
+            lambda_dep[:,i] = fromfile(fpath+'lamdep.dat').reshape(self.params.ny,self.params.nx).mean(axis=1)
+            lambda_ex[:,i] = fromfile(fpath+'lamex.dat').reshape(self.params.ny,self.params.nx).mean(axis=1)
             mdot[:,i] = fromfile(fpath+'mdot.dat').reshape(self.params.ny,self.params.nx).mean(axis=1)
             rhostar[:,i] = fromfile(fpath+'rhostar.dat').reshape(self.params.ny,self.params.nx).mean(axis=1)
             lstar[:,i] = fromfile(fpath+'lstar.dat').reshape(self.params.ny,self.params.nx).mean(axis=1)
             Ld[:,i] = fromfile(fpath+'Ld.dat').reshape(self.params.ny,self.params.nx).mean(axis=1)
             Lw[:,i] = fromfile(fpath+'Lw.dat').reshape(self.params.ny,self.params.nx).mean(axis=1)
+            Ltot[:,i] = fromfile(fpath+'Lt.dat').reshape(self.params.ny,self.params.nx).mean(axis=1)
+
 
         callstr = ['rm',self.directory+'param_file.txt']
         call(callstr)
         callstr = ['rm','-rf',self.directory+'temp_files/']
         call(callstr)
 
+        dy = diff(self.ym)
+        drfw = (fw[1:,:] - fw[:-1,:])/dy[:,newaxis]
+        drfd = (fd[1:,:] - fd[:-1,:])/dy[:,newaxis]
+        drft = (ftot[1:,:] - ftot[:-1,:])/dy[:,newaxis]
 
 
+        indm = (self.ym>self.vr.wkz)&(self.ym<self.vr.wkzr)
+        ind = (self.vr.y>self.vr.wkz)&(self.vr.y<self.vr.wkzr)
+        indc = (self.dens.y>self.dens.wkz)&(self.dens.y<self.dens.wkzr)
+        indc1 = (self.vr.y[:-1]>self.dens.wkz)&(self.vr.y[:-1]<self.dens.wkzr)
+        fw = fw[indm,:]
+        fd = fd[indm,:]
+        ftot = ftot[indm,:]
+        lambda_dep = lambda_dep[indc,:]
+        lambda_ex = lambda_ex[indc,:]
+        Ld = Ld[indc,:]
+        Lw = Lw[indc,:]
+        Ltot = Ltot[indc,:]
+        mdot = mdot[ind,:]
+        lstar = lstar[ind,:]
+        rhostar = rhostar[ind,:]
+        drfw = drfw[indc,:]
+        drfd = drfd[indc,:]
+        drft = drft[indc,:]
 
-        return fw,fd,lambda_ex,lambda_dep,mdot,rhostar,lstar,Ld,Lw
+
+        #return fw,fd,lambda_ex,lambda_dep,mdot,rhostar,lstar,Ld,Lw
+        return fw,fd,ftot,lambda_ex,lambda_dep,Ld,Lw,Ltot,mdot,rhostar,lstar,drfw,drfd,drft
     def torque_split(self):
         y = self.rhostar.y
         lam = self.rhostar.ft * -2*pi*y[:,newaxis]
