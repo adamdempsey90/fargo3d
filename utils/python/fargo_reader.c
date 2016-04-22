@@ -4,7 +4,6 @@
 #include <math.h>
 
 #define NGHY 3
-//#define SIMPLE
 
 #define ymed(j) Ymed[(j)]
 #define xmed(i) Xmed[(i)]
@@ -263,23 +262,16 @@ void set_lstar(char *directory) {
     char fname[256];
     sprintf(fname,"%stemp_files/lstar.dat",directory);
     f = fopen(fname,"w");
-#ifndef SIMPLE
-    clear_work();
-    transport(vx,lstar);
 
-#else
-    for(j=1;j<size_y-1;j++) {
-        for(i=0;i<size_x;i++) {
-            lstar[l] = .5*(vx[l] + vx[lym]);
-        }
-    }
-#endif
     for(j=0;j<size_y;j++) {
         for(i=0;i<size_x;i++) {
             lmed[l] = .5*(vx[l] + vx[lxp])*ymed(j); 
-            lstar[l] *= ymin(j);
         }
     }
+
+    clear_work();
+    transport(lmed,lstar);
+
     fwrite(&lstar[l_f(0,NGHY,0)],sizeof(double),nx*ny,f);
     fclose(f);
     double res,res1;
@@ -304,16 +296,9 @@ void set_rhostar(char *directory) {
     char fname[256];
     sprintf(fname,"%stemp_files/rhostar.dat",directory);
     f = fopen(fname,"w");
-#ifndef SIMPLE
     clear_work();
     transport(rho,rhos);
-#else
-    for(j=1;j<size_y-1;j++) {
-        for(i=0;i<size_x;i++) {
-            rhos[l] = .5*(rho[l] + rho[lym]);
-        }
-    }
-#endif
+
     fwrite(&rhos[l_f(0,NGHY,0)],sizeof(double),nx*ny,f);
     fclose(f);
     double res;
