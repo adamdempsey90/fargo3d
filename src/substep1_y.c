@@ -101,7 +101,7 @@ void SubStep1_y_cpu (real dt) {
 //<MAIN_LOOP>
 
   i = j = k = 0;
-
+    printf("\n\nOMEGAFRAME=%.12f\n\n",OMEGAFRAME);
 #ifdef Z
   for(k=1; k<size_z; k++) {
 #endif

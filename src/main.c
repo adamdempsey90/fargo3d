@@ -273,13 +273,6 @@ OMEGAFRAME (which is used afterwards to build the initial Vx field. */
   FillGhosts(PrimitiveVariables()); 
 #ifdef STOCKHOLM 
   FARGO_SAFE(init_stockholm());
-#ifdef STOCKHOLMACC
-  FARGO_SAFE(ComputeVymed(Vy));
-  FARGO_SAFE(ComputeRhomed(Density));
-  
-  Write2D(Density0_avg, "density0_2d_avg.dat", OUTPUTDIR, GHOSTINC);
-  Write2D(Vy0_avg, "vy0_2d_avg.dat", OUTPUTDIR, GHOSTINC);
-#endif
 #endif
 
 #ifdef GHOSTSX
@@ -287,16 +280,8 @@ OMEGAFRAME (which is used afterwards to build the initial Vx field. */
 #else
   masterprint ("Standard version with no ghost zones in X\n");
 #endif
-#ifdef TIMER
-    clock_t begin_timer_time, end_timer_time;
-    real timer_time_elapsed;
-#endif
+  
   for (i = begin_i; i<=NTOT; i++) { // MAIN LOOP
-#ifdef TIMER
-    if (i==begin_i) {
-        begin_timer_time = clock();
-    }
-#endif
     if (NINTERM * (TimeStep = (i / NINTERM)) == i) {
 
 #if defined(MHD) && defined(DEBUG)
@@ -331,14 +316,6 @@ OMEGAFRAME (which is used afterwards to build the initial Vx field. */
       WritePlanetSystemFile(TimeStep, YES);
       SolveOrbits (Sys);
     }
-#ifdef TIMER
-    if (i==begin_i) {
-        end_timer_time = clock();
-        timer_time_elapsed =( (double)(end_timer_time-begin_timer_time))/CLOCKS_PER_SEC;
-        masterprint("time for time_step was %g s\n",timer_time_elapsed);
-    }
-#endif
-
   }
 
   MPI_Finalize();  

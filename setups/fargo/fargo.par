@@ -4,9 +4,9 @@ Setup			fargo
 ### Disk parameters
 
 AspectRatio     	0.05            Thickness over Radius in the disc
-Sigma0			1.0 #6.3661977237e-4	Surface Density at r=1
-Alpha			0.01		Uniform kinematic viscosity
-SigmaSlope		0.5		Slope of the surface density
+Sigma0			6.3661977237e-4	Surface Density at r=1
+Nu			0.0		Uniform kinematic viscosity
+SigmaSlope		0.0		Slope of the surface density
 FlaringIndex		0.0
 
 ### Planet parameters

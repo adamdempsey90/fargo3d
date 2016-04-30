@@ -12,7 +12,6 @@ void StockholmBoundary_cpu(real dt) {
 //<USER_DEFINED>
   INPUT(Density);
   INPUT2D(Density0);
-  INPUT2D(Density0_avg);
   OUTPUT(Density);
 #ifdef ADIABATIC
   INPUT(Energy);
@@ -22,13 +21,11 @@ void StockholmBoundary_cpu(real dt) {
 #ifdef X
   INPUT(Vx);
   INPUT2D(Vx0);
-  INPUT2D(Vx0_avg);
   OUTPUT(Vx);
 #endif
 #ifdef Y
   INPUT(Vy);
   INPUT2D(Vy0);
-  INPUT2D(Vy0_avg);
   OUTPUT(Vy);
 #endif
 #ifdef Z
@@ -41,16 +38,13 @@ void StockholmBoundary_cpu(real dt) {
 //<EXTERNAL>
   real* rho  = Density->field_cpu;
   real* rho0 = Density0->field_cpu;
-  real* rho0_avg = Density0_avg->field_cpu;
 #ifdef X
   real* vx  = Vx->field_cpu;
   real* vx0 = Vx0->field_cpu;
-  real* vx0_avg = Vx0_avg->field_cpu;
 #endif
 #ifdef Y
   real* vy  = Vy->field_cpu;
   real* vy0 = Vy0->field_cpu;
-  real* vy0_avg = Vy0_avg->field_cpu;
 #endif
 #ifdef Z
   real* vz  = Vz->field_cpu;
@@ -66,7 +60,6 @@ void StockholmBoundary_cpu(real dt) {
   int size_y  = Ny+2*NGHY;
   int size_z  = Nz+2*NGHZ;
   int pitch2d = Pitch2D;
-  int nghy = NGHY;
   real y_min = YMIN;
   real y_max = YMAX;
   real z_min = ZMIN;
@@ -74,13 +67,6 @@ void StockholmBoundary_cpu(real dt) {
   real of    = OMEGAFRAME;
   real of0   = OMEGAFRAME0;
   real r0 = R0;
-#if defined(WKZIN) && defined(WKZOUT)
-  real wkzin = WKZIN;
-  real wkzout = WKZOUT;
-#else
-  real wkzin = .0476;
-  real wkzout = .19;
-#endif
   int periodic_z = PERIODICZ;
 //<\EXTERNAL>
 
@@ -92,10 +78,8 @@ void StockholmBoundary_cpu(real dt) {
   // see De Val Borro et al. (2006), section 3.2
   //  real Y_inf = y_min + (y_max-y_min)*0.0476;
   //  real Y_sup = y_max - (y_max-y_min)*0.19;
-//  real Y_inf = exp( log(y_min) + log(y_max/y_min)*0.05);
-//  real Y_sup = exp( log(y_max) - log(y_max/y_min)*0.10);
-  real Y_inf = y_min + (y_max-y_min)*wkzin;
-  real Y_sup = y_max - (y_max-y_min)*wkzout;
+  real Y_inf = y_min + (y_max-y_min)*0.05;
+  real Y_sup = y_max - (y_max-y_min)*0.10;
   real Z_inf = z_min - (z_max-z_min); // Here we push Z_inf & Z_sup
   real Z_sup = z_max + (z_max-z_min); // out of the mesh
 #ifdef CYLINDRICAL
@@ -118,9 +102,6 @@ void StockholmBoundary_cpu(real dt) {
   real rampzz;
   real rampi;
   real ramp;
-  real rho_target;
-  real vr_target;
-  real vp_target;
   real tau;
   real taud;
   real ds = 0.03333;
@@ -152,28 +133,9 @@ void StockholmBoundary_cpu(real dt) {
 #ifdef Y
 	if(ymed(j) > Y_sup) {
 	  rampy   = (ymed(j)-Y_sup)/(y_max-Y_sup);
-#ifdef NOSTOCKHOLMRIGHT
-	  rampy   = 0 ;
-#endif
-#ifdef STOCKHOLMACC
-      vr_target = vy0_avg[l2D];
-      vp_target = vx0_avg[l2D];
-      rho_target = rho0_avg[l2D];
-#else
-      vr_target = vy0[l2D];
-      vp_target = vx0[l2D];
-      rho_target = rho0[l2D];
-#endif
 	}
 	if(ymed(j) < Y_inf) {
 	  rampy   = (Y_inf-ymed(j))/(Y_inf-y_min);
-      vr_target = vy0[l2D];
-      vp_target = vx0[l2D];
-#ifdef STOCKHOLMACC
-      rho_target = rho0_avg[l2D];
-#else
-      rho_target = rho0[l2D];
-#endif
 	}
 	rampy *= rampy;		/* Parabolic ramp as in De Val Borro et al (2006) */
 #endif
@@ -202,9 +164,7 @@ void StockholmBoundary_cpu(real dt) {
 	tau = ds*sqrt(ymed(j)*ymed(j)*ymed(j)/G/MSTAR);
 	if(ramp>0.0) {
 	  taud = tau/ramp;
-#ifndef NOWAVEKILLRHO
-      rho[l] = (rho[l]*taud+rho_target*dt)/(dt+taud);
-#endif
+	  rho[l] = (rho[l]*taud+rho0[l2D]*dt)/(dt+taud);
 #ifdef X
 	  vx0_target = vx0[l2D];
 	  radius = ymed(j);
@@ -215,7 +175,7 @@ void StockholmBoundary_cpu(real dt) {
 	  vx[l] = (vx[l]*taud+vx0_target*dt)/(dt+taud);
 #endif
 #ifdef Y
-	  vy[l] = (vy[l]*taud+vr_target*dt)/(dt+taud);
+	  vy[l] = (vy[l]*taud+vy0[l2D]*dt)/(dt+taud);
 #endif
 	}
 #ifdef Z

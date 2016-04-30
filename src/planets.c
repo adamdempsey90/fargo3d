@@ -104,7 +104,6 @@ void AdvanceSystemFromDisk(real dt) {
       Sys->vx[k] += dt * gamma.x;
       Sys->vy[k] += dt * gamma.y;
       Sys->vz[k] += dt * gamma.z;
-      printf("%\t%lg\t%lg\t%lg\t%lg\n", gamma.x,Sys->vx[k],gamma.y,Sys->vy[k]);
     }
   }
 }

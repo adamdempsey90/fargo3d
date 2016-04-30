@@ -561,10 +561,6 @@ void CreateFields() {
 #endif
 
   Pot     = CreateField("potential", 0, 0,0,0);
-#ifdef FTPOTENTIAL
-  FTPot     = CreateField("ftpotential", 0, 0,0,0);
-  PotP     = CreateField("potential_planet", 0, 0,0,0);
-#endif
   Slope   = CreateField("Slope"    , 0, 0,0,0);
   DivRho  = CreateField("DivRho"   , 0, 0,0,0); // This field cannot
 						// be aliased wherever
@@ -615,11 +611,6 @@ void CreateFields() {
   Vx0  = CreateField2D ("vx0", YZ);
   Vy0  = CreateField2D ("vy0", YZ);
   Vz0  = CreateField2D ("vz0", YZ);
-  Density0_avg = CreateField2D ("rho0_avg", YZ);
-  Energy0_avg   = CreateField2D ("e0_avg", YZ);
-  Vx0_avg  = CreateField2D ("vx0_avg", YZ);
-  Vy0_avg  = CreateField2D ("vy0_avg", YZ);
-  Vz0_avg  = CreateField2D ("vz0_avg", YZ);
 #endif
 
 }
