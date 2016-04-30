@@ -74,8 +74,13 @@ void StockholmBoundary_cpu(real dt) {
   real of    = OMEGAFRAME;
   real of0   = OMEGAFRAME0;
   real r0 = R0;
+#if defined(WKZIN) && defined(WKZOUT)
   real wkzin = WKZIN;
   real wkzout = WKZOUT;
+#else
+  real wkzin = .0476;
+  real wkzout = .19;
+#endif
   int periodic_z = PERIODICZ;
 //<\EXTERNAL>
 

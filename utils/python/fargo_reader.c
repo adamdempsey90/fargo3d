@@ -14,6 +14,7 @@
 #define SurfY(j,k) ymin(j)*dx
 #define SurfX(j,k) (ymin(j+1)-ymin(j))
 #define InvVol(j,k) 2/(dx*(ymin(j+1)*ymin(j+1) - ymin(j)*ymin(j)))
+#define Vol(j,k) 0.5*(dx*(ymin(j+1)*ymin(j+1) - ymin(j)*ymin(j)))
 
 #define l   ((i)+(j)*(nx)+((k)*stride))
 #define l_f(ii,jj,kk)   ((ii)+(jj)*(nx)+((kk)*stride))
@@ -50,6 +51,7 @@ int size_x, size_y, size_z;
 int stride, pitch;
 double *Ymin, *Xmin, *Ymed, *Xmed;
 double *rho, *vx, *vy;
+double *momp, *momm;
 double *rhos, *mdot,*mdotmed;
 double *lstar,*lmed;
 double *tauxx, *tauyy, *tauxy;
@@ -67,6 +69,8 @@ double Cs(double x);
 void allocate_all(void);
 void free_all(void);
 void set_lstar(char *directory);
+void set_indpot(char *directory);
+void set_lmed(char *directory);
 void set_rhostar(char *directory);
 void set_mdot(char *directory);
 void set_Ld(char *directory);
@@ -75,6 +79,8 @@ void set_lam_ex(char *directory);
 void set_lam_dep(char *directory);
 void set_div(void);
 void set_tensor(char *directory);
+void set_slopes_x(double *q);
+void transport_x(double *qs,double *res);
 void set_slopes(double *q);
 void transport(double *qs,double *res);
 void clear_work(void);
@@ -121,9 +127,11 @@ int main(int arc, char *argv[]) {
   printf("Setting rhostar.\n");
   set_rhostar(directory);
   printf("Setting lstar.\n");
+  set_lmed(directory);
   set_lstar(directory);
   printf("Setting mdot.\n");
   set_mdot(directory);
+  set_indpot(directory);
   printf("Setting tensor.\n");
   set_tensor(directory);
   set_div();
@@ -175,6 +183,8 @@ void allocate_all(void) {
   lmed = (double*)malloc(sizeof(double)*size_x*size_y*size_z);
   mdot = (double*)malloc(sizeof(double)*size_x*size_y*size_z);
   mdotmed = (double*)malloc(sizeof(double)*size_x*size_y*size_z);
+  momm = (double*)malloc(sizeof(double)*size_x*size_y*size_z);
+  momp = (double*)malloc(sizeof(double)*size_x*size_y*size_z);
   
   tauxx =     (double*)malloc(sizeof(double)*size_x*size_y*size_z);
   tauyy =     (double*)malloc(sizeof(double)*size_x*size_y*size_z);
@@ -206,6 +216,8 @@ void allocate_all(void) {
             mdotmed[l] = 0;
             rhos[l] = 0;
             divp[l] = 0;
+            momm[l] = 0;
+            momp[l] = 0;
       }
     }
   }
@@ -233,6 +245,8 @@ void free_all(void) {
   free(divp);
   free(divpavg);
   free(vx);
+  free(momm);
+  free(momp);
   free(vy);
   free(rho);
   free(rhos);
@@ -263,27 +277,77 @@ void set_lstar(char *directory) {
     sprintf(fname,"%stemp_files/lstar.dat",directory);
     f = fopen(fname,"w");
 
+/*
+    for(j=0;j<size_y;j++) {
+        for(i=0;i<size_x;i++) {
+            momm[l] = rho[l]*vx[l]*ymed(j);
+            momp[l] = rho[l]*vx[lxp]*ymed(j);
+        }
+    }
+    clear_work();
+    transport(momm,NULL);
+    clear_work();
+    transport(momp,NULL);
+
+    for(j=1;j<size_y;j++) {
+        for(i=0;i<size_x;i++) {
+            lstar[l] = (momm[l] + momp[lym])/(rhos[lym]+rhos[l]);
+        }
+    }
+*/
+    clear_work();
+    transport(lmed,lstar);
+    fwrite(&lstar[l_f(0,NGHY,0)],sizeof(double),nx*ny,f);
+    fclose(f);
+    double res;
+    for(j=0;j<size_y;j++) {
+        res = 0;
+        for(i=0;i<size_x;i++) {
+            res += lstar[l];
+        }
+        lavg[j] = res/(double)nx;
+    }
+    return;
+}
+
+
+void set_lmed(char *directory) {
+    int i,j,k;
+    k=0;
+/*
+    for(j=0;j<size_y;j++) {
+        for(i=0;i<size_x;i++) {
+            momm[l] = rho[l]*vx[l]*ymed(j);
+            momp[l] = rho[l]*vx[lxp]*ymed(j);
+        }
+    }
+    clear_work();
+    transport_x(momm,NULL);
+    clear_work();
+    transport_x(momp,NULL);
+
+    for(j=1;j<size_y;j++) {
+        for(i=0;i<size_x;i++) {
+            lmed[l] = (momm[l] + momp[lxm])/(rho[lxm]+rho[l]);
+        }
+    }
+
+    transport_x(vx,lmed);
+*/
     for(j=0;j<size_y;j++) {
         for(i=0;i<size_x;i++) {
             lmed[l] = .5*(vx[l] + vx[lxp])*ymed(j); 
         }
     }
 
-    clear_work();
-    transport(lmed,lstar);
 
-    fwrite(&lstar[l_f(0,NGHY,0)],sizeof(double),nx*ny,f);
-    fclose(f);
-    double res,res1;
+    double res;
     for(j=0;j<size_y;j++) {
         res = 0;
-        res1=0;
         for(i=0;i<size_x;i++) {
-            res += lstar[l];
-            res1 += lmed[l];
+            res += lmed[l];
         }
-        lavg[j] = res/(double)nx;
-        lbar[j] = res1/(double)nx;
+        lbar[j] = res/(double)nx;
     }
 
     return;
@@ -349,6 +413,7 @@ void set_Ld(char *directory) {
     k=0;
     FILE *ft,*fw,*fd;
     double Ld,Lw,Ltot;
+    double rest, resw;
     double fac;
     char fnamet[256],fnamew[256],fnamed[256];
     sprintf(fnamet,"%stemp_files/Lt.dat",directory);
@@ -362,14 +427,17 @@ void set_Ld(char *directory) {
     
     for(j=NGHY;j<size_y-NGHY;j++) {
         Ld = 2*M_PI*ymed(j)*rhobar[j]*lbar[j];
+        rest = 0;
         for(i=0;i<size_x;i++) {
-            Ltot = 2*M_PI*ymed(j)*rho[l]*lmed[l];
-            Lw = Ltot-Ld;
 
-            fwrite(&Ltot,sizeof(double),1,ft);
-            fwrite(&Lw,sizeof(double),1,fw);
-            fwrite(&Ld,sizeof(double),1,fd);
+            rest += 2*M_PI*ymed(j)*rho[l]*lmed[l];
+
         }
+        rest /= (double)nx;
+        resw = rest - Ld;
+        fwrite(&rest,sizeof(double),1,ft);
+        fwrite(&resw,sizeof(double),1,fw);
+        fwrite(&Ld,sizeof(double),1,fd);
     }
 
 
@@ -384,6 +452,7 @@ void set_Fd(char *directory) {
     k=0;
     FILE *ft,*fw,*fd;
     double Fd,Fw,Ftot;
+    double resw, rest;
     char fnamet[256],fnamew[256],fnamed[256];
     sprintf(fnamet,"%stemp_files/Ft.dat",directory);
     sprintf(fnamew,"%stemp_files/Fw.dat",directory);
@@ -396,14 +465,16 @@ void set_Fd(char *directory) {
     
     for(j=NGHY;j<size_y-NGHY+1;j++) {
         Fd = -mdotavg[j] * lavg[j] - 2*M_PI*ymin(j)*ymin(j)*tauxyavg[j];
+        rest = 0;
         for(i=0;i<size_x;i++) {
-            Ftot = -mdot[l]*lstar[l] - M_PI*ymin(j)*ymin(j)*(tauxy[l]+tauxy[lxp]);
-            Fw = Ftot-Fd;
+            rest += -mdot[l]*lstar[l] - M_PI*ymin(j)*ymin(j)*(tauxy[l]+tauxy[lxp]);
 
-            fwrite(&Ftot,sizeof(double),1,ft);
-            fwrite(&Fw,sizeof(double),1,fw);
-            fwrite(&Fd,sizeof(double),1,fd);
         }
+        rest /= (double)nx;
+        resw = rest - Fd;
+        fwrite(&rest,sizeof(double),1,ft);
+        fwrite(&resw,sizeof(double),1,fw);
+        fwrite(&Fd,sizeof(double),1,fd);
     }
 
 
@@ -415,6 +486,48 @@ void set_Fd(char *directory) {
     return;
 }
 
+void set_indpot(char *directory) {
+    int i,j,k;
+    k=0;
+
+    double res,resj;
+
+    double resx, resy;
+    double dm;
+    resx=0;
+    resy=0;
+    for(j=NGHY;j<size_y-NGHY;j++) {
+        for(i=0;i<size_x;i++) {
+           
+            dm= Vol(j,k)*rho[l];
+            resx += dm*cos(xmed(i))/(ymed(j)*ymed(j));
+            resy += dm*sin(xmed(i))/(ymed(j)*ymed(j));
+            
+        }
+
+    }
+
+    FILE *f;
+    char fname[256];
+    sprintf(fname,"%stemp_files/lamind.dat",directory);
+    f = fopen(fname,"w");
+    for(j=NGHY;j<size_y-NGHY;j++) {
+        res = 0;
+        for(i=0;i<size_x;i++) {
+            
+            resj = params.mp*ymed(j)*sin(xmed(i))/(params.a*params.a); 
+            resj += ymed(j)*(cos(xmed(i))*resy - sin(xmed(i))*resx); 
+            resj *= -2*M_PI*ymed(j)*rho[l];
+            res += resj;
+            
+        }
+        res /= (double)nx;
+        fwrite(&res,sizeof(double),1,f);
+
+    }
+    fclose(f);
+    return;
+}
 
 void set_lam_ex(char *directory) {
     int i,j,k;
@@ -430,14 +543,15 @@ void set_lam_ex(char *directory) {
 
     fl = fopen(fname,"w");
     for(j=NGHY;j<size_y-NGHY;j++) {
+        res = 0;
         for(i=0;i<size_x;i++) {    
             rad = ymed(j)*ymed(j) + params.a*params.a -2*params.a*ymed(j)*cos(xmed(i))+smoothing;
             rad *= sqrt(rad);
             pot = -params.mp * ymed(j)*params.a*sin(xmed(i))/rad;
-            res = -2*M_PI*ymed(j)*rho[l]*pot;
-            fwrite(&res,sizeof(double),1,fl);
-
+            res += -2*M_PI*ymed(j)*rho[l]*pot;
         }
+        res /= (double)nx;
+        fwrite(&res,sizeof(double),1,fl);
     }
 
     fclose(fl);
@@ -456,18 +570,17 @@ void set_lam_dep(char *directory) {
     double fac,res,sfac;
     for(j=NGHY;j<size_y-NGHY;j++) {
         fac = 2*M_PI*ymed(j);
+        res=0;
         for(i=0;i<size_x;i++) {
-            vyc = .5*(vy[l] + vy[lyp]);
-            sfac = 1 + (rho[l] - rhobar[j])/rhobar[j];
-            res = .5*(divp[l] + divp[lxp])/sfac - divpavg[j];
-            res -= mdotmed[l]*(lavg[j+1]-lavg[j])/(ymin(j+1)-ymin(j));
+            //sfac = 1 + (rho[l] - rhobar[j])/rhobar[j];
+            //res += .5*(divp[l] + divp[lxp])/sfac - divpavg[j];
+            res -= (lavg[j+1]*mdot[lyp]-lavg[j]*mdot[l] - lbar[j]*(mdot[lyp]-mdot[l]))/(ymin(j+1)-ymin(j));
+            //res -= mdotmed[l]*(lavg[j+1]-lavg[j])/(ymin(j+1)-ymin(j));
             res -= fac*rhobar[j]*(vy[lyp]*lstar[lyp]-vy[l]*lstar[l]  - lmed[l]*(vy[lyp]-vy[l]) )/(ymin(j+1)-ymin(j));
-/*
-            res -= -fac*rho[l]*vyc*(lbar[j]-lbar[j-1])/(ymed(j)-ymed(j-1));
-            res -= fac*rhos[l]*vy[l]*(vx[l]*ymed(j)-vx[lym]*ymed(j-1))/(ymed(j)-ymed(j-1));
-*/
-            fwrite(&res,sizeof(double),1,f);
         }
+        res /= (double)nx;
+        res += divpavg[j];
+        fwrite(&res,sizeof(double),1,f);
     }
 
     fclose(f);
@@ -476,30 +589,45 @@ void set_lam_dep(char *directory) {
 void set_div(void) {
     int i,j,k;
     k=0;
+    double res,res1,res2;
+    for(j=NGHY;j<size_y-NGHY;j++) {
+        res = 0;
+       for(i=0;i<size_x;i++) {
+
+	        res += 2.0*(tauxx[l]-tauxx[lxm])/(zone_size_x(j,k)*(rho[l]+rho[lxm]));
+	        res += 2.0*(ymin(j+1)*ymin(j+1)*tauxy[lyp]-ymin(j)*ymin(j)*tauxy[l])/((ymin(j+1)-ymin(j))*ymed(j)*ymed(j)*(rho[lxm]+rho[l]));
+        }
+       res /= (double)nx;
+       res *= rhobar[l]*2*M_PI*ymed(j)*ymed(j);
+       res -= 2*M_PI*(ymin(j+1)*ymin(j+1)*tauxyavg[j+1]-ymin(j)*ymin(j)*tauxyavg[j])/(ymin(j+1)-ymin(j));
+       divpavg[j] = res;
+    }
+
+
+    return;
+}
+/*
+void set_div(void) {
+    int i,j,k;
+    k=0;
 
 //    clear_work();
-
-    for(j=2;j<size_y-2;j++) {
+    double res,sigfac;
+    for(j=NGHY;j<size_y-NGHY;j++) {
         divpavg[j] = 2*M_PI*(tauxyavg[j+1]*ymin(j+1)*ymin(j+1) - tauxyavg[j]*ymin(j)*ymin(j))/(ymin(j+1)-ymin(j));
        for(i=0;i<size_x;i++) {
-            
-            divp[l] = 2*M_PI*ymed(j)*(tauxx[l]-tauxx[lxm])/(dx);
-            divp[l] += 2*M_PI*(tauxy[lyp]*ymin(j+1)*ymin(j+1) - tauxy[l]*ymin(j)*ymin(j))/(ymin(j+1)-ymin(j));
+            //sigfac = .5*(rho[l]+rho[lxm]);
+            res += sigfac*2*M_PI*ymed(j)*(tauxx[l]-tauxx[lxm])/(dx);
+            res += sigfac*2*M_PI*(tauxy[lyp]*ymin(j+1)*ymin(j+1) - tauxy[l]*ymin(j)*ymin(j))/(ymin(j+1)-ymin(j));
        }
-    
+        res /= (double)nx;
+        divpavg[j] = res - divpavg[j];
     }
-/*
-     for(j=NGHY;j<size_y-NGHY;j++) {
-         divpavg[j] = .5*(work1[j]+work1[j-1]);
-           for(i=0;i<size_x;i++) {
-                divp[l] = .25*(work[l] + work[lxm] + work[lym] + work[lxm-pitch]);   
-           }
-    
-    }
-*/
+
     return;
 
 }
+*/
 void set_tensor(char *directory) {
     int i,j,k;
     double visc, viscm, div_v;
@@ -514,11 +642,12 @@ void set_tensor(char *directory) {
         cs *= cs; csm *= csm;
         visc = Nu(ymed(j));
         viscm = Nu(ymin(j));
-        rhocb= rhoavg[j]; //.5*(rhobar[j]+rhobar[j-1]);
-        tauxyavg[j] = viscm*rhocb*((vxbar[j]-vxbar[j-1])/(ymed(j)-ymed(j-1))-.5*(vxbar[j]+vxbar[j-1])/ymin(j)); //centered on jeft, inner verticaj edge in z
+        tauxyavg[j] = viscm*.5*(rhobar[j]+rhobar[j-1])*( 
+                (vxbar[j]-vxbar[j-1])/(ymed(j)-ymed(j-1))
+                -.5*(vxbar[j]+vxbar[j-1])/ymin(j));
+
         for(i=0;i<size_x;i++) {
-            rhoc = .5*(rhos[l] + rhos[lxm]);
-            //rhoc=.25*(rho[l]+rho[lxm]+rho[lym]+rho[lxm-pitch]);
+            rhoc=.25*(rho[l]+rho[lxm]+rho[lym]+rho[lxm-pitch]);
             div_v = (vx[lxp]-vx[l])*SurfX(j,k);
             div_v += (vy[lyp]*SurfY(j+1,k)-vy[l]*SurfY(j,k));
             div_v *= 2.0/3.0*InvVol(j,k);
@@ -528,7 +657,7 @@ void set_tensor(char *directory) {
             tauxx[l] += -cs*rho[l]; // Isothermal Pressure
             tauyy[l] = visc*rho[l]*(2.0*(vy[lyp]-vy[l])/(ymin(j+1)-ymin(j)) - div_v);
             tauyy[l] += -cs*rho[l]; // Isothermal Pressure
-            tauxy[l] = viscm*rhoc*((vy[l]-vy[lxm])/(dx*ymin(j)) + (vx[l]-vx[lym])/(ymed(j)-ymed(j-1))-.5*(vx[l]+vx[lym])/ymin(j)); //centered on left, inner vertical edge in z
+            tauxy[l] = viscm*rhoc*((vy[l]-vy[lxm])/(dx*ymin(j)) + ymin(j)*(vx[l]/ymed(j)-vx[lym]/ymed(j-1))/(ymed(j)-ymed(j-1)));//-.5*(vx[l]+vx[lym])/ymin(j)); //centered on left, inner vertical edge in z
             
 
         }
@@ -536,6 +665,57 @@ void set_tensor(char *directory) {
     return;
 }
 
+void set_slopes_x(double *q) {
+    int i,j,k;
+    k=0;
+    double dqm, dqp;
+
+    for (j=1; j<size_y-1; j++) {
+      for (i=0; i<size_x; i++) {
+
+        dqm = (q[l]-q[lxm]);
+        dqp = (q[lxp]-q[l]);
+        if(dqp*dqm<=0) work[l] = 0;
+        else  work[l] = 2.*dqp*dqm/(zone_size_x(j,k)*dqm+dqp);
+      }
+    }
+    j=0;
+    for(i=0;i<size_x;i++) {
+        work[l] = 0;
+    }
+    j=size_y-1;
+    for(i=0;i<size_x;i++) {
+        work[l] = 0;
+    }
+
+    
+    return;
+}
+void transport_x(double *qs,double *res) {
+    int i,j,k;
+    k = 0;
+   
+    if (res == NULL) {
+        res = qs;
+    }
+
+    for(j=0;j<size_y;j++) {
+        for(i=0;i<size_x;i++) {
+            work1[l] = qs[l];
+        }
+    }
+    set_slopes_x(qs);   // Slope is in work array
+
+    for (j=1; j<size_y-1; j++) {
+      for (i=0; i<size_x; i++) {
+
+        res[l] = work1[lxm] + 0.5 * zone_size_x(j,k)*work[lxm];
+
+      }
+
+    }
+    return;
+}
 
 void set_slopes(double *q) {
     int i,j,k;
@@ -570,6 +750,7 @@ void transport(double *qs,double *res) {
     if (res == NULL) {
         res = qs;
     }
+
     for(j=0;j<size_y;j++) {
         for(i=0;i<size_x;i++) {
             work1[l] = qs[l];

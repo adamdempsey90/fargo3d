@@ -242,9 +242,13 @@ void init_potential_m(void) {
     real* pot = Pot->field_cpu;
     real* fpot = FTPot->field_cpu;
     real* potp = PotP->field_cpu;
-
+#if defined(MSTART) && defined(MEND)
     mstart = MSTART;
     mend = MEND;
+#else
+    mstart = 0;
+    mend = 0;
+#endif
     size_x = Nx + 2*NGHX;
     size_y = Ny + 2*NGHY;
     size_z = Nz + 2*NGHZ;

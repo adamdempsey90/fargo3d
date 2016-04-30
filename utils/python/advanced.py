@@ -2238,7 +2238,7 @@ class Sim(Mesh,Parameters):
 
         return res * norm * sgn
 
-    def load_time_fluxes(self,trange):
+    def load_time_fluxes(self,trange,dt=1e-5):
         execdir = self.fargodir+'utils/python/'
         execname = 'load_fluxes'
         call(['mkdir',self.directory + 'temp_files'])
@@ -2264,6 +2264,7 @@ class Sim(Mesh,Parameters):
         ftot = zeros((self.params.ny+1,len(trange)))
         lambda_dep = zeros((self.params.ny,len(trange)))
         lambda_ex = zeros((self.params.ny,len(trange)))
+        lambda_ind = zeros((self.params.ny,len(trange)))
         mdot = zeros((self.params.ny,len(trange)))
         rhostar = zeros((self.params.ny,len(trange)))
 
@@ -2279,21 +2280,22 @@ class Sim(Mesh,Parameters):
             call(callstr)
 
 
-            fw[:,i] = fromfile(fpath+'Fw.dat').reshape(self.params.ny+1,self.params.nx).mean(axis=1)
-            fd[:,i] = fromfile(fpath+'Fd.dat').reshape(self.params.ny+1,self.params.nx).mean(axis=1)
-            ftot[:,i] = fromfile(fpath+'Ft.dat').reshape(self.params.ny+1,self.params.nx).mean(axis=1)
-            lambda_dep[:,i] = fromfile(fpath+'lamdep.dat').reshape(self.params.ny,self.params.nx).mean(axis=1)
-            lambda_ex[:,i] = fromfile(fpath+'lamex.dat').reshape(self.params.ny,self.params.nx).mean(axis=1)
+            fw[:,i] = fromfile(fpath+'Fw.dat')
+            fd[:,i] = fromfile(fpath+'Fd.dat')
+            ftot[:,i] = fromfile(fpath+'Ft.dat')
+            lambda_dep[:,i] = fromfile(fpath+'lamdep.dat')
+            lambda_ex[:,i] = fromfile(fpath+'lamex.dat')
+            lambda_ind[:,i] = fromfile(fpath+'lamind.dat')
             mdot[:,i] = fromfile(fpath+'mdot.dat').reshape(self.params.ny,self.params.nx).mean(axis=1)
             rhostar[:,i] = fromfile(fpath+'rhostar.dat').reshape(self.params.ny,self.params.nx).mean(axis=1)
             lstar[:,i] = fromfile(fpath+'lstar.dat').reshape(self.params.ny,self.params.nx).mean(axis=1)
-            Ld[:,i] = fromfile(fpath+'Ld.dat').reshape(self.params.ny,self.params.nx).mean(axis=1)
-            Lw[:,i] = fromfile(fpath+'Lw.dat').reshape(self.params.ny,self.params.nx).mean(axis=1)
-            Ltot[:,i] = fromfile(fpath+'Lt.dat').reshape(self.params.ny,self.params.nx).mean(axis=1)
+            Ld[:,i] = fromfile(fpath+'Ld.dat')
+            Lw[:,i] = fromfile(fpath+'Lw.dat')
+            Ltot[:,i] = fromfile(fpath+'Lt.dat')
 
 
-        callstr = ['rm',self.directory+'param_file.txt']
-        call(callstr)
+        #callstr = ['rm',self.directory+'param_file.txt']
+       # call(callstr)
         callstr = ['rm','-rf',self.directory+'temp_files/']
         call(callstr)
 
@@ -2302,6 +2304,8 @@ class Sim(Mesh,Parameters):
         drfd = (fd[1:,:] - fd[:-1,:])/dy[:,newaxis]
         drft = (ftot[1:,:] - ftot[:-1,:])/dy[:,newaxis]
 
+        xm = (self.ym - self.a)/(self.params.aspectratio*self.a)
+        xmed = (self.ymed - self.a)/(self.params.aspectratio*self.a)
 
         indm = (self.ym>self.vr.wkz)&(self.ym<self.vr.wkzr)
         ind = (self.vr.y>self.vr.wkz)&(self.vr.y<self.vr.wkzr)
@@ -2312,6 +2316,7 @@ class Sim(Mesh,Parameters):
         ftot = ftot[indm,:]
         lambda_dep = lambda_dep[indc,:]
         lambda_ex = lambda_ex[indc,:]
+        lambda_ind = lambda_ind[indc,:]
         Ld = Ld[indc,:]
         Lw = Lw[indc,:]
         Ltot = Ltot[indc,:]
@@ -2321,10 +2326,33 @@ class Sim(Mesh,Parameters):
         drfw = drfw[indc,:]
         drfd = drfd[indc,:]
         drft = drft[indc,:]
+        xm  = xm[indm]
+        xmed = xmed[indc]
+        dtlw = (Lw[:,1]-Lw[:,0])/dt
+        dtld = (Ld[:,1]-Ld[:,0])/dt
+        dtlt = (Ltot[:,1]-Ltot[:,0])/dt
 
+
+        fig,axes=subplots(3,1,sharex=True)
+        axes[0].plot(xmed,dtlw+drfw.mean(axis=1),label='$\\partial_t L_w + \\partial_r F_w$')
+        axes[0].plot(xmed,(lambda_ex + lambda_ind -lambda_dep).mean(axis=1),label='$\\Lambda_{ex}+\\Lambda_{I}-\\Lambda_{dep}$')
+        axes[0].plot(xmed,(lambda_ex  -lambda_dep).mean(axis=1),label='$\\Lambda_{ex}-\\Lambda_{dep}$')
+        #axes[0].plot(xmed,(lambda_ex).mean(axis=1),label='$\\Lambda_{ex}$')
+        #axes[0].plot(xmed,(lambda_ind).mean(axis=1),label='$\\Lambda_{ind}$')
+        #axes[0].plot(xmed,(-lambda_dep).mean(axis=1),label='$-\\Lambda_{dep}$')
+        axes[1].plot(xmed,dtld+drfd.mean(axis=1),label='$\\partial_t L_d + \\partial_r F_d$')
+        axes[1].plot(xmed,lambda_dep.mean(axis=1),label='$\\Lambda_{dep}$')
+        #axes[1].plot(xmed,(-lambda_ex).mean(axis=1),label='$-\\Lambda_{ex}$')
+        axes[2].plot(xmed,dtlt+drft.mean(axis=1),label='$\\partial_t L_T + \\partial_r F_T$')
+        axes[2].plot(xmed,(lambda_ind + lambda_ex).mean(axis=1),label='$\\Lambda_{ex}+\\Lambda_{I}$')
+        axes[2].plot(xmed,(lambda_ex).mean(axis=1),label='$\\Lambda_{ex}$')
+        axes[2].set_xlim(-10,20)
+        axes[0].legend(loc='best')
+        axes[1].legend(loc='best')
+        axes[2].legend(loc='best')
 
         #return fw,fd,lambda_ex,lambda_dep,mdot,rhostar,lstar,Ld,Lw
-        return fw,fd,ftot,lambda_ex,lambda_dep,Ld,Lw,Ltot,mdot,rhostar,lstar,drfw,drfd,drft
+        return fw,fd,ftot,lambda_ex,lambda_dep,lambda_ind,Ld,Lw,Ltot,mdot,rhostar,lstar,drfw,drfd,drft,xm,xmed
     def torque_split(self):
         y = self.rhostar.y
         lam = self.rhostar.ft * -2*pi*y[:,newaxis]
@@ -2945,4 +2973,72 @@ def avg(q,axis=0):
         return res
     except:
         return q.mean(axis=axis)
+
+
+
+def read_dat_file(fname,ny):
+    dat = fromfile(fname)
+    ymed = dat[:ny]
+    dat = dat[ny:]
+
+    Lt = dat[:ny]
+    dat = dat[ny:]
+
+    Ld = dat[:ny]
+    dat = dat[ny:]
+
+    Lw = dat[:ny]
+    dat = dat[ny:]
+
+    drFt = dat[:ny]
+    dat = dat[ny:]
+    drFd = dat[:ny]
+    dat = dat[ny:]
+    drFw = dat[:ny]
+    dat = dat[ny:]
+    lex = dat[:ny]
+    dat = dat[ny:]
+    lind = dat[:ny]
+    dat = dat[ny:]
+    ldep = dat[:ny]
+    dat = dat[ny:]
+    mdt = dat[:ny]
+    dat = dat[ny:]
+    mdd = dat[:ny]
+    dat = dat[ny:]
+    return ymed,Lt,Ld,Lw,drFt,drFd,drFw,lex,lind,ldep,mdt,mdd
+
+class Torque():
+    def __init__(self,ny,fname='temp_files/output.dat'):
+        dat=fromfile(fname)
+        self.ym = dat[:ny]
+        dat=dat[ny:]
+        self.y = dat[:ny]
+        dat=dat[ny:]
+        self.Lt = dat[:ny]
+        dat=dat[ny:]
+        self.Ld = dat[:ny]
+        dat=dat[ny:]
+        self.Lw = dat[:ny]
+        dat=dat[ny:]
+        self.drFt = dat[:ny]
+        dat=dat[ny:]
+        self.drFd = dat[:ny]
+        dat=dat[ny:]
+        self.drFw = dat[:ny]
+        dat=dat[ny:]
+        self.lex = dat[:ny]
+        dat=dat[ny:]
+        self.lind = dat[:ny]
+        dat=dat[ny:]
+        self.ldep = dat[:ny]
+        dat=dat[ny:]
+        self.Mdott = dat[:ny]
+        dat=dat[ny:]
+        self.Mdotd = dat[:ny]
+        dat=dat[ny:]
+        self.Lds = dat[:ny]
+        dat=dat[ny:]
+        self.vrbar = dat[:ny]
+        dat=dat[ny:]
 
