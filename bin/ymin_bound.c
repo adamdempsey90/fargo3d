@@ -84,7 +84,7 @@ OUTPUT(Vy);
 	jgh = j;
 	jact = (2*nghy-j-1);
 
-	density[lgh] = density[lact];
+	density[lgh] = (density[i+(nghy+1)*pitch]-density[i+nghy*pitch])/(ymed(nghy+1)-ymed(nghy))*(ymed(jgh)-ymed(nghy))+density[i+nghy*pitch];
 	vx[lgh] = (vx[lact]+ymed(jact)*omegaframe)*sqrt(ymed(jact)/ymed(jgh))-ymed(jgh)*omegaframe;
 	vy[lghs] = -vy[lacts];
 	vy[lacts_null] = 0;

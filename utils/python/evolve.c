@@ -126,26 +126,26 @@ int main(int argc, char *argv[]) {
     allocate_all();
     read_domain(directory);
     read_single_file(n,directory);
-   // set_bc();
+    set_bc();
     printf("%lg\n",omf);
     output_init(directory);
     int i;
     for(i=0; i <nsteps; i++) {
         
-    //    potential();
-    //    source_step();
-    //    viscosity();
-    //    temp_to_vel();
-    //    set_bc();
+        potential();
+        source_step();
+        viscosity();
+       temp_to_vel();
+        set_bc();
         vel_to_temp();
         transport_step();
-    }
-    /*
         set_bc();
         set_ang();
-
     }
-    */
+    
+
+    
+   
     output(directory);
     free_all();
     return 0;
@@ -364,7 +364,7 @@ void transportY(void) {
 
     vanleer_y_a(dens);
     vanleer_y_b(dens,denstar,dt);
-    
+   
     DividebyRho(Pixm);
     vanleer_y_a(divrho);
     vanleer_y_b(divrho,Qs,dt);
@@ -384,7 +384,7 @@ void transportY(void) {
     vanleer_y_a(divrho);
     vanleer_y_b(divrho,Qs,dt);
     updateY(Piyp,Qs,dt);
-    
+ 
     update_density_Y(dt);
 
     return;
@@ -405,7 +405,7 @@ void transportX(void) {
 
     vanleer_x_a(dens);
     vanleer_x_b(dens,denstar,dt);
-    
+  
     DividebyRho(Pixm);
     vanleer_x_a(divrho);
     vanleer_x_b(divrho,Qs,dt);
@@ -425,7 +425,7 @@ void transportX(void) {
     vanleer_x_a(divrho);
     vanleer_x_b(divrho,Qs,dt);
     updateX(Piyp,Qs,dt);
-    
+  
     update_density_X(dt);
 
     return;
@@ -569,7 +569,7 @@ void update_density_X(double dt) {
     for(j=0;j<size_y;j++) {
         for(i=0;i<size_x;i++) {
 
-            dens[l] += ((vx_temp[l]*denstar[l]-vx_temp[lyp]*denstar[lyp])*SurfX(j,k)*dt*InvVol(j,k));
+            dens[l] += ((vx_temp[l]*denstar[l]-vx_temp[lxp]*denstar[lxp])*SurfX(j,k)*dt*InvVol(j,k));
 
         }
     }
@@ -726,7 +726,7 @@ void read_domain(char *directory) {
 void read_single_file(int n, char *directory) {
     char filename[512];
     FILE *f;
-    sprintf(filename,"%ssubstep_5_%d.dat",directory,n);
+    sprintf(filename,"%ssubstep_0_%d.dat",directory,n);
     printf("Reading %s\n",filename);
     f = fopen(filename,"r");
     if (f == NULL) printf("Error loading %s\n",filename); 

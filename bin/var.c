@@ -4,19 +4,19 @@
 
 void InitVariables() {
   init_var("FLARINGINDEX", (char*)&FLARINGINDEX, REAL, NO, "0.0");
-  init_var("SIGMASLOPE", (char*)&SIGMASLOPE, REAL, NO, "0.5");
+  init_var("SIGMASLOPE", (char*)&SIGMASLOPE, REAL, NO, "0.0");
   init_var("YMAX", (char*)&YMAX, REAL, NO, "2.5");
   init_var("THICKNESSSMOOTHING", (char*)&THICKNESSSMOOTHING, REAL, NO, "0.6");
   init_var("OMEGAFRAME", (char*)&OMEGAFRAME, REAL, NO, "1.0005");
+  init_var("YMIN", (char*)&YMIN, REAL, NO, "0.4");
   init_var("DT", (char*)&DT, REAL, NO, "0.314159265359");
-  init_var("ROCHESMOOTHING", (char*)&ROCHESMOOTHING, REAL, NO, "0.0");
+  init_var("NU", (char*)&NU, REAL, NO, "0.0");
   init_var("XMIN", (char*)&XMIN, REAL, NO, "-3.14159265358979323844");
   init_var("XMAX", (char*)&XMAX, REAL, NO, "3.14159265358979323844");
   init_var("ECCENTRICITY", (char*)&ECCENTRICITY, REAL, NO, "0.0");
-  init_var("ALPHA", (char*)&ALPHA, REAL, NO, "0.01");
   init_var("ASPECTRATIO", (char*)&ASPECTRATIO, REAL, NO, "0.05");
-  init_var("YMIN", (char*)&YMIN, REAL, NO, "0.4");
-  init_var("SIGMA0", (char*)&SIGMA0, REAL, NO, "1.0");
+  init_var("ROCHESMOOTHING", (char*)&ROCHESMOOTHING, REAL, NO, "0.0");
+  init_var("SIGMA0", (char*)&SIGMA0, REAL, NO, "6.3661977237e-4");
   init_var("NX", (char*)&NX, INT, NO, "384");
   init_var("NY", (char*)&NY, INT, NO, "128");
   init_var("NINTERM", (char*)&NINTERM, INT, NO, "20");
@@ -45,9 +45,9 @@ void InitVariables() {
   init_var("INCLINATION", (char*)&INCLINATION, REAL, NO, "0.0");
   init_var("CFL", (char*)&CFL, REAL, NO, "0.44");
   init_var("ORBITALRADIUS", (char*)&ORBITALRADIUS, REAL, NO, "0.0");
-  init_var("NU", (char*)&NU, REAL, NO, "0.0");
   init_var("RELEASERADIUS", (char*)&RELEASERADIUS, REAL, NO, "0.0");
   init_var("OUTERRESONANCE", (char*)&OUTERRESONANCE, REAL, NO, "1.5");
+  init_var("ALPHA", (char*)&ALPHA, REAL, NO, "0.0");
   init_var("VERTICALDAMPING", (char*)&VERTICALDAMPING, REAL, NO, "0.0");
   init_var("NZ", (char*)&NZ, INT, NO, "1");
   init_var("NSNAP", (char*)&NSNAP, INT, NO, "0");
