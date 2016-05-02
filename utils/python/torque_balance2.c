@@ -55,14 +55,13 @@ typedef struct Parameters {
 
 } Parameters;
 
-
+double *drFt, *drFd, *drFw, *Ld, *Lt, *Lw, *Lamex, *Lamdep;
+double *dbarstar;
 double *dens, *vx, *vy, *Pres, *Pot, *energy;
-double *vx_temp, *vy_temp;
-double *Pixp, *Pixm, *Piym, *Piyp;
+double *Pixp, *Pixm;
 double *slope, *divrho, *denstar, *Qs;
 double *Ymed, *Xmed, *Ymin, *Xmin;
-double *tauxx, *tauxy, *tauyy;
-double *Lang;
+double *tauxx, *tauxy, *tauyy, *tauxyavg;
 
 double dt,omf,dx;
 int nx, ny, nz, size_x, size_y, size_z,stride,pitch;
@@ -129,42 +128,24 @@ int main(int argc, char *argv[]) {
     stride = size_x*size_y;
     pitch = size_x;
     dx = 2*M_PI/nx;
-    dt = .0000314159265359;
+    dt = 0; //dt = .0000314159265359;
 
     allocate_all();
     read_domain(directory);
-    read_single_file(n,2,directory);
+    read_single_file(n,0,directory);
     //set_bc();
     printf("%lg\n",omf);
     output_init(directory);
-    int i;
-    for(i=0; i <nsteps; i++) {
     
         printf("potential\n"); 
         potential();
-        printf("sourcel\n"); 
-       source_step();
-       /*
         printf("viscl\n"); 
         viscosity();
-    
-        printf("copyl\n"); 
-        temp_to_vel();
-        printf("bcl\n"); 
-        set_bc();
-        printf("copyl\n"); 
-        
-        vel_to_temp();
-        printf("transport\n"); 
-        
+        printf("sourcel\n"); 
+        source_step();
         transport_step();
-        printf("bc\n"); 
-        set_bc();
-        printf("ang\n"); 
-        set_ang();
-*/
-    }
-    temp_to_vel();   
+        set_Lamdep();
+        set_wave();
     output(directory);
     free_all();
     return 0;
@@ -175,13 +156,11 @@ double Nu(double x) {
 double Cs(double x) {
     return params.h*pow(x,params.flaringindex-0.5);
 }
-void set_ang(void) {
+void set_wave(void) {
     int i,j,k;
-    i = j = k = 0;
-    for(j=0;j<size_y;j++) {
-        for(i=0;i<size_x;i++) {
-            Lang[l] = .5*(Pixp[l] + Pixm[l]);
-        }
+    k=0;
+    for(j=NGHY;j<size_y-NGHY;j++) {
+        drFw[j] = drFt[j]- drFd[j];
     }
     return;
 }
@@ -214,6 +193,16 @@ void allocate_all(void) {
     MALLOC_SAFE((tauxy = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((tauyy = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
 
+    MALLOC_SAFE((tauxyavg = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((Lt = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((Lw = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((Ld = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((drFt = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((drFw = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((drFd = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((Lamex = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((Lamdep = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((dbarstar = (double *)malloc(sizeof(double)*(size_y))));
 
     int i,j,k;
     i = j = k = 0;
@@ -288,6 +277,16 @@ void free_all(void) {
     FREE_SAFE(tauxx);
     FREE_SAFE(tauxy);
     FREE_SAFE(tauyy);
+    FREE_SAFE(tauxyavg);
+    FREE_SAFE(Lt);
+    FREE_SAFE(Lw);
+    FREE_SAFE(Ld);
+    FREE_SAFE(drFt);
+    FREE_SAFE(drFw);
+    FREE_SAFE(drFd);
+    FREE_SAFE(Lamex);
+    FREE_SAFE(Lamdep);
+    FREE_SAFE(dbarstar);
     return;
 }
 void viscosity(void) {
@@ -312,21 +311,9 @@ void viscosity(void) {
 
 
         }
+            tauxyavg[j] = viscm*.5*(dens[j]+dens[j-1])*((vxbar[j]-vxbar[j-1])/(ymed(j)-ymed(j-1))-.5*(vxbar[j]+vxbar[j-1])/ymin(j)); //centered on left, inner vertical edge in z
     }
 
-    for(j=1;j<size_y-2;j++) {
-
-        for(i=0;i<size_x;i++) {
-            // X
-  
-	        vx_temp[l] += 2.0*(tauxx[l]-tauxx[lxm])/(zone_size_x(j,k)*(dens[l]+dens[lxm]))*dt;
-	        vx_temp[l] += 2.0*(ymin(j+1)*ymin(j+1)*tauxy[lyp]-ymin(j)*ymin(j)*tauxy[l])/((ymin(j+1)-ymin(j))*ymed(j)*ymed(j)*(dens[lxm]+dens[l]))*dt;
-            // Y
-            vy_temp[l] += 2.0*(ymed(j)*tauyy[l]-ymed(j-1)*tauyy[lym])/((ymed(j)-ymed(j-1))*(dens[l]+dens[lym])*ymin(j))*dt;
-            vy_temp[l] += 2.0*(tauxy[lxp]-tauxy[l])/(dx*ymin(j)*(dens[l]+dens[lym]))*dt;
-            vy_temp[l] -= (tauxx[l]+tauxx[lym])/(ymin(j)*(dens[l]+dens[lym]))*dt;
-       }
-    }
     return;
 }
 void compute_Pres(void) {
@@ -378,70 +365,55 @@ void potential(void) {
 void source_step(void) {
     int i,j,k;
     i=j=k=0;
-    double vxc;
     compute_Pres();
-
-    for(j=1;j<size_y-1;j++) {
-
+    double resfm, resfp, reslamp, reslamm;
+    for(j=NGHY;j<size_y-NGHY;j++) {
+        reslamm = 0;
+        reslamp = 0;
+        resfm = 0;
+        resfp = 0;
         for(i=0;i<size_x;i++) {
             // X
-            vx_temp[l] =vx[l] -2*dt/(dens[l]+dens[lxm]) *(Pres[l]-Pres[lxm])/zone_size_x(j,k);
-            vx_temp[l] -= dt*(Pot[l]-Pot[lxm])/zone_size_x(j,k);
-  
-            // Y
-            vy_temp[l] = vy[l] -2*dt/(dens[l]+dens[lym])*(Pres[l]-Pres[lym])/(ymed(j)-ymed(j-1));
-            vxc = .25*(vx[l]+vx[lxp]+vx[lym]+vx[lxp-pitch])+omf*ymin(j);
-            vy_temp[l] += dt*vxc*vxc/ymin(j);
-            vy_temp[l] -= dt*(Pot[l]-Pot[lym])/(ymed(j)-ymed(j-1));
+            reslamm -= .5*(dens[l]+dens[lxm])*(Pot[l]-Pot[lxm])/zone_size_x(j,k);
+            reslamp -= .5*(dens[l]+dens[lxp])*(Pot[lxp]-Pot[l])/zone_size_x(j,k);
+	        resfm -= (ymin(j+1)*ymin(j+1)*tauxy[lyp]-ymin(j)*ymin(j)*tauxy[l])/((ymin(j+1)-ymin(j))*ymed(j));
+	        resfp -= (ymin(j+1)*ymin(j+1)*tauxy[lxp+pitch]-ymin(j)*ymin(j)*tauxy[lxp])/((ymin(j+1)-ymin(j))*ymed(j));
        }
+        reslamm /= (double)nx;
+        reslamp /= (double)nx;
+        resfm /= (double)nx;
+        resfp /= (double)nx;
+        drFt[j] = .5*(resfm + resfp);
+        Lamex[j] = .5*(reslamm + reslamp);
+        drFd[j] = -(ymin(j+1)*ymin(j+1)*tauxyavg[j+1]-ymin(j)*ymin(j)*tauxyavg[j])/((ymin(j+1)-ymin(j))*ymed(j));
     }
 
 
-    return;
-}
-void vel_to_temp(void) {
-    int i,j,k;
-    for(k=0;k<size_z;k++) {
-        for(j=0;j<size_y;j++) {
-            for(i=0;i<size_x;i++) {
-                vx_temp[l] = vx[l];
-                vy_temp[l] = vy[l];
-            }
-        }
-    }
-    return;
-}
-void temp_to_vel(void) {
-    int i,j,k;
-    for(k=0;k<size_z;k++) {
-        for(j=0;j<size_y;j++) {
-            for(i=0;i<size_x;i++) {
-                vx[l] = vx_temp[l];
-                vy[l] = vy_temp[l];
-            }
-        }
-    }
     return;
 }
 void transport_step(void) {
     set_momenta();    
     transportY();
-    transportX();
-    set_vel();
     return;
 }
 
 void set_momenta(void) {
     int i,j,k;
     i=j=k=0;
-
+    double res;
     for(j=0;j<size_y-1;j++) {
+        res = 0;
+        resw = 0;
+        Ld[j] = dbar[j]*ymed(j)*(vxbar[j] + omf*ymed(j));
         for(i=0;i<size_x;i++) {
-            Pixm[l] = ymed(j)*(vx_temp[l]+omf*ymed(j))*dens[l];
-            Pixp[l] = ymed(j)*(vx_temp[lxp]+omf*ymed(j))*dens[l];
-            Piym[l] = vy_temp[l]*dens[l];
-            Piyp[l] = vy_temp[lyp]*dens[l];
+            Pixm[l] = ymed(j)*(vx[l]+omf*ymed(j))*dens[l];
+            Pixp[l] = ymed(j)*(vx[lxp]+omf*ymed(j))*dens[l];
+            res += .5*(Pixm[l] + Pixp[l]);
+            resw += res - Ld[j];
         }
+        res /= (double)nx;
+        Lt[j] = res;
+        Lw[j] = Lt[j] - Ld[j];
     }
     return;
 }
@@ -461,17 +433,17 @@ void transportY(void) {
     vanleer_y_b(divrho,Qs,dt);
     updateY(Pixp,Qs,dt);
 
-    DividebyRho(Piym);
-    vanleer_y_a(divrho);
-    vanleer_y_b(divrho,Qs,dt);
-    updateY(Piym,Qs,dt);
 
-    DividebyRho(Piyp);
-    vanleer_y_a(divrho);
-    vanleer_y_b(divrho,Qs,dt);
-    updateY(Piyp,Qs,dt);
+    vanleer_y_a_avg(dbar);
+    vanleer_y_b_avg(dbar,dbarstar,dt);
+   
+    DividebyRhoavg(Ld);
+    vanleer_y_a_avg(divrho);
+    vanleer_y_b_avg(divrho,Qs,dt);
+    updateYavg(Ld,Qs,dt);
+
  
-    update_density_Y(dt);
+//    update_density_Y(dt);
 
     return;
 
@@ -486,50 +458,15 @@ void DividebyRho(double *q) {
     }
     return;
 }
-void transportX(void) {
-    // X direction
-
-    vanleer_x_a(dens);
-    vanleer_x_b(dens,denstar,dt);
-  
-    DividebyRho(Pixm);
-    vanleer_x_a(divrho);
-    vanleer_x_b(divrho,Qs,dt);
-    updateX(Pixm,Qs,dt);
-
-    DividebyRho(Pixp);
-    vanleer_x_a(divrho);
-    vanleer_x_b(divrho,Qs,dt);
-    updateX(Pixp,Qs,dt);
-
-    DividebyRho(Piym);
-    vanleer_x_a(divrho);
-    vanleer_x_b(divrho,Qs,dt);
-    updateX(Piym,Qs,dt);
-
-    DividebyRho(Piyp);
-    vanleer_x_a(divrho);
-    vanleer_x_b(divrho,Qs,dt);
-    updateX(Piyp,Qs,dt);
-  
-    update_density_X(dt);
-
-    return;
-
-}
-void set_vel(void) {
-
+void DividebyRhoavg(double *q) {
     int i,j,k;
     i=j=k=0;
-
-    for(j=1;j<size_y;j++) {
-        for(i=0;i<size_x;i++) {
-            vy[l] = (Piym[l] + Piyp[lym])/(dens[l]+dens[lym]);
-            vx[l] = (Pixm[l] + Pixp[lxm])/(ymed(j)*(dens[l]+dens[lxm])) - omf*ymed(j);
-        }
+    for(j=0;j<size_y;j++) {
+        divrho[j] = q[j]/dbar[j];
     }
     return;
 }
+
 void vanleer_y_a(double *q) {
     int i,j,k;
     i=j=k=0;
@@ -551,27 +488,6 @@ void vanleer_y_a(double *q) {
     
     return;
 }
-void vanleer_x_a(double *q) {
-    int i,j,k;
-    i=j=k=0;
-    double dqm, dqp;
-    for(j=0;j<size_y;j++) {
-        for(i=0;i<size_x;i++) {
-
-            dqm = (q[l] - q[lxm]);
-            dqp = (q[lxp]-q[l]);
-
-            if (dqp*dqm <= 0) {
-                slope[l] = 0;
-            }
-            else {
-                slope[l] = 2*dqp*dqm/((dqp+dqm)*zone_size_x(j,k));
-            }
-        }
-    }
-    
-    return;
-}
 void vanleer_y_b(double *q, double *qs, double dt) {
     int i,j,k;
     i=j=k=0;
@@ -580,84 +496,115 @@ void vanleer_y_b(double *q, double *qs, double dt) {
 
         for(i=0;i<size_x;i++) {
             
-            if (vy_temp[l] > 0.) {
-                qs[l] = q[lym] + .5*(zone_size_y(j-1,k)-vy_temp[l]*dt)*slope[lym];
+            if (vy[l] > 0.) {
+                qs[l] = q[lym] + .5*(zone_size_y(j-1,k)-vy[l]*dt)*slope[lym];
             }
             else {
-                qs[l] = q[l] - .5*(zone_size_y(j,k)+vy_temp[l]*dt)*slope[l];
+                qs[l] = q[l] - .5*(zone_size_y(j,k)+vy[l]*dt)*slope[l];
             }
 
         }
     }
     return;
 }
-void vanleer_x_b(double *q, double *qs, double dt) {
+void vanleer_y_a_avg(double *q) {
+    int i,j,k;
+    i=j=k=0;
+    double dqm, dqp;
+    for(j=1;j<size_y-1;j++) {
+
+            dqm = (q[j] - q[j-1])/zone_size_y(j,k);
+            dqp = (q[j+1]-q[j])/zone_size_y(j+1,k);
+
+            if (dqp*dqm <= 0) {
+                slope[j] = 0;
+            }
+            else {
+                slope[j] = 2*dqp*dqm/(dqp+dqm);
+            }
+    }
+    
+    return;
+}
+void vanleer_y_b_avg(double *q, double *qs, double dt) {
     int i,j,k;
     i=j=k=0;
 
-    for(j=0;j<size_y;j++) {
+    for(j=1;j<size_y-1;j++) {
 
-        for(i=0;i<size_x;i++) {
             
-            if (vx_temp[l] > 0.) {
-                qs[l] = q[lxm] + .5*(zone_size_x(j,k)-vx_temp[l]*dt)*slope[lxm];
+            if (vybar[j] > 0.) {
+
+                qs[j] = q[j-1] + .5*(zone_size_y(j-1,k)-vybar[j]*dt)*slope[j-1];
             }
             else {
-                qs[l] = q[l] - .5*(zone_size_x(j,k)+vx_temp[l]*dt)*slope[l];
+                qs[j] = q[j] - .5*(zone_size_y(j,k)+vybar[j]*dt)*slope[j];
             }
 
-        }
     }
     return;
 }
-void updateX(double *q, double *qs,double dt) {
+void updateYavg(double *q, double *qs,double dt) {
     int i,j,k;
 
-    for(j=0;j<size_y;j++) {
-        for(i=0;i<size_x;i++) {
-
-            q[l] += ((vx_temp[l]*qs[l]*denstar[l]-vx_temp[lxp]*qs[lxp]*denstar[lxp])*SurfX(j,k)*dt*InvVol(j,k));
-
-        }
+    for(j=NGHY;j<size_y-NGHY;j++) {
+        drFd[j] -= ((vybar[j]*qs[j]*dbarstar[j]*SurfY(j,k)-vybar[j+1]*qs[j+1]*dbarstar[j+1]*SurfY(j+1,k))*InvVol(j,k));
     }
-
-
-
     return;
 }
 void updateY(double *q, double *qs,double dt) {
     int i,j,k;
 
-    for(j=0;j<size_y-1;j++) {
+    for(j=NGHY;j<size_y-NGHY;j++) {
         for(i=0;i<size_x;i++) {
-
-            q[l] += ((vy_temp[l]*qs[l]*denstar[l]*SurfY(j,k)-vy_temp[lyp]*qs[lyp]*denstar[lyp]*SurfY(j+1,k))*dt*InvVol(j,k));
+            resp += ((vy[l]*qs[l]*denstar[l]*SurfY(j,k)-vy[lyp]*qs[lyp]*denstar[lyp]*SurfY(j+1,k))*InvVol(j,k));
 
         }
+        resp /= (double) nx;
+        drFt[j] -= resp*.5;
     }
     return;
 }
-void update_density_Y(double dt) {
+void set_Lamdep(double dt) {
     int i,j,k;
+    double fac1, fac2, fac3, fac4;
+    for(j=NGHY;j<size_y-NGHY;j++) {
+        fac1 = 0; // Mass flux term
+        fac2 = 0; // shear term
+        fac3 = 0; // visc term 1
+        fac4 = 0; // visc term 2
 
-    for(j=0;j<size_y-1;j++) {
         for(i=0;i<size_x;i++) {
 
-            dens[l] += ((vy_temp[l]*denstar[l]*SurfY(j,k)-vy_temp[lyp]*denstar[lyp]*SurfY(j+1,k))*dt*InvVol(j,k));
+            fac1 += (((vy[l]-vybar[j])*(denstar[l]-dbarstar[j])*SurfY(j,k)
+                        -(vy[lyp]-vybar[j+1])*(denstar[lyp]-dbarstar[j+1])*SurfY(j+1,k))*InvVol(j,k));
+
+            fac2 += .5*(vy[l]-vybar[j])*(ymed(j)*(vx[l]-vxbar[j])-ymed(j-1)*(vx[lym]-vxbar[j+1]))/(ymed(j)-ymed(j-1));
+            fac2 += .5*(vy[lyp]-vybar[j+1])*(ymed(j+1)*(vx[lyp]-vxbar[j+1])-ymed(j)*(vx[l]-vxbar[j]))/(ymed(j+1)-ymed(j));
+
+        
+            fac3 += (dens[l]-dbar[j])/dens[l];
+
+            fac4 -= ymed(j)*2.0*(Pres[l]-Pres[lxm])/(zone_size_x(j,k)*(dens[l]+dens[lxm]));
+            fac4 += ymed(j)*2.0*(tauxx[l]-tauxx[lxm])/(zone_size_x(j,k)*(dens[l]+dens[lxm]));
+	        fac4 += 2.0*(ymin(j+1)*ymin(j+1)*(tauxy[lyp]-tauxyavg[j+1])-ymin(j)*ymin(j)*(tauxy[l]-tauxyavg[j]))/((ymin(j+1)-ymin(j))*ymed(j)*(dens[lxm]+dens[l]));
 
         }
-    }
-    return;
-}
-void update_density_X(double dt) {
-    int i,j,k;
+        fac1 /= (double)nx;
+        fac1 *= Ld[j]/dbar[j];
+        
+        fac2 /= (double)nx;
+        fac2 *= -dbar[j];
+        
+        fac3 /= (double)nx;
+        fac3 *= -(ymin(j+1)*ymin(j+1)*tauxyavg[j+1]-ymin(j)*ymin(j)*tauxyavg[j])/((ymin(j+1)-ymin(j))*ymed(j));
 
-    for(j=0;j<size_y;j++) {
-        for(i=0;i<size_x;i++) {
 
-            dens[l] += ((vx_temp[l]*denstar[l]-vx_temp[lxp]*denstar[lxp])*SurfX(j,k)*dt*InvVol(j,k));
 
-        }
+        fac4 /= (double)nx;
+        fac4 *= dbar[j];
+
+        Lamdep[j] = fac1 + fac2 + fac3 + fac4;
     }
     return;
 }

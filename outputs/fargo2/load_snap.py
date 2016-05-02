@@ -48,6 +48,7 @@ class Snap():
         self.vy = dat[s:2*s].reshape(ny,nx)
         self.vx= dat[2*s:3*s].reshape(ny,nx)
         self.L= dat[3*s:4*s].reshape(ny,nx)
+        self.pot= dat[4*s:5*s].reshape(ny,nx)
 
         self.ymed = .5*(self.ymin[1:]+self.ymin[:-1])
         self.xmed = .5*(self.xmin[1:] + self.xmin[:-1])

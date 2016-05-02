@@ -53,7 +53,6 @@ void Potential_cpu() {
   else
     planetmass_taper = (PhysicalTime >= MASSTAPER ? 1.0 : .5*(1.0-cos(M_PI*PhysicalTime/MASSTAPER)));
 //<\USER_DEFINED>
-
 //<EXTERNAL>
   real* pot  = Pot->field_cpu;
   real* xplanet = Sys->x_cpu;
@@ -76,6 +75,7 @@ void Potential_cpu() {
   int binary_true = ThereIsACentralBinary;
 //<\EXTERNAL>
   
+    printf("taper = %.16f\nsmoothing = %.16f\nmass = %.16f\n",planetmass_taper,THICKNESSSMOOTHING,mplanet[0]);
 //<INTERNAL>
   int i;
   int j;
@@ -125,7 +125,6 @@ void Potential_cpu() {
 #else
 	pot[l] = 0.0; // No default star
 #endif
-
 	for(n=0; n<nb; n++) {
 	  mp = mplanet[n]*taper;
 	  
@@ -141,9 +140,8 @@ void Potential_cpu() {
 	    smoothing = ASPECTRATIO*
 	      pow(planetdistance/R0,FLARINGINDEX)*
 	      planetdistance*THICKNESSSMOOTHING;
-
+     
 	  smoothing*=smoothing;
-
 	  dist = ((XC-xplanet[n])*(XC-xplanet[n])+
 		  (YC-yplanet[n])*(YC-yplanet[n])+
 		  (ZC-zplanet[n])*(ZC-zplanet[n]));

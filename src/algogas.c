@@ -132,10 +132,11 @@ void AlgoGas () {
 #ifdef POTENTIAL
     FARGO_SAFE(compute_potential(dt));
 #endif
-
+  printf("%s omf = %.16f\n",file_2_name,OMEGAFRAME);
   fwrite(&Density->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_2);
   fwrite(&Vy->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_2);
   fwrite(&Vx->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_2);
+  fwrite(&Pot->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_2);
   fclose(file_2);
 #if ((defined(SHEARINGSHEET2D) || defined(SHEARINGBOX3D)) && !defined(SHEARINGBC))
     FARGO_SAFE(NonReflectingBC(Vy));

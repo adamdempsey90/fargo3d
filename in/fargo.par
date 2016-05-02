@@ -11,7 +11,7 @@ FlaringIndex		0.0
 
 ### Planet parameters
 
-PlanetConfig		planets/zero.cfg
+PlanetConfig		planets/jupiter.cfg
 ThicknessSmoothing 	0.6
 RocheSmoothing 		0.0
 Eccentricity		0.0
