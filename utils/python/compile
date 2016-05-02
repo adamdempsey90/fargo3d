@@ -1,4 +1,4 @@
 #!/bin/bash
 
 ##gcc -O3 fargo_reader_simple.c -lm -o load_fluxes 
-gcc -O3 evolve.c -lm -o run_step 
+gcc -O3 -g evolve.c -lm -o run_step 

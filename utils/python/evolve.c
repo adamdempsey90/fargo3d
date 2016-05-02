@@ -6,7 +6,11 @@
 #define NGHY 3
 #define TRUE 1
 #define FALSE 0
+#define G 1.0
+#define MSTAR 1.0
+
 #define MALLOC_SAFE(ptr) if (ptr == NULL) printf("Malloc error at line %d!\n",__LINE__);
+#define FREE_SAFE(ptr) free(ptr); ptr=NULL;
 
 #define ymed(j) Ymed[(j)]
 #define xmed(i) Xmed[(i)]
@@ -50,7 +54,7 @@ typedef struct Parameters {
 } Parameters;
 
 
-double *dens, *vx, *vy, *Pres, *Pot;
+double *dens, *vx, *vy, *Pres, *Pot, *energy;
 double *vx_temp, *vy_temp;
 double *Pixp, *Pixm, *Piym, *Piyp;
 double *slope, *divrho, *denstar, *Qs;
@@ -70,6 +74,8 @@ double Cs(double X);
 void set_ang(void);
 void allocate_all(void);
 void free_all(void);
+void compute_Pres(void);
+void compute_energy(void);
 void viscosity(void);
 void potential(void);
 void temp_to_vel(void);
@@ -94,7 +100,7 @@ void ymax_bound(void);
 void ymin_bound(void);
 void read_param_file(char *filename);
 void read_domain(char *directory);
-void read_single_file(int n, char *directory);
+void read_single_file(int n,int i, char *directory);
 void read_files(int n, char *directory);
 void output(char *directory);
 void output_init(char *directory);
@@ -121,31 +127,41 @@ int main(int argc, char *argv[]) {
     stride = size_x*size_y;
     pitch = size_x;
     dx = 2*M_PI/nx;
-    dt = M_PI*1e-5;
+    dt = .0000314159265359;
 
     allocate_all();
     read_domain(directory);
-    read_single_file(n,directory);
+    read_single_file(n,0,directory);
     set_bc();
     printf("%lg\n",omf);
     output_init(directory);
     int i;
     for(i=0; i <nsteps; i++) {
-        
+    
+        printf("potential\n"); 
         potential();
-        source_step();
+        printf("sourcel\n"); 
+       source_step();
+        printf("viscl\n"); 
         viscosity();
-       temp_to_vel();
+    
+        printf("copyl\n"); 
+        temp_to_vel();
+        printf("bcl\n"); 
         set_bc();
+        printf("copyl\n"); 
+        
         vel_to_temp();
+        printf("transport\n"); 
+        
         transport_step();
+        printf("bc\n"); 
         set_bc();
+        printf("ang\n"); 
         set_ang();
-    }
-    
 
-    
-   
+    }
+    temp_to_vel();   
     output(directory);
     free_all();
     return 0;
@@ -180,6 +196,7 @@ void allocate_all(void) {
     MALLOC_SAFE((vy_temp = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((Lang = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((Pres = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
+    MALLOC_SAFE((energy = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((Pot = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((Pixm = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((Pixp = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
@@ -192,47 +209,93 @@ void allocate_all(void) {
     MALLOC_SAFE((tauxx = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((tauxy = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((tauyy = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
+
+
+    int i,j,k;
+    i = j = k = 0;
+
+    for(j=0;j<size_y;j++) {
+        Ymed[j] = 0;
+        Ymin[j] = 0;
+    }
+    Ymin[size_y] = 0;
+    for(i=0;i<size_x;i++) {
+        Xmed[i] = 0;
+        Xmin[i] = 0;
+    }
+    Xmin[size_x] = 0;
+    for(k=0;k<size_z;k++) {
+        for(j=0;j<size_y;j++) {
+            for(i=0;i<size_x;i++) {
+        
+                
+                dens[l]=0;
+                vx[l]=0;
+                vy[l]=0;
+                vx_temp[l]=0;
+                vy_temp[l]=0;
+                Lang[l]=0;
+                Pres[l]=0;
+                energy[l]=0;
+                Pot[l]=0;
+                Pixm[l]=0;
+                Pixp[l]=0;
+                Piym[l]=0;
+                Piyp[l]=0;
+                denstar[l]=0;
+                Qs[l]=0;
+                slope[l]=0;
+                divrho[l]=0;
+                tauxx[l]=0;
+                tauxy[l]=0;
+                tauyy[l]=0;
+            }
+        }
+    }
+
     return;
 }
 void free_all(void) {
+    printf("Freeing.\n");
     
-    free(Ymin );
-    free(Xmin );
+    FREE_SAFE(Ymin);
+    FREE_SAFE(Xmin);
 
-    free(Ymed );
-    free(Xmed );
+    FREE_SAFE(Ymed);
+    FREE_SAFE(Xmed);
     
-    free(dens );
-    free(vx );
-    free(vy );
-    free(vx_temp );
-    free(vy_temp );
-    free(Lang);
-
-    free(Pres);
-    free(Pot);
-    free(Pixm );
-    free(Pixp );
-    free(Piym );
-    free(Piyp );
-    free(denstar );
-    free(Qs );
-    free(slope );
-    free(divrho );
-    free(tauxx );
-    free(tauxy );
-    free(tauyy );
+    FREE_SAFE(dens);
+    FREE_SAFE(vx);
+    FREE_SAFE(vy);
+    FREE_SAFE(vx_temp);
+    FREE_SAFE(vy_temp);
+    FREE_SAFE(Lang);
+    FREE_SAFE(Pres);
+    FREE_SAFE(energy);
+    FREE_SAFE(Pot);
+    FREE_SAFE(Pixm);
+    FREE_SAFE(Pixp);
+    FREE_SAFE(Piym);
+    FREE_SAFE(Piyp);
+    FREE_SAFE(denstar);
+    FREE_SAFE(Qs);
+    FREE_SAFE(slope);
+    FREE_SAFE(divrho);
+    FREE_SAFE(tauxx);
+    FREE_SAFE(tauxy);
+    FREE_SAFE(tauyy);
     return;
 }
 void viscosity(void) {
     int i,j,k;
-    k=0;
+    i=j=k=0;
     double visc, viscm,div_v;
+    compute_energy();
     for(j=1;j<size_y-1;j++) {
-        visc = Nu(ymed(j));
-        viscm = Nu(ymin(j));
         for(i=0;i<size_x;i++) {
 
+        visc = params.alpha*energy[l]*energy[l]*sqrt(ymed(j)*ymed(j)*ymed(j));
+        viscm = params.alpha*.5*(energy[l]*energy[l]+energy[lym]*energy[lym])*sqrt(ymin(j)*ymin(j)*ymin(j));
             div_v = 0.0;
             div_v += (vx[lxp]-vx[l])*SurfX(j,k);
             div_v += (vy[lyp]*SurfY(j+1,k)-vy[l]*SurfY(j,k));
@@ -264,7 +327,7 @@ void viscosity(void) {
 }
 void compute_Pres(void) {
     int i,j,k;
-    k=0;
+    i=j=k=0;
     double cs2;
     for(j=0;j<size_y;j++) {
         cs2 = Cs(ymed(j));
@@ -275,9 +338,20 @@ void compute_Pres(void) {
     }
     return;
 }
+void compute_energy(void) {
+    int i,j,k;
+    i=j=k=0;
+    double cs2;
+    for(j=0;j<size_y;j++) {
+        for(i=0;i<size_x;i++) {
+            energy[l] = params.h * pow(ymed(j),params.flaringindex) * sqrt(1./ymed(j));
+        }
+    }
+    return;
+}
 void potential(void) {
     int i,j,k;
-    k=0;
+    i=j=k=0;
     double xpl, ypl, xd, yd;
     double smoothing,distp,rad;
     xpl = params.a;
@@ -299,7 +373,7 @@ void potential(void) {
 }
 void source_step(void) {
     int i,j,k;
-    k=0;
+    i=j=k=0;
     double vxc;
     compute_Pres();
 
@@ -322,18 +396,26 @@ void source_step(void) {
     return;
 }
 void vel_to_temp(void) {
-    int i;
-    for(i=0;i<size_x*size_y*size_z;i++) {
-        vy_temp[i] = vy[i];
-        vx_temp[i] = vx[i];
+    int i,j,k;
+    for(k=0;k<size_z;k++) {
+        for(j=0;j<size_y;j++) {
+            for(i=0;i<size_x;i++) {
+                vx_temp[l] = vx[l];
+                vy_temp[l] = vy[l];
+            }
+        }
     }
     return;
 }
 void temp_to_vel(void) {
-    int i;
-    for(i=0;i<size_x*size_y*size_z;i++) {
-        vy[i] = vy_temp[i];
-        vx[i] = vx_temp[i];
+    int i,j,k;
+    for(k=0;k<size_z;k++) {
+        for(j=0;j<size_y;j++) {
+            for(i=0;i<size_x;i++) {
+                vx[l] = vx_temp[l];
+                vy[l] = vy_temp[l];
+            }
+        }
     }
     return;
 }
@@ -347,7 +429,7 @@ void transport_step(void) {
 
 void set_momenta(void) {
     int i,j,k;
-    k=0;
+    i=j=k=0;
 
     for(j=0;j<size_y-1;j++) {
         for(i=0;i<size_x;i++) {
@@ -392,7 +474,7 @@ void transportY(void) {
 }
 void DividebyRho(double *q) {
     int i,j,k;
-    k=0;
+    i=j=k=0;
     for(j=0;j<size_y;j++) {
         for(i=0;i<size_x;i++) {
             divrho[l] = q[l]/dens[l];
@@ -434,7 +516,7 @@ void transportX(void) {
 void set_vel(void) {
 
     int i,j,k;
-    k=0;
+    i=j=k=0;
 
     for(j=1;j<size_y;j++) {
         for(i=0;i<size_x;i++) {
@@ -446,7 +528,7 @@ void set_vel(void) {
 }
 void vanleer_y_a(double *q) {
     int i,j,k;
-    k=0;
+    i=j=k=0;
     double dqm, dqp;
     for(j=1;j<size_y-1;j++) {
         for(i=0;i<size_x;i++) {
@@ -467,7 +549,7 @@ void vanleer_y_a(double *q) {
 }
 void vanleer_x_a(double *q) {
     int i,j,k;
-    k=0;
+    i=j=k=0;
     double dqm, dqp;
     for(j=0;j<size_y;j++) {
         for(i=0;i<size_x;i++) {
@@ -488,7 +570,7 @@ void vanleer_x_a(double *q) {
 }
 void vanleer_y_b(double *q, double *qs, double dt) {
     int i,j,k;
-    k=0;
+    i=j=k=0;
 
     for(j=1;j<size_y-1;j++) {
 
@@ -507,7 +589,7 @@ void vanleer_y_b(double *q, double *qs, double dt) {
 }
 void vanleer_x_b(double *q, double *qs, double dt) {
     int i,j,k;
-    k=0;
+    i=j=k=0;
 
     for(j=0;j<size_y;j++) {
 
@@ -723,10 +805,10 @@ void read_domain(char *directory) {
 
     return;
 }
-void read_single_file(int n, char *directory) {
+void read_single_file(int n, int i,char *directory) {
     char filename[512];
     FILE *f;
-    sprintf(filename,"%ssubstep_0_%d.dat",directory,n);
+    sprintf(filename,"%ssubstep_%d_%d.dat",directory,i,n);
     printf("Reading %s\n",filename);
     f = fopen(filename,"r");
     if (f == NULL) printf("Error loading %s\n",filename); 
@@ -774,10 +856,11 @@ void read_files(int n, char *directory) {
 }
 void output_init(char *directory) {
     int i,j,k;
-    k=0;
+    i=j=k=0;
     FILE *f;
     char fname[256];
     sprintf(fname,"%stemp_files/output_init.dat",directory);
+    printf("Outputting initial conditions to %s\n",fname);
     f = fopen(fname,"w");
     fwrite(&dens[0],sizeof(double),size_x*size_y*size_z,f);
     fwrite(&vy[0],sizeof(double),size_x*size_y*size_z,f);
@@ -787,10 +870,11 @@ void output_init(char *directory) {
 }
 void output(char *directory) {
     int i,j,k;
-    k=0;
+    i=j=k=0;
     FILE *f;
     char fname[256];
     sprintf(fname,"%stemp_files/output.dat",directory);
+    printf("Outputing final results to %s\n",fname);
     f = fopen(fname,"w");
     fwrite(&Ymin[0],sizeof(double),size_y+1,f);
     fwrite(&Xmin[0],sizeof(double),size_x+1,f);
