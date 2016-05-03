@@ -443,7 +443,7 @@ void source_step(void) {
     compute_Pres();
     double res,resL;
     for(j=1;j<size_y-1;j++) {
-        res = 0 ;
+        resL = 0 ;
         for(i=0;i<size_x;i++) {
             // X
             vx_temp[l] =vx[l] -2*dt/(dens[l]+dens[lxm]) *(Pres[l]-Pres[lxm])/zone_size_x(j,k);
@@ -535,6 +535,9 @@ void transportY(void) {
     vanleer_y_b(divrho,Qs,dt);
     updateY(Piyp,Qs,dt);
 
+    update_density_Y(dt);
+
+
     vanleer_y_a_avg(dbar);
     vanleer_y_b_avg(dbar,dbarstar,dt);
 
@@ -544,7 +547,6 @@ void transportY(void) {
     updateY_avg(Ld,Qs,dt);
 
 
-    update_density_Y(dt);
 
     return;
 
@@ -757,13 +759,14 @@ void updateX(double *q, double *qs,double dt) {
 }
 void updateY(double *q, double *qs,double dt) {
     int i,j,k;
-    double res;
+    double res,fac;
     for(j=0;j<size_y-1;j++) {
         res = 0;
         for(i=0;i<size_x;i++) {
             
-            res += ((vy_temp[l]*qs[l]*denstar[l]*SurfY(j,k)-vy_temp[lyp]*qs[lyp]*denstar[lyp]*SurfY(j+1,k))*InvVol(j,k));
-            q[l] += res*dt;
+            fac = ((vy_temp[l]*qs[l]*denstar[l]*SurfY(j,k)-vy_temp[lyp]*qs[lyp]*denstar[lyp]*SurfY(j+1,k))*InvVol(j,k));
+            q[l] += fac*dt;
+            res += fac;
         }
         res /=(double)nx;
         drFt[j] -= res*.5;
