@@ -174,8 +174,7 @@ int main(int argc, char *argv[]) {
         printf("bc\n"); 
 
     }
-    temp_to_vel();   
-    set_bc();
+    //temp_to_vel();   
     printf("ang\n"); 
     set_avg(1);
     set_Lamdep();
@@ -605,20 +604,23 @@ void set_vel(void) {
     i=j=k=0;
     double resv, resd;
     for(j=1;j<size_y;j++) {
-        resv = 0;
-        for(i=0;i<size_x;i++) {
-            resv += dens[l]*(.5*(vx[lxp]+vx[l])+omf*ymed(j))*ymed(j);
-        }
-        resv /= (double)nx;
-        dtLt[j] = -resv;
-        dtLd[j] = -dbar[j]*(vx[j] + omf*ymed(j))*ymed(j);
-    }
-    for(j=1;j<size_y;j++) {
         for(i=0;i<size_x;i++) {
             vy[l] = (Piym[l] + Piyp[lym])/(dens[l]+dens[lym]);
             vx[l] = (Pixm[l] + Pixp[lxm])/(ymed(j)*(dens[l]+dens[lxm])) - omf*ymed(j);
         }
     }
+/*
+    for(j=1;j<size_y;j++) {
+        resv = 0;
+        for(i=0;i<size_x;i++) {
+            resv += .5*(Pixm[l] + Pixp[l]);
+            //resv += dens[l]*(.5*(vx[lxp]+vx[l])+omf*ymed(j))*ymed(j);
+        }
+        resv /= (double)nx;
+        dtLt[j] = -resv;
+        dtLd[j] = -dbar[j]*(vx[j] + omf*ymed(j))*ymed(j);
+    }
+*/
     return;
 }
 void vanleer_y_a(double *q) {
