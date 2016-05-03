@@ -57,12 +57,14 @@ typedef struct Parameters {
 
 
 double *dens, *vx, *vy, *Pres, *Pot, *energy;
+double *dbar, *vxbar, *vybar, *dbarstar;
 double *vx_temp, *vy_temp;
 double *Pixp, *Pixm, *Piym, *Piyp;
 double *slope, *divrho, *denstar, *Qs;
 double *Ymed, *Xmed, *Ymin, *Xmin;
-double *tauxx, *tauxy, *tauyy;
-double *Lang;
+double *tauxx, *tauxy, *tauyy, *tauxyavg;
+double *Lt, *Ld, *Lw, *drFw, *drFd, *drFt, *Lamdep, *Lamex;
+double *dtLt, *dtLd, *dtLw;
 
 double dt,omf,dx;
 int nx, ny, nz, size_x, size_y, size_z,stride,pitch;
@@ -87,14 +89,18 @@ void transport_step(void);
 void set_momenta(void);
 void transportY(void);
 void DividebyRho(double *q);
+void DividebyRhoavg(double *q);
 void transportX(void);
 void set_vel(void);
 void vanleer_y_a(double *q);
+void vanleer_y_a_avg(double *q);
 void vanleer_x_a(double *q);
 void vanleer_y_b(double *q, double *qs, double dt);
+void vanleer_y_b_avg(double *q, double *qs, double dt);
 void vanleer_x_b(double *q, double *qs, double dt);
 void updateX(double *q, double *qs,double dt);
 void updateY(double *q, double *qs,double dt);
+void updateY_avg(double *q, double *qs,double dt);
 void update_density_X(double dt);
 void update_density_Y(double dt);
 void set_bc(void);
@@ -106,6 +112,11 @@ void read_single_file(int n,int i, char *directory);
 void read_files(int n, char *directory);
 void output(char *directory);
 void output_init(char *directory);
+void set_Lamdep(void);
+void set_waves(void);
+void set_Lamex(void);
+void output_torque(char *directory);
+void set_avg(void);
 
 
 int main(int argc, char *argv[]) {
@@ -134,7 +145,8 @@ int main(int argc, char *argv[]) {
     allocate_all();
     read_domain(directory);
     read_single_file(n,2,directory);
-    //set_bc();
+    set_bc();
+    set_avg();
     printf("%lg\n",omf);
     output_init(directory);
     int i;
@@ -144,7 +156,7 @@ int main(int argc, char *argv[]) {
         potential();
         printf("sourcel\n"); 
        source_step();
-       /*
+       
         printf("viscl\n"); 
         viscosity();
     
@@ -161,11 +173,14 @@ int main(int argc, char *argv[]) {
         printf("bc\n"); 
         set_bc();
         printf("ang\n"); 
-        set_ang();
-*/
+        set_Lamdep();
+        set_Lamex();
+        set_waves();
+
     }
     temp_to_vel();   
     output(directory);
+    output_torque(directory);
     free_all();
     return 0;
 }
@@ -174,16 +189,6 @@ double Nu(double x) {
 }
 double Cs(double x) {
     return params.h*pow(x,params.flaringindex-0.5);
-}
-void set_ang(void) {
-    int i,j,k;
-    i = j = k = 0;
-    for(j=0;j<size_y;j++) {
-        for(i=0;i<size_x;i++) {
-            Lang[l] = .5*(Pixp[l] + Pixm[l]);
-        }
-    }
-    return;
 }
 void allocate_all(void) {
     
@@ -198,7 +203,6 @@ void allocate_all(void) {
     MALLOC_SAFE((vy = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((vx_temp = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((vy_temp = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
-    MALLOC_SAFE((Lang = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((Pres = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((energy = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((Pot = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
@@ -215,12 +219,44 @@ void allocate_all(void) {
     MALLOC_SAFE((tauyy = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
 
 
+    MALLOC_SAFE((Lt = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((Ld = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((Lw = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((drFt = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((drFd = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((drFw = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((Lamdep = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((Lamex = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((tauxyavg = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((dbar = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((vxbar = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((vybar = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((dbarstar = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((dtLt = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((dtLd = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((dtLw = (double *)malloc(sizeof(double)*(size_y))));
     int i,j,k;
     i = j = k = 0;
 
     for(j=0;j<size_y;j++) {
         Ymed[j] = 0;
         Ymin[j] = 0;
+        Lt[j] = 0;
+        Ld[j] = 0;
+        Lw[j] = 0;
+        drFt[j] = 0;
+        drFd[j] = 0;
+        drFw[j] = 0;
+        Lamex[j] = 0;
+        Lamdep[j] = 0;
+        tauxyavg[j] = 0;
+        vxbar[j] = 0;
+        vybar[j] = 0;
+        dbar[j] = 0;
+        dbarstar[j] = 0;
+        dtLt[j] = 0;
+        dtLd[j] = 0;
+        dtLw[j] = 0;
     }
     Ymin[size_y] = 0;
     for(i=0;i<size_x;i++) {
@@ -238,7 +274,6 @@ void allocate_all(void) {
                 vy[l]=0;
                 vx_temp[l]=0;
                 vy_temp[l]=0;
-                Lang[l]=0;
                 Pres[l]=0;
                 energy[l]=0;
                 Pot[l]=0;
@@ -273,7 +308,6 @@ void free_all(void) {
     FREE_SAFE(vy);
     FREE_SAFE(vx_temp);
     FREE_SAFE(vy_temp);
-    FREE_SAFE(Lang);
     FREE_SAFE(Pres);
     FREE_SAFE(energy);
     FREE_SAFE(Pot);
@@ -288,18 +322,36 @@ void free_all(void) {
     FREE_SAFE(tauxx);
     FREE_SAFE(tauxy);
     FREE_SAFE(tauyy);
+
+    FREE_SAFE(Lt);
+    FREE_SAFE(Ld);
+    FREE_SAFE(Lw);
+    FREE_SAFE(drFt);
+    FREE_SAFE(drFd);
+    FREE_SAFE(drFw);
+    FREE_SAFE(Lamdep);
+    FREE_SAFE(Lamex);
+    FREE_SAFE(tauxyavg);
+    FREE_SAFE(vxbar);
+    FREE_SAFE(vybar);
+    FREE_SAFE(dbar);
+    FREE_SAFE(dbarstar);
+    FREE_SAFE(dtLt);
+    FREE_SAFE(dtLd);
+    FREE_SAFE(dtLw);
     return;
 }
 void viscosity(void) {
     int i,j,k;
     i=j=k=0;
     double visc, viscm,div_v;
+    double res,fac;
     compute_energy();
     for(j=1;j<size_y-1;j++) {
         for(i=0;i<size_x;i++) {
 
-        visc = params.alpha*energy[l]*energy[l]*sqrt(ymed(j)*ymed(j)*ymed(j));
-        viscm = params.alpha*.5*(energy[l]*energy[l]+energy[lym]*energy[lym])*sqrt(ymin(j)*ymin(j)*ymin(j));
+            visc = params.alpha*energy[l]*energy[l]*sqrt(ymed(j)*ymed(j)*ymed(j));
+            viscm = params.alpha*.5*(energy[l]*energy[l]+energy[lym]*energy[lym])*sqrt(ymin(j)*ymin(j)*ymin(j));
             div_v = 0.0;
             div_v += (vx[lxp]-vx[l])*SurfX(j,k);
             div_v += (vy[lyp]*SurfY(j+1,k)-vy[l]*SurfY(j,k));
@@ -312,20 +364,26 @@ void viscosity(void) {
 
 
         }
+        tauxyavg[j] = viscm*.5*(dbar[l]+dbar[j-1])*( (vxbar[j]-vxbar[j-1])/(ymed(j)-ymed(j-1))-.5*(vxbar[j]+vxbar[j-1])/ymin(j)); //centered on left, inner vertical edge in z
     }
 
     for(j=1;j<size_y-2;j++) {
-
+        res = 0;
         for(i=0;i<size_x;i++) {
             // X
-  
-	        vx_temp[l] += 2.0*(tauxx[l]-tauxx[lxm])/(zone_size_x(j,k)*(dens[l]+dens[lxm]))*dt;
-	        vx_temp[l] += 2.0*(ymin(j+1)*ymin(j+1)*tauxy[lyp]-ymin(j)*ymin(j)*tauxy[l])/((ymin(j+1)-ymin(j))*ymed(j)*ymed(j)*(dens[lxm]+dens[l]))*dt;
+
+            vx_temp[l] += 2.0*(tauxx[l]-tauxx[lxm])/(zone_size_x(j,k)*(dens[l]+dens[lxm]))*dt;
+            fac =  (ymin(j+1)*ymin(j+1)*tauxy[lyp]-ymin(j)*ymin(j)*tauxy[l])/((ymin(j+1)-ymin(j))*ymed(j));
+            vx_temp[l] += 2.0*fac/(ymed(j)*(dens[lxm]+dens[l]))*dt;
             // Y
             vy_temp[l] += 2.0*(ymed(j)*tauyy[l]-ymed(j-1)*tauyy[lym])/((ymed(j)-ymed(j-1))*(dens[l]+dens[lym])*ymin(j))*dt;
             vy_temp[l] += 2.0*(tauxy[lxp]-tauxy[l])/(dx*ymin(j)*(dens[l]+dens[lym]))*dt;
             vy_temp[l] -= (tauxx[l]+tauxx[lym])/(ymin(j)*(dens[l]+dens[lym]))*dt;
-       }
+            res -= fac;
+        }
+        drFt[j] = res/(double)nx;
+        drFd[j]  =  (ymin(j+1)*ymin(j+1)*tauxyavg[j+1]-ymin(j)*ymin(j)*tauxyavg[j])/((ymin(j+1)-ymin(j))*ymed(j));
+
     }
     return;
 }
@@ -362,7 +420,7 @@ void potential(void) {
     ypl = 0;
     distp = sqrt(xpl*xpl + ypl*ypl);
 
-	smoothing = params.h*pow(distp,params.flaringindex)*distp*params.soft;
+    smoothing = params.h*pow(distp,params.flaringindex)*distp*params.soft;
     smoothing *= smoothing;
     printf("Smoothing = %.16f\n",smoothing);
     for(j=0;j<size_y;j++) {
@@ -370,7 +428,7 @@ void potential(void) {
             rad = (XC-xpl)*(XC-xpl) + (YC-ypl)*(YC-ypl);
             Pot[l] = -1./ymed(j);
             Pot[l] -= params.mp/sqrt(rad + smoothing);
-	        //Pot[l] += params.mp*(xd*xpl+yd*ypl)/(distp*distp*distp);
+            //Pot[l] += params.mp*(xd*xpl+yd*ypl)/(distp*distp*distp);
         }
     }
     return;
@@ -380,20 +438,22 @@ void source_step(void) {
     i=j=k=0;
     double vxc;
     compute_Pres();
-
+    double res,resL;
     for(j=1;j<size_y-1;j++) {
-
+        res = 0 ;
         for(i=0;i<size_x;i++) {
             // X
             vx_temp[l] =vx[l] -2*dt/(dens[l]+dens[lxm]) *(Pres[l]-Pres[lxm])/zone_size_x(j,k);
             vx_temp[l] -= dt*(Pot[l]-Pot[lxm])/zone_size_x(j,k);
-  
+
             // Y
             vy_temp[l] = vy[l] -2*dt/(dens[l]+dens[lym])*(Pres[l]-Pres[lym])/(ymed(j)-ymed(j-1));
             vxc = .25*(vx[l]+vx[lxp]+vx[lym]+vx[lxp-pitch])+omf*ymin(j);
             vy_temp[l] += dt*vxc*vxc/ymin(j);
             vy_temp[l] -= dt*(Pot[l]-Pot[lym])/(ymed(j)-ymed(j-1));
-       }
+            resL -= dens[l] * (Pot[lxp]-Pot[lxm])/(2*dx);
+        }
+        Lamex[j] = resL/(double)nx;
     }
 
 
@@ -434,7 +494,7 @@ void transport_step(void) {
 void set_momenta(void) {
     int i,j,k;
     i=j=k=0;
-
+    double res,resd,resv;
     for(j=0;j<size_y-1;j++) {
         for(i=0;i<size_x;i++) {
             Pixm[l] = ymed(j)*(vx_temp[l]+omf*ymed(j))*dens[l];
@@ -443,6 +503,7 @@ void set_momenta(void) {
             Piyp[l] = vy_temp[lyp]*dens[l];
         }
     }
+
     return;
 }
 void transportY(void) {
@@ -450,7 +511,7 @@ void transportY(void) {
 
     vanleer_y_a(dens);
     vanleer_y_b(dens,denstar,dt);
-   
+
     DividebyRho(Pixm);
     vanleer_y_a(divrho);
     vanleer_y_b(divrho,Qs,dt);
@@ -470,7 +531,16 @@ void transportY(void) {
     vanleer_y_a(divrho);
     vanleer_y_b(divrho,Qs,dt);
     updateY(Piyp,Qs,dt);
- 
+
+    vanleer_y_a_avg(dbar);
+    vanleer_y_b_avg(dbar,dbarstar,dt);
+
+    DividebyRhoavg(Ld);
+    vanleer_y_a_avg(divrho);
+    vanleer_y_b_avg(divrho,Qs,dt);
+    updateY_avg(Ld,Qs,dt);
+
+
     update_density_Y(dt);
 
     return;
@@ -486,12 +556,20 @@ void DividebyRho(double *q) {
     }
     return;
 }
+void DividebyRhoavg(double *q) {
+    int i,j,k;
+    i=j=k=0;
+    for(j=0;j<size_y;j++) {
+        divrho[j] = q[j]/dbar[j];
+    }
+    return;
+}
 void transportX(void) {
     // X direction
 
     vanleer_x_a(dens);
     vanleer_x_b(dens,denstar,dt);
-  
+
     DividebyRho(Pixm);
     vanleer_x_a(divrho);
     vanleer_x_b(divrho,Qs,dt);
@@ -511,7 +589,7 @@ void transportX(void) {
     vanleer_x_a(divrho);
     vanleer_x_b(divrho,Qs,dt);
     updateX(Piyp,Qs,dt);
-  
+
     update_density_X(dt);
 
     return;
@@ -521,7 +599,7 @@ void set_vel(void) {
 
     int i,j,k;
     i=j=k=0;
-
+    double resv, resd;
     for(j=1;j<size_y;j++) {
         for(i=0;i<size_x;i++) {
             vy[l] = (Piym[l] + Piyp[lym])/(dens[l]+dens[lym]);
@@ -548,7 +626,26 @@ void vanleer_y_a(double *q) {
             }
         }
     }
-    
+
+    return;
+}
+void vanleer_y_a_avg(double *q) {
+    int i,j,k;
+    i=j=k=0;
+    double dqm, dqp;
+    for(j=1;j<size_y-1;j++) {
+
+        dqm = (q[j] - q[j-1])/zone_size_y(j,k);
+        dqp = (q[j+1]-q[j])/zone_size_y(j+1,k);
+
+        if (dqp*dqm <= 0) {
+            slope[j] = 0;
+        }
+        else {
+            slope[j] = 2*dqp*dqm/(dqp+dqm);
+        }
+    }
+
     return;
 }
 void vanleer_x_a(double *q) {
@@ -569,7 +666,7 @@ void vanleer_x_a(double *q) {
             }
         }
     }
-    
+
     return;
 }
 void vanleer_y_b(double *q, double *qs, double dt) {
@@ -579,7 +676,7 @@ void vanleer_y_b(double *q, double *qs, double dt) {
     for(j=1;j<size_y-1;j++) {
 
         for(i=0;i<size_x;i++) {
-            
+
             if (vy_temp[l] > 0.) {
                 qs[l] = q[lym] + .5*(zone_size_y(j-1,k)-vy_temp[l]*dt)*slope[lym];
             }
@@ -591,6 +688,26 @@ void vanleer_y_b(double *q, double *qs, double dt) {
     }
     return;
 }
+void vanleer_y_b_avg(double *q, double *qs, double dt) {
+    int i,j,k;
+    i=j=k=0;
+    double res;
+    for(j=1;j<size_y-1;j++) {
+        res =0 ;
+        for(i=0;i<size_x;i++) {
+            res += vy_temp[l];
+        }
+        res /=(double)nx;
+        if (res > 0.) {
+            qs[j] = q[j-1] + .5*(zone_size_y(j-1,k)-res*dt)*slope[j-1];
+        }
+        else {
+            qs[j] = q[j] - .5*(zone_size_y(j,k)+res*dt)*slope[j];
+        }
+
+    }
+    return;
+}
 void vanleer_x_b(double *q, double *qs, double dt) {
     int i,j,k;
     i=j=k=0;
@@ -598,7 +715,7 @@ void vanleer_x_b(double *q, double *qs, double dt) {
     for(j=0;j<size_y;j++) {
 
         for(i=0;i<size_x;i++) {
-            
+
             if (vx_temp[l] > 0.) {
                 qs[l] = q[lxm] + .5*(zone_size_x(j,k)-vx_temp[l]*dt)*slope[lxm];
             }
@@ -627,13 +744,33 @@ void updateX(double *q, double *qs,double dt) {
 }
 void updateY(double *q, double *qs,double dt) {
     int i,j,k;
-
+    double res;
     for(j=0;j<size_y-1;j++) {
+        res = 0;
         for(i=0;i<size_x;i++) {
-
-            q[l] += ((vy_temp[l]*qs[l]*denstar[l]*SurfY(j,k)-vy_temp[lyp]*qs[lyp]*denstar[lyp]*SurfY(j+1,k))*dt*InvVol(j,k));
-
+            
+            res += ((vy_temp[l]*qs[l]*denstar[l]*SurfY(j,k)-vy_temp[lyp]*qs[lyp]*denstar[lyp]*SurfY(j+1,k))*InvVol(j,k));
+            q[l] += res*dt;
         }
+        res /=(double)nx;
+        drFt[j] -= res;
+    }
+    return;
+}
+void updateY_avg(double *q, double *qs,double dt) {
+    int i,j,k;
+    double res,resp;
+    for(j=0;j<size_y-1;j++) {
+        res = 0;
+        for(i=0;i<size_x;i++) {
+            res += vy_temp[l];
+            resp += vy_temp[lyp];
+        }
+        res /=(double)nx;
+        resp /=(double)nx;
+
+        drFd[j] -= ((res*qs[j]*dbarstar[j]*SurfY(j,k)-resp*qs[j+1]*dbarstar[j+1]*SurfY(j+1,k))*InvVol(j,k));
+
     }
     return;
 }
@@ -660,6 +797,64 @@ void update_density_X(double dt) {
         }
     }
     return;
+}
+void set_Lamdep(void) {
+    int i,j,k;
+    i=j=k=0;
+    double resL, resv, resd, Ldnew;
+
+    for(j=1;j<size_y;j++) {
+        resL = 0;
+        resd = 0;
+        resv = 0;
+        for(i=0;i<size_x;i++) {
+            resL += .5*ymed(j)*(vx[l] +omf*ymed(j)+ vx[lxp]+omf*ymed(j))*dens[l];
+            resv += vx[l];
+            resd += dens[l];
+        }
+        resL /= (double)nx;
+        resv /= (double)nx;
+        resd /= (double)nx;
+        Ldnew = ymed(j)*(resv + omf*ymed(j))*resd;
+        dtLt[j] += resL/dt;
+        dtLd[j] += Ldnew/dt;
+        dtLw[j] = dtLt[j] - dtLd[j];
+        Lamdep[j] = dtLd[j] + drFd[j];
+    }
+
+
+    return;
+}
+void set_waves(void) {
+    int i,j,k;
+    i=j=k=0;
+    
+    double res;
+
+    for(j=NGHY;j<size_y-NGHY;j++) {
+        Lw[j] = Lt[j] - Ld[j];
+        drFw[j] = drFt[j] - drFd[j];
+    }
+    return;
+}
+void set_Lamex(void) {
+    int i,j,k;
+    i=j=k=0;
+    
+    double res;
+
+    for(j=NGHY;j<size_y-NGHY;j++) {
+        res = 0;
+        for(i=0;i<size_x;i++) {
+            res -= dens[l]*(Pot[lxp]-Pot[lxm])/(2*dx);
+        }
+        res /= (double)nx;
+        Lamex[j] = .5*(Lamex[j] + res);
+
+    }
+
+    return;
+
 }
 void set_bc(void) {
     
@@ -885,9 +1080,59 @@ void output(char *directory) {
     fwrite(&dens[0],sizeof(double),size_x*size_y*size_z,f);
     fwrite(&vy[0],sizeof(double),size_x*size_y*size_z,f);
     fwrite(&vx[0],sizeof(double),size_x*size_y*size_z,f);
-    fwrite(&Lang[0],sizeof(double),size_x*size_y*size_z,f);
     fwrite(&Pot[0],sizeof(double),size_x*size_y*size_z,f);
 
     fclose(f);
+    return;
+}
+void output_torque(char *directory) {
+    int i,j,k;
+    i=j=k=0;
+    FILE *f;
+    char fname[256];
+    sprintf(fname,"%stemp_files/torque.dat",directory);
+    printf("Outputing torque results to %s\n",fname);
+    f = fopen(fname,"w");
+    fwrite(&Ymed[NGHY],sizeof(double),ny,f);
+    fwrite(&Lt[NGHY],sizeof(double),ny,f);
+    fwrite(&Ld[NGHY],sizeof(double),ny,f);
+    fwrite(&Lw[NGHY],sizeof(double),ny,f);
+    fwrite(&drFt[NGHY],sizeof(double),ny,f);
+    fwrite(&drFd[NGHY],sizeof(double),ny,f);
+    fwrite(&drFw[NGHY],sizeof(double),ny,f);
+    fwrite(&Lamex[NGHY],sizeof(double),ny,f);
+    fwrite(&Lamdep[NGHY],sizeof(double),ny,f);
+    fwrite(&dtLt[NGHY],sizeof(double),ny,f);
+    fwrite(&dtLd[NGHY],sizeof(double),ny,f);
+    fwrite(&dtLw[NGHY],sizeof(double),ny,f);
+
+    fclose(f);
+    return;
+}
+void set_avg(void) {
+    int i,j,k;
+    i=j=k=0;
+    double resx,resy,resd;
+    double resL;
+    for(j=0;j<size_y;j++) {
+        resx = 0;
+        resy = 0;
+        resd = 0;
+        for(i=0;i<size_x;i++) {
+            resx += vx[l];
+            resy += vy[l];
+            resd += dens[l];
+            resL += .5*dens[l]*(vx[l] + vx[lxp] + omf*ymed(j)*2);
+        }
+        vxbar[j] = resx/(double)nx;
+        vybar[j] = resy/(double)nx;
+        dbar[j] = resd/(double)nx;
+
+        Lt[j] = resL/(double)nx;
+        Ld[j] = ymed(j)*( vxbar[j] + omf*ymed(j))*dbar[j];
+        Lw[j] = Lt[j] - Ld[j];
+        dtLt[j] = -Lt[j]/dt;
+        dtLd[j] = -Ld[j]/dt;
+    }
     return;
 }

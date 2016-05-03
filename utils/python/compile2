@@ -1,4 +1,4 @@
 #!/bin/bash
 
 ##gcc -O3 fargo_reader_simple.c -lm -o load_fluxes 
-gcc -O3 -Wall torque_balance.c -lm -o torque 
+gcc -O3 -Wall torque_balance2.c -lm -o torque 

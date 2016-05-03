@@ -58,6 +58,7 @@ typedef struct Parameters {
 double *drFt, *drFd, *drFw, *Ld, *Lt, *Lw, *Lamex, *Lamdep;
 double *dbarstar;
 double *dens, *vx, *vy, *Pres, *Pot, *energy;
+double *dbar, *vxbar, *vybar;
 double *Pixp, *Pixm;
 double *slope, *divrho, *denstar, *Qs;
 double *Ymed, *Xmed, *Ymin, *Xmin;
@@ -72,30 +73,24 @@ double Nu(double x);
 double Cs(double X);
 
 
-void set_ang(void);
 void allocate_all(void);
 void free_all(void);
 void compute_Pres(void);
 void compute_energy(void);
 void viscosity(void);
 void potential(void);
-void temp_to_vel(void);
-void vel_to_temp(void);
 void source_step(void);
 void transport_step(void);
 void set_momenta(void);
 void transportY(void);
 void DividebyRho(double *q);
-void transportX(void);
-void set_vel(void);
+void DividebyRhoavg(double *q);
 void vanleer_y_a(double *q);
-void vanleer_x_a(double *q);
 void vanleer_y_b(double *q, double *qs, double dt);
-void vanleer_x_b(double *q, double *qs, double dt);
-void updateX(double *q, double *qs,double dt);
+void vanleer_y_a_avg(double *q);
+void vanleer_y_b_avg(double *q, double *qs, double dt);
 void updateY(double *q, double *qs,double dt);
-void update_density_X(double dt);
-void update_density_Y(double dt);
+void updateYavg(double *q, double *qs,double dt);
 void set_bc(void);
 void ymax_bound(void);
 void ymin_bound(void);
@@ -105,6 +100,9 @@ void read_single_file(int n,int i, char *directory);
 void read_files(int n, char *directory);
 void output(char *directory);
 void output_init(char *directory);
+void set_wave(void);
+void set_Lamdep(void);
+void set_avg(void);
 
 
 int main(int argc, char *argv[]) {
@@ -114,8 +112,7 @@ int main(int argc, char *argv[]) {
     char param_fname[100];
 
     n = atoi(argv[1]);
-    nsteps = atoi(argv[2]);
-    strcpy(directory,argv[3]);
+    strcpy(directory,argv[2]);
     sprintf(param_fname,"%sparam_file.txt",directory);
 
 
@@ -133,19 +130,23 @@ int main(int argc, char *argv[]) {
     allocate_all();
     read_domain(directory);
     read_single_file(n,0,directory);
-    //set_bc();
+    set_bc();
+    set_avg();
     printf("%lg\n",omf);
     output_init(directory);
     
-        printf("potential\n"); 
-        potential();
-        printf("viscl\n"); 
-        viscosity();
-        printf("sourcel\n"); 
-        source_step();
-        transport_step();
-        set_Lamdep();
-        set_wave();
+    printf("potential\n"); 
+    potential();
+    printf("viscl\n"); 
+    viscosity();
+    printf("sourcel\n"); 
+    source_step();
+    printf("transport\n"); 
+    transport_step();
+    printf("lamdep\n"); 
+    set_Lamdep();
+    printf("waves\n"); 
+    set_wave();
     output(directory);
     free_all();
     return 0;
@@ -158,7 +159,7 @@ double Cs(double x) {
 }
 void set_wave(void) {
     int i,j,k;
-    k=0;
+    i=j=k=0;
     for(j=NGHY;j<size_y-NGHY;j++) {
         drFw[j] = drFt[j]- drFd[j];
     }
@@ -175,16 +176,11 @@ void allocate_all(void) {
     MALLOC_SAFE((dens = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((vx = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((vy = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
-    MALLOC_SAFE((vx_temp = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
-    MALLOC_SAFE((vy_temp = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
-    MALLOC_SAFE((Lang = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((Pres = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((energy = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((Pot = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((Pixm = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((Pixp = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
-    MALLOC_SAFE((Piym = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
-    MALLOC_SAFE((Piyp = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((denstar = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((Qs = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((slope = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
@@ -193,6 +189,9 @@ void allocate_all(void) {
     MALLOC_SAFE((tauxy = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((tauyy = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
 
+    MALLOC_SAFE((dbar = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((vxbar = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((vybar = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((tauxyavg = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((Lt = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((Lw = (double *)malloc(sizeof(double)*(size_y))));
@@ -225,16 +224,11 @@ void allocate_all(void) {
                 dens[l]=0;
                 vx[l]=0;
                 vy[l]=0;
-                vx_temp[l]=0;
-                vy_temp[l]=0;
-                Lang[l]=0;
                 Pres[l]=0;
                 energy[l]=0;
                 Pot[l]=0;
                 Pixm[l]=0;
                 Pixp[l]=0;
-                Piym[l]=0;
-                Piyp[l]=0;
                 denstar[l]=0;
                 Qs[l]=0;
                 slope[l]=0;
@@ -244,6 +238,21 @@ void allocate_all(void) {
                 tauyy[l]=0;
             }
         }
+    }
+
+    for(j=0;j<size_y;j++) {
+        tauxyavg[j] = 0;
+        Lt[j] = 0;
+        Ld[j] = 0;
+        Lw[j] = 0;
+        drFt[j] = 0;
+        drFd[j] = 0;
+        drFw[j] = 0;
+        Lamex[j] = 0;
+        Lamdep[j] = 0;
+        dbar[j] = 0;
+        vxbar[j] = 0;
+        vybar[j] = 0;
     }
 
     return;
@@ -260,16 +269,11 @@ void free_all(void) {
     FREE_SAFE(dens);
     FREE_SAFE(vx);
     FREE_SAFE(vy);
-    FREE_SAFE(vx_temp);
-    FREE_SAFE(vy_temp);
-    FREE_SAFE(Lang);
     FREE_SAFE(Pres);
     FREE_SAFE(energy);
     FREE_SAFE(Pot);
     FREE_SAFE(Pixm);
     FREE_SAFE(Pixp);
-    FREE_SAFE(Piym);
-    FREE_SAFE(Piyp);
     FREE_SAFE(denstar);
     FREE_SAFE(Qs);
     FREE_SAFE(slope);
@@ -277,6 +281,9 @@ void free_all(void) {
     FREE_SAFE(tauxx);
     FREE_SAFE(tauxy);
     FREE_SAFE(tauyy);
+    FREE_SAFE(dbar);
+    FREE_SAFE(vxbar);
+    FREE_SAFE(vybar);
     FREE_SAFE(tauxyavg);
     FREE_SAFE(Lt);
     FREE_SAFE(Lw);
@@ -297,8 +304,8 @@ void viscosity(void) {
     for(j=1;j<size_y-1;j++) {
         for(i=0;i<size_x;i++) {
 
-        visc = params.alpha*energy[l]*energy[l]*sqrt(ymed(j)*ymed(j)*ymed(j));
-        viscm = params.alpha*.5*(energy[l]*energy[l]+energy[lym]*energy[lym])*sqrt(ymin(j)*ymin(j)*ymin(j));
+            visc = params.alpha*energy[l]*energy[l]*sqrt(ymed(j)*ymed(j)*ymed(j));
+            viscm = params.alpha*.5*(energy[l]*energy[l]+energy[lym]*energy[lym])*sqrt(ymin(j)*ymin(j)*ymin(j));
             div_v = 0.0;
             div_v += (vx[lxp]-vx[l])*SurfX(j,k);
             div_v += (vy[lyp]*SurfY(j+1,k)-vy[l]*SurfY(j,k));
@@ -400,7 +407,7 @@ void transport_step(void) {
 void set_momenta(void) {
     int i,j,k;
     i=j=k=0;
-    double res;
+    double res,resw;
     for(j=0;j<size_y-1;j++) {
         res = 0;
         resw = 0;
@@ -547,6 +554,7 @@ void vanleer_y_b_avg(double *q, double *qs, double dt) {
 void updateYavg(double *q, double *qs,double dt) {
     int i,j,k;
 
+    i=j=k=0;
     for(j=NGHY;j<size_y-NGHY;j++) {
         drFd[j] -= ((vybar[j]*qs[j]*dbarstar[j]*SurfY(j,k)-vybar[j+1]*qs[j+1]*dbarstar[j+1]*SurfY(j+1,k))*InvVol(j,k));
     }
@@ -554,8 +562,10 @@ void updateYavg(double *q, double *qs,double dt) {
 }
 void updateY(double *q, double *qs,double dt) {
     int i,j,k;
-
+    i=j=k=0;
+    double resp;
     for(j=NGHY;j<size_y-NGHY;j++) {
+        resp = 0;
         for(i=0;i<size_x;i++) {
             resp += ((vy[l]*qs[l]*denstar[l]*SurfY(j,k)-vy[lyp]*qs[lyp]*denstar[lyp]*SurfY(j+1,k))*InvVol(j,k));
 
@@ -565,8 +575,9 @@ void updateY(double *q, double *qs,double dt) {
     }
     return;
 }
-void set_Lamdep(double dt) {
+void set_Lamdep(void) {
     int i,j,k;
+    i=j=k=0;
     double fac1, fac2, fac3, fac4;
     for(j=NGHY;j<size_y-NGHY;j++) {
         fac1 = 0; // Mass flux term
@@ -579,7 +590,7 @@ void set_Lamdep(double dt) {
             fac1 += (((vy[l]-vybar[j])*(denstar[l]-dbarstar[j])*SurfY(j,k)
                         -(vy[lyp]-vybar[j+1])*(denstar[lyp]-dbarstar[j+1])*SurfY(j+1,k))*InvVol(j,k));
 
-            fac2 += .5*(vy[l]-vybar[j])*(ymed(j)*(vx[l]-vxbar[j])-ymed(j-1)*(vx[lym]-vxbar[j+1]))/(ymed(j)-ymed(j-1));
+            fac2 += .5*(vy[l]-vybar[j])*(ymed(j)*(vx[l]-vxbar[j])-ymed(j-1)*(vx[lym]-vxbar[j-1]))/(ymed(j)-ymed(j-1));
             fac2 += .5*(vy[lyp]-vybar[j+1])*(ymed(j+1)*(vx[lyp]-vxbar[j+1])-ymed(j)*(vx[l]-vxbar[j]))/(ymed(j+1)-ymed(j));
 
         
@@ -618,6 +629,7 @@ void set_bc(void) {
 
 void ymax_bound(void) {
     int i,j,k;
+    i=j=k=0;
 
   int jact;
   int jgh;
@@ -667,6 +679,7 @@ void ymin_bound(void) {
   int lactb;
   int lactbs;
   int lactbs_null;
+    i=j=k=0;
 for(k=0; k<size_z; k++) {
     for(j=0; j<NGHY; j++) {
       for(i=0; i<size_x; i++) {
@@ -727,6 +740,7 @@ void read_domain(char *directory) {
     char filename2[512];
     double temp;
     int i,j;
+    i=j=0;
 
     sprintf(filename,"%sdomain_x.dat",directory);
     printf("Reading %s\n",filename);
@@ -770,11 +784,34 @@ void read_single_file(int n, int i,char *directory) {
     return;
 
 }
+void set_avg(void) {
+    int i,j,k;
+    i=j=k=0;
+    double resx, resy, resd;
+    for(k=0;k<size_z;k++) {
+        for(j=0;j<size_y;j++) {
+            resx = 0;
+            resy = 0;
+            resd = 0;
+            for(i=0;i<size_x;i++) {
+                resd += dens[l];
+                resx += vx[l];
+                resy += vy[l];
+            }
+            dbar[j] = resd/(double)nx;
+            vxbar[j] = resx/(double)nx;
+            vybar[j] = resy/(double)nx;
+        }
+
+    }
+    return;
+}
 
 void read_files(int n, char *directory) {
     char filename[512];
     FILE *fd,*fx,*fy;
     int i,j,k;
+    i=j=k=0;
     sprintf(filename,"%sgasdens%d.dat",directory,n);
     printf("Reading %s\n",filename);
     fd = fopen(filename,"r");
@@ -824,16 +861,20 @@ void output(char *directory) {
     i=j=k=0;
     FILE *f;
     char fname[256];
-    sprintf(fname,"%stemp_files/output.dat",directory);
+    sprintf(fname,"%stemp_files/torque.dat",directory);
     printf("Outputing final results to %s\n",fname);
     f = fopen(fname,"w");
-    fwrite(&Ymin[0],sizeof(double),size_y+1,f);
-    fwrite(&Xmin[0],sizeof(double),size_x+1,f);
-    fwrite(&dens[0],sizeof(double),size_x*size_y*size_z,f);
-    fwrite(&vy[0],sizeof(double),size_x*size_y*size_z,f);
-    fwrite(&vx[0],sizeof(double),size_x*size_y*size_z,f);
-    fwrite(&Lang[0],sizeof(double),size_x*size_y*size_z,f);
-    fwrite(&Pot[0],sizeof(double),size_x*size_y*size_z,f);
+
+    fwrite(&Ymed[NGHY],sizeof(double),ny,f);
+    fwrite(&Lt[NGHY],sizeof(double),ny,f);
+    fwrite(&Ld[NGHY],sizeof(double),ny,f);
+    fwrite(&Lw[NGHY],sizeof(double),ny,f);
+    fwrite(&drFt[NGHY],sizeof(double),ny,f);
+    fwrite(&drFd[NGHY],sizeof(double),ny,f);
+    fwrite(&drFw[NGHY],sizeof(double),ny,f);
+    fwrite(&Lamex[NGHY],sizeof(double),ny,f);
+    fwrite(&Lamdep[NGHY],sizeof(double),ny,f);
+
 
     fclose(f);
     return;

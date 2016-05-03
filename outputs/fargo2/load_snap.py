@@ -47,11 +47,15 @@ class Snap():
         self.dens = dat[:s].reshape(ny,nx)
         self.vy = dat[s:2*s].reshape(ny,nx)
         self.vx= dat[2*s:3*s].reshape(ny,nx)
-        self.L= dat[3*s:4*s].reshape(ny,nx)
-        self.pot= dat[4*s:5*s].reshape(ny,nx)
+        self.pot= dat[3*s:4*s].reshape(ny,nx)
 
         self.ymed = .5*(self.ymin[1:]+self.ymin[:-1])
         self.xmed = .5*(self.xmin[1:] + self.xmin[:-1])
+
+        dat = np.fromfile(directory+'output_init.dat')
+        self.dens0 = dat[:s].reshape(ny,nx)
+        self.vy0 = dat[s:2*s].reshape(ny,nx)
+        self.vx0= dat[2*s:3*s].reshape(ny,nx)
         return
 class Fargo():
 
@@ -71,7 +75,7 @@ class Fargo():
         return
 class Torque():
 
-    def __init__(self,directory='temp_files/',nx=384,ny=128+6):
+    def __init__(self,directory='temp_files/',nx=384,ny=128):
 
         dat = np.loadtxt('param_file.txt')
         self.alpha = dat[3]
@@ -82,22 +86,21 @@ class Torque():
         self.soft = dat[9]
         self.nx = nx
         self.ny = ny
-        s = nx*ny
-        dat = np.fromfile(directory+'output2.dat')
-        self.ymin = dat[:(ny+1)]
-        dat=dat[(ny+1):]
-        self.xmin = dat[:(nx+1)]
-        dat=dat[(nx+1):]
-        self.dens = dat[:s].reshape(ny,nx)
-        self.vy = dat[s:2*s].reshape(ny,nx)
-        self.vx= dat[2*s:3*s].reshape(ny,nx)
-        self.tauxy= dat[3*s:4*s].reshape(ny,nx)
-        self.L= dat[4*s:5*s].reshape(ny,nx)
-        self.drF= dat[5*s:6*s].reshape(ny,nx)
-        self.Lam= dat[6*s:7*s].reshape(ny,nx)
+        dat = np.fromfile(directory+'torque.dat')
+        self.y = dat[:ny]
+        dat=dat[ny:]
+        self.Lt = dat[:ny]
+        self.Ld = dat[ny:ny*2]
+        self.Lw = dat[ny*2:ny*3]
+        self.drFt = dat[ny*3:ny*4]
+        self.drFd = dat[ny*4:ny*5]
+        self.drFw = dat[ny*5:ny*6]
+        self.Lamex = dat[ny*6:ny*7]
+        self.Lamdep = dat[ny*7:ny*8]
+        self.dtLt = dat[ny*8:ny*9]
+        self.dtLd = dat[ny*9:ny*10]
+        self.dtLw = dat[ny*10:ny*11]
 
-        self.ymed = .5*(self.ymin[1:]+self.ymin[:-1])
-        self.xmed = .5*(self.xmin[1:] + self.xmin[:-1])
         return
 
 def compare(dat,fld,i=-1,relerror=False):
