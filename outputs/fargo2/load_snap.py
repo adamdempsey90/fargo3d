@@ -89,17 +89,15 @@ class Torque():
         dat = np.fromfile(directory+'torque.dat')
         self.y = dat[:ny]
         dat=dat[ny:]
-        self.Lt = dat[:ny]
-        self.Ld = dat[ny:ny*2]
-        self.Lw = dat[ny*2:ny*3]
-        self.drFt = dat[ny*3:ny*4]
-        self.drFd = dat[ny*4:ny*5]
-        self.drFw = dat[ny*5:ny*6]
-        self.Lamex = dat[ny*6:ny*7]
-        self.Lamdep = dat[ny*7:ny*8]
-        self.dtLt = dat[ny*8:ny*9]
-        self.dtLd = dat[ny*9:ny*10]
-        self.dtLw = dat[ny*10:ny*11]
+
+        attrs = ['Lt','Ltn','Ld','Ldn','Lw','Lwn',
+                'drFt','drFd','drFw',
+                'Lamex','Lamdep',
+                'dtLt','dtLd','dtLw']
+
+        for i,a in enumerate(attrs):
+            setattr(self,a,dat[i*ny:(i+1)*ny])
+
 
         return
 
