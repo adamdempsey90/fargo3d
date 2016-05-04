@@ -25,7 +25,7 @@ void InitVariables() {
   init_var("SETUP", (char*)&SETUP, STRING, NO, "fargo		");
   init_var("FRAME", (char*)&FRAME, STRING, NO, "G");
   init_var("OUTPUTDIR", (char*)&OUTPUTDIR, STRING, NO, "@outputs/fargo");
-  init_var("INDIRECTTERM", (char*)&INDIRECTTERM, BOOL, NO, "1");
+  init_var("INDIRECTTERM", (char*)&INDIRECTTERM, BOOL, NO, "0");
   init_var("EXCLUDEHILL", (char*)&EXCLUDEHILL, BOOL, NO, "0");
   init_var("LOG", (char*)&LOG, BOOL, NO, "1");
   init_var("ZMAX", (char*)&ZMAX, REAL, NO, "1.0");

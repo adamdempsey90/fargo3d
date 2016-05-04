@@ -16,6 +16,7 @@ class Field():
         self.dens = [None]*nsteps
         self.vx = [None]*nsteps
         self.vy = [None]*nsteps
+        self.pot = [None]*nsteps
 
         s = nx*ny
         for i in range(nsteps):
@@ -23,6 +24,7 @@ class Field():
             self.dens[i] = dat[:s].reshape(ny,nx)
             self.vy[i] = dat[s:2*s].reshape(ny,nx)
             self.vx[i] = dat[2*s:3*s].reshape(ny,nx)
+            self.pot[i] = dat[3*s:4*s].reshape(ny,nx)
         return
 
 class Snap():
@@ -60,6 +62,15 @@ class Snap():
 class Fargo():
 
     def __init__(self,i,directory='',nx=384,ny=128):
+        dat = np.loadtxt('param_file.txt')
+        self.alpha = dat[3]
+        self.mp = dat[4]
+        self.q = dat[5]
+        self.omf = dat[6]
+        self.flaringindex = dat[7]
+        self.soft = dat[9]
+        self.dt = dat[11]
+
 
         self.nx = nx
         self.ny = ny
@@ -71,6 +82,7 @@ class Fargo():
         self.xmin = np.loadtxt('domain_x.dat')
         self.xmed = .5*(self.xmin[1:]+self.xmin[:-1])
         self.ymed = .5*(self.ymin[1:]+self.ymin[:-1])
+        self.L = self.dens *( .5*( np.roll(self.vx,1,axis=1)+self.vx) + self.omf*self.ymed[:,np.newaxis])*self.ymed[:,np.newaxis]
 
         return
 class Torque():
@@ -84,6 +96,7 @@ class Torque():
         self.omf = dat[6]
         self.flaringindex = dat[7]
         self.soft = dat[9]
+        self.dt = dat[11]
         self.nx = nx
         self.ny = ny
         dat = np.fromfile(directory+'torque.dat')
@@ -100,50 +113,95 @@ class Torque():
 
 
         return
+    def plot(self,**kargs):
+        figsize = kargs.pop('figsize',(20,10))
+        fig,axes = plt.subplots(3,2,sharex='col',figsize=figsize)
+
+        fontsize = kargs.pop('fontsize',14)
+        logx = kargs.pop('logx',False)
+
+        axes[0,0].plot(self.y,self.dtLt + self.drFt,label='$\\dot{L}_T + div(F_T)$')
+        axes[0,0].plot(self.y,self.Lamex,label='$\\Lambda_{ex}$')
+        axes[1,0].plot(self.y,self.dtLd + self.drFd,label='$\\dot{L}_d + div(F_d)$')
+        axes[1,0].plot(self.y,self.Lamdep,label='$\\Lambda_{dep}$')
+        axes[2,0].plot(self.y,self.dtLw + self.drFw,label='$\\dot{L}_w + div(F_w)$')
+        axes[2,0].plot(self.y,self.Lamex-self.Lamdep,label='$\\Lambda_{ex}-\\Lambda_{dep}$')
+
+        axes[0,1].plot(self.y,self.dtLt,label='$\\dot{L}_T$')
+        axes[0,1].plot(self.y,self.drFt,label='$div(F_T)$')
+        axes[0,1].plot(self.y,self.Lamex,label='$\\Lambda_{ex}$')
+        axes[1,1].plot(self.y,self.dtLd,label='$\\dot{L}_d$')
+        axes[1,1].plot(self.y,self.drFd,label='$div(F_d)$')
+        axes[1,1].plot(self.y,self.Lamdep,label='$\\Lambda_{dep}$')
+        axes[2,1].plot(self.y,self.dtLw,label='$\\dot{L}_w$')
+        axes[2,1].plot(self.y,self.drFw,label='$div(F_w)$')
+        axes[2,1].plot(self.y,self.Lamex,label='$\\Lambda_{ex}$')
+        axes[2,1].plot(self.y,self.Lamdep,label='$\\Lambda_{dep}$')
+
+        axes[-1,0].set_xlabel('$r$',fontsize=fontsize)
+        axes[-1,1].set_xlabel('$r$',fontsize=fontsize)
+        axes[0,0].set_ylabel('Total',fontsize=fontsize)
+        axes[1,0].set_ylabel('Disk',fontsize=fontsize)
+        axes[2,0].set_ylabel('Wave',fontsize=fontsize)
+
+        for ax in axes.flatten():
+            ax.minorticks_on()
+            if logx:
+                ax.set_xscale('log')
+            ax.legend(loc='best')
+        return
 
 def compare(dat,fld,i=-1,relerror=False):
-    fig,axes=plt.subplots(3,1,sharex=True)
+    fig,axes=plt.subplots(1,4,sharey=True,figsize=(20,10))
     if type(fld.dens) != list:
         dens = fld.dens
         vx = fld.vx
         vy = fld.vy
+        pot = fld.pot
     else:
         dens = fld.dens[i]
         vx = fld.vx[i]
         vy = fld.vy[i]
+        pot = fld.pot[i]
 
     try:
         errd = (dat.dens[3:-3,:] - dens)
         errvy = (dat.vy[3:-3,:] - vy)
         errvx = (dat.vx[3:-3,:] - vx)
+        errp = (dat.pot[3:-3,:] - pot)
     except ValueError:
         dens = dens[3:-3,:]
         vx = vx[3:-3,:]
         vy = vy[3:-3,:]
+        pot = pot[3:-3,:]
         errd = (dat.dens[3:-3,:] - dens)
         errvy = (dat.vy[3:-3,:] - vy)
         errvx = (dat.vx[3:-3,:] - vx)
+        errp = (dat.pot[3:-3,:] - pot)
 
     if relerror:
         errd /= dens
         errvy /= vy
         errvx /= vx
+        errp /= pot
 
 
     ims = [None]*len(axes)
-    ims[0]=axes[0].imshow(np.log10(abs(errd)+1e-16),origin='lower')
-    ims[1]=axes[1].imshow(np.log10(abs(errvy)+1e-16),origin='lower')
-    ims[2]=axes[2].imshow(np.log10(abs(errvx)+1e-16),origin='lower')
-    axes[0].set_ylabel('$\\Delta\\Sigma$',fontsize=15,rotation=0)
-    axes[1].set_ylabel('$\\Delta v_y$',fontsize=15,rotation=0)
-    axes[2].set_ylabel('$\Delta v_x$',fontsize=15,rotation=0)
+    ims[0]=axes[0].imshow(np.log10(abs(errd)),origin='lower' ,aspect='auto')
+    ims[1]=axes[1].imshow(np.log10(abs(errvy)),origin='lower',aspect='auto')
+    ims[2]=axes[2].imshow(np.log10(abs(errvx)),origin='lower',aspect='auto')
+    ims[3]=axes[3].imshow(np.log10(abs(errp)),origin='lower',aspect='auto')
+    axes[0].set_title('$\\Delta\\Sigma$',fontsize=15,rotation=0)
+    axes[1].set_title('$\\Delta v_y$',fontsize=15,rotation=0)
+    axes[2].set_title('$\Delta v_x$',fontsize=15,rotation=0)
+    axes[3].set_title('$\Delta \Phi$',fontsize=15,rotation=0)
     dividers = [make_axes_locatable(ax) for ax in axes]
-    caxes = [d.append_axes("top", size="20%", pad=0.05) for d in dividers]
-    cbars = [plt.colorbar(im, cax=cax,orientation='horizontal') for im,cax in zip(ims,caxes)]
+    caxes = [d.append_axes("right", size="5%", pad=0.05) for d in dividers]
+    cbars = [plt.colorbar(im, cax=cax) for im,cax in zip(ims,caxes)]
     for cb,ax in zip(cbars,axes):
         ax.minorticks_on()
-        cb.ax.xaxis.set_ticks_position('top')
-        ax.yaxis.set_label_position('right')
-        ax.yaxis.labelpad = 20
+        #cb.ax.xaxis.set_ticks_position('top')
+        #ax.yaxis.set_label_position('right')
+        #ax.yaxis.labelpad = 20
 
 

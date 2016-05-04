@@ -82,6 +82,7 @@ void AlgoGas () {
   fwrite(&Density->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_0);
   fwrite(&Vy->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_0);
   fwrite(&Vx->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_0);
+  fwrite(&Pot->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_0);
   fclose(file_0);
   while(dtemp<DT) { // DT LOOP    
     SetupHook1 (); //Setup specific hook. Defaults to empty function.
@@ -107,6 +108,7 @@ void AlgoGas () {
   fwrite(&Density->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_1);
   fwrite(&Vy->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_1);
   fwrite(&Vx->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_1);
+  fwrite(&Pot->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_1);
   fclose(file_1);
     /// AT THIS STAGE Vx IS THE INITIAL TOTAL VELOCITY IN X
     
@@ -155,6 +157,7 @@ void AlgoGas () {
   fwrite(&Density->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_3);
   fwrite(&Vy_temp->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_3);
   fwrite(&Vx_temp->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_3);
+  fwrite(&Pot->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_3);
   fclose(file_3);
 #if (defined(VISCOSITY) || defined(ALPHAVISCOSITY))
     viscosity(dt);
@@ -163,6 +166,7 @@ void AlgoGas () {
   fwrite(&Density->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_4);
   fwrite(&Vy_temp->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_4);
   fwrite(&Vx_temp->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_4);
+  fwrite(&Pot->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_4);
   fclose(file_4);
 #ifndef NOSUBSTEP2
     FARGO_SAFE(SubStep2_a(dt));
@@ -229,12 +233,14 @@ void AlgoGas () {
   fwrite(&Density->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_5);
   fwrite(&Vy_temp->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_5);
   fwrite(&Vx_temp->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_5);
+  fwrite(&Pot->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_5);
   fclose(file_5);
     transport(dt);
 
   fwrite(&Density->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_6);
-  fwrite(&Vy_temp->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_6);
-  fwrite(&Vx_temp->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_6);
+  fwrite(&Vy->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_6);
+  fwrite(&Vx->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_6);
+  fwrite(&Pot->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_6);
   fclose(file_6);
     GiveSpecificTime (t_Hydro);
 
@@ -267,11 +273,12 @@ void AlgoGas () {
     FARGO_SAFE(StockholmBoundary(dt));
 #endif
 
-    FARGO_SAFE(FillGhosts (PrimitiveVariables()));
   fwrite(&Density->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_7);
   fwrite(&Vy->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_7);
   fwrite(&Vx->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_7);
+  fwrite(&Pot->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_7);
   fclose(file_7);
+    FARGO_SAFE(FillGhosts (PrimitiveVariables()));
   }
 
   dtemp = 0.0;

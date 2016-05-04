@@ -8,6 +8,8 @@
 #define FALSE 0
 #define G 1.0
 #define MSTAR 1.0
+#define CFL 0.44
+//#define EXACTPOT
 
 #define MALLOC_SAFE(ptr) if (ptr == NULL) printf("Malloc error at line %d!\n",__LINE__);
 #define FREE_SAFE(ptr) free(ptr); ptr=NULL;
@@ -100,7 +102,8 @@ void vanleer_y_b_avg(double *q, double *qs, double dt);
 void vanleer_x_b(double *q, double *qs, double dt);
 void updateX(double *q, double *qs,double dt);
 void updateY(double *q, double *qs,double dt);
-void updateY_avg(double *q, double *qs,double dt);
+void update_flux(double *qs);
+void update_flux_avg(double *qs);
 void update_density_X(double dt);
 void update_density_Y(double dt);
 void set_bc(void);
@@ -117,11 +120,13 @@ void set_waves(void);
 void set_Lamex(void);
 void output_torque(char *directory);
 void set_avg(int p);
+double cfl(void);
 
 
 int main(int argc, char *argv[]) {
 
     int n,nsteps;
+    double cfl_dt;
     char directory[256];
     char param_fname[100];
 
@@ -140,11 +145,16 @@ int main(int argc, char *argv[]) {
     stride = size_x*size_y;
     pitch = size_x;
     dx = 2*M_PI/nx;
-    dt = .0000314159265359;
 
     allocate_all();
     read_domain(directory);
+    //read_files(n,directory);
     read_single_file(n,2,directory);
+    cfl_dt = cfl();
+    if (cfl_dt < dt) {
+        printf("Using cfl limited timestep of %.4e instead of %.4e\n",cfl_dt,dt);
+        dt = cfl_dt;
+    }
     set_bc();
     set_avg(0);
     printf("%lg\n",omf);
@@ -347,7 +357,7 @@ void viscosity(void) {
     int i,j,k;
     i=j=k=0;
     double visc, viscm,div_v;
-    double res,fac;
+    double res,fac,facp;
     compute_energy();
     for(j=1;j<size_y-1;j++) {
         for(i=0;i<size_x;i++) {
@@ -366,7 +376,7 @@ void viscosity(void) {
 
 
         }
-        tauxyavg[j] = viscm*.5*(dbar[l]+dbar[j-1])*( (vxbar[j]-vxbar[j-1])/(ymed(j)-ymed(j-1))-.5*(vxbar[j]+vxbar[j-1])/ymin(j)); //centered on left, inner vertical edge in z
+        tauxyavg[j] = viscm*.5*(dbar[j]+dbar[j-1])*( (vxbar[j]-vxbar[j-1])/(ymed(j)-ymed(j-1))-.5*(vxbar[j]+vxbar[j-1])/ymin(j)); //centered on left, inner vertical edge in z
     }
 
     for(j=1;j<size_y-2;j++) {
@@ -376,16 +386,17 @@ void viscosity(void) {
 
             vx_temp[l] += 2.0*(tauxx[l]-tauxx[lxm])/(zone_size_x(j,k)*(dens[l]+dens[lxm]))*dt;
             fac =  (ymin(j+1)*ymin(j+1)*tauxy[lyp]-ymin(j)*ymin(j)*tauxy[l])/((ymin(j+1)-ymin(j))*ymed(j));
-            fac *= 2.0/(ymed(j)*(dens[lxm]+dens[l]));
-            vx_temp[l] += fac*dt;
+            facp =  (ymin(j+1)*ymin(j+1)*tauxy[lxp+pitch]-ymin(j)*ymin(j)*tauxy[lxp])/((ymin(j+1)-ymin(j))*ymed(j));
+            vx_temp[l] += dt*fac*2.0/(ymed(j)*(dens[l]+dens[lxp]));
             // Y
             vy_temp[l] += 2.0*(ymed(j)*tauyy[l]-ymed(j-1)*tauyy[lym])/((ymed(j)-ymed(j-1))*(dens[l]+dens[lym])*ymin(j))*dt;
             vy_temp[l] += 2.0*(tauxy[lxp]-tauxy[l])/(dx*ymin(j)*(dens[l]+dens[lym]))*dt;
             vy_temp[l] -= (tauxx[l]+tauxx[lym])/(ymin(j)*(dens[l]+dens[lym]))*dt;
-            res -= fac;
+            res += .5*(fac+facp);
         }
-        drFt[j] = res/(double)nx;
-        drFd[j]  =  (ymin(j+1)*ymin(j+1)*tauxyavg[j+1]-ymin(j)*ymin(j)*tauxyavg[j])/((ymin(j+1)-ymin(j))*ymed(j));
+         drFt[j] = -res/(double)nx;
+        //drFd[j] = -(ymin(j+1)*ymin(j+1)*tauxyavg[j+1]*SurfY(j+1,k) - ymin(j)*ymin(j)*tauxyavg[j]*SurfY(j,k))*InvVol(j,k);
+        drFd[j]  =  -(ymin(j+1)*ymin(j+1)*tauxyavg[j+1]-ymin(j)*ymin(j)*tauxyavg[j])/((ymin(j+1)-ymin(j))*ymed(j));
 
     }
     return;
@@ -443,7 +454,6 @@ void source_step(void) {
     compute_Pres();
     double res,resL;
     for(j=1;j<size_y-1;j++) {
-        resL = 0 ;
         for(i=0;i<size_x;i++) {
             // X
             vx_temp[l] =vx[l] -2*dt/(dens[l]+dens[lxm]) *(Pres[l]-Pres[lxm])/zone_size_x(j,k);
@@ -454,9 +464,7 @@ void source_step(void) {
             vxc = .25*(vx[l]+vx[lxp]+vx[lym]+vx[lxp-pitch])+omf*ymin(j);
             vy_temp[l] += dt*vxc*vxc/ymin(j);
             vy_temp[l] -= dt*(Pot[l]-Pot[lym])/(ymed(j)-ymed(j-1));
-            resL -= dens[l] * (Pot[lxp]-Pot[lxm])/(2*dx);
         }
-        Lamex[j] = resL/(double)nx;
     }
 
 
@@ -518,11 +526,13 @@ void transportY(void) {
     DividebyRho(Pixm);
     vanleer_y_a(divrho);
     vanleer_y_b(divrho,Qs,dt);
+    update_flux(Qs);
     updateY(Pixm,Qs,dt);
 
     DividebyRho(Pixp);
     vanleer_y_a(divrho);
     vanleer_y_b(divrho,Qs,dt);
+    update_flux(Qs);
     updateY(Pixp,Qs,dt);
 
     DividebyRho(Piym);
@@ -544,7 +554,7 @@ void transportY(void) {
     DividebyRhoavg(Ld);
     vanleer_y_a_avg(divrho);
     vanleer_y_b_avg(divrho,Qs,dt);
-    updateY_avg(Ld,Qs,dt);
+    update_flux_avg(Qs);
 
 
 
@@ -746,7 +756,7 @@ void vanleer_x_b(double *q, double *qs, double dt) {
 }
 void updateX(double *q, double *qs,double dt) {
     int i,j,k;
-
+    i=j=k=0;
     for(j=0;j<size_y;j++) {
         for(i=0;i<size_x;i++) {
 
@@ -757,37 +767,43 @@ void updateX(double *q, double *qs,double dt) {
 
     return;
 }
-void updateY(double *q, double *qs,double dt) {
+void update_flux_avg(double *qs) {
     int i,j,k;
+    i=j=k=0;
+    double res;
+    for(j=0;j<size_y-1;j++) {
+        res = 0;
+        for(i=0;i<size_x;i++) {    
+            res += ((vy_temp[l]*qs[j]*denstar[l]*SurfY(j,k)-vy_temp[lyp]*qs[j+1]*denstar[lyp]*SurfY(j+1,k))*InvVol(j,k));
+        }
+        res /=(double)nx;
+
+        drFd[j] -= res;
+    }
+    return;
+}
+void update_flux(double *qs) {
+    int i,j,k;
+    i=j=k=0;
     double res,fac;
     for(j=0;j<size_y-1;j++) {
         res = 0;
-        for(i=0;i<size_x;i++) {
-            
-            fac = ((vy_temp[l]*qs[l]*denstar[l]*SurfY(j,k)-vy_temp[lyp]*qs[lyp]*denstar[lyp]*SurfY(j+1,k))*InvVol(j,k));
-            q[l] += fac*dt;
-            res += fac;
+        for(i=0;i<size_x;i++) {    
+            res += ((vy_temp[l]*qs[l]*denstar[l]*SurfY(j,k)-vy_temp[lyp]*qs[lyp]*denstar[lyp]*SurfY(j+1,k))*InvVol(j,k));
         }
         res /=(double)nx;
         drFt[j] -= res*.5;
     }
     return;
 }
-void updateY_avg(double *q, double *qs,double dt) {
+void updateY(double *q, double *qs,double dt) {
     int i,j,k;
-    double res,resp;
+    i=j=k=0;
     for(j=0;j<size_y-1;j++) {
-        res = 0;
-        resp = 0;
         for(i=0;i<size_x;i++) {
-            res += vy_temp[l];
-            resp += vy_temp[lyp];
+            
+            q[l] += dt*((vy_temp[l]*qs[l]*denstar[l]*SurfY(j,k)-vy_temp[lyp]*qs[lyp]*denstar[lyp]*SurfY(j+1,k))*InvVol(j,k));
         }
-        res /=(double)nx;
-        resp /=(double)nx;
-
-        drFd[j] -= ((res*qs[j]*dbarstar[j]*SurfY(j,k)-resp*qs[j+1]*dbarstar[j+1]*SurfY(j+1,k))*InvVol(j,k));
-
     }
     return;
 }
@@ -835,18 +851,26 @@ void set_Lamex(void) {
     int i,j,k;
     i=j=k=0;
     
-    double resm,resp;
-
+    double res;
+#ifdef EXACTPOT
+    double rad,smoothing;
+    double distp = params.a;
+    smoothing = params.h*pow(distp,params.flaringindex)*distp*params.soft;
+    smoothing *= smoothing;
+#endif
     for(j=NGHY;j<size_y-NGHY;j++) {
-        resm = 0;
-        resp = 0;
+        res = 0;
         for(i=0;i<size_x;i++) {
-            resm -= dens[l]*(Pot[l]-Pot[lxm])/zone_size_x(j,k);
-            resp -= dens[l]*(Pot[lxp]-Pot[l])/zone_size_x(j,k);
+#ifdef EXACTPOT
+            rad = ymed(j)*ymed(j)+params.a*params.a -2*ymed(j)*params.a*cos(xmed(i));
+            rad = pow(rad +smoothing,-1.5);
+            res -= params.mp*dens[l] * sin(xmed(i))*params.a*ymed(j)*rad;
+#else
+            res -= dens[l]*(Pot[lxp]-Pot[lxm])/(dx);
+#endif
         }
-        resm /=(double)nx;
-        resp /= (double)nx;
-        Lamex[j] = .5*(resm + resp)*ymed(j);
+        res /=(double)nx;
+        Lamex[j] = res;
 
     }
 
@@ -954,6 +978,7 @@ void read_param_file(char *filename) {
     fscanf(f,"%lg\n",&params.flaringindex);
     fscanf(f,"%lg\n",&params.mdot);
     fscanf(f,"%lg\n",&params.soft);
+    fscanf(f,"%lg\n",&dt);
 
     params.nuindex = 2*params.flaringindex + 0.5;
     params.vrindex = params.nuindex - 1.0;
@@ -963,6 +988,7 @@ void read_param_file(char *filename) {
     printf("alpha=%.1e\tmp=%.1e\ta=%lg\n",params.alpha,params.mp,params.a);
     printf("omf=%lg\th=%lg\tflaring=%lg\n",params.omf,params.h,params.flaringindex);
     printf("mdot=%.2e\tsoft=%lg\n",params.mdot,params.soft);
+    printf("dt=%.12f\t\n",dt);
     return;
 }
 
@@ -1134,4 +1160,46 @@ void set_avg(int p) {
         Lw[j + p*size_y] = Lt[j + p*size_y] - Ld[j + p*size_y];
     }
     return;
+}
+double cfl(void) {
+    int i,j,k;
+    i=j=k=0;
+    double vxx, vxxp;
+    double soundspeed2,soundspeed,visc;
+    double cfl1_a, cfl1_b, cfl1;
+    double cfl7_a, cfl7_b, cfl7;
+    double cfl2, cfl3;
+    double res,fac;
+
+    res = 1e99;
+    for(j=NGHY;j<size_y-NGHY;j++) {
+        for(i=0;i<size_x;i++) {
+            vxx = vx[l];
+            vxxp = vx[lxp];
+            soundspeed2 = energy[l]*energy[l];
+            visc = params.alpha*energy[l]*energy[l]*sqrt(ymed(j)*ymed(j)*ymed(j));
+            soundspeed = sqrt(soundspeed2);
+            cfl1_a = soundspeed/zone_size_x(j,k);
+            cfl1_b = soundspeed/zone_size_y(j,k);
+            cfl1 = fmax(cfl1_a,cfl1_b);
+
+	        cfl2 =fmax(fabs(vx[l]),fabs(vx[lxp]))/zone_size_x(j,k);
+	        cfl3 = fmax(fabs(vy[l]),fabs(vy[lyp]))/zone_size_y(j,k);
+
+	        cfl7_a = 1.0/zone_size_x(j,k);	
+        	cfl7_b = 1.0/zone_size_y(j,k);
+	        cfl7 = 4.0*visc*pow(fmax(cfl7_a,cfl7_b),2);
+
+
+	        fac = CFL/sqrt(cfl1*cfl1 + cfl2*cfl2 + 
+			     cfl3*cfl3 + cfl7*cfl7);
+
+            if (fac < res) {
+                res = fac;
+            }
+        }
+    }
+
+    return res;
+
 }
