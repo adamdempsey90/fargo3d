@@ -57,6 +57,30 @@ typedef struct Parameters {
 
 } Parameters;
 
+typedef struct Orbit {
+
+    double a; // semi-major axis
+    double e; // eccentricity
+    double M; // mean anomaly
+    double V; // true anomaly
+    double psi; // arg of periastron from ascending ndoe
+    double phi; // angle b/w actual and initial position of x-axis
+    double i; // inclination
+    double w; // longitude of ascending node w.r.t actual x-axis
+    double alpha; // projection of perihelion w.r.t actual x-axis
+
+} Orbit;
+
+typedef struct Planet {
+
+    double x,y,z;
+    double vx,vy,vz;
+    double mp, omf;
+    double dist;
+    double t;
+    Orbit orbit;
+} Planet;
+
 
 double *dens, *vx, *vy, *Pres, *Pot, *energy;
 double *dbar, *vxbar, *vybar, *dbarstar;
@@ -72,6 +96,7 @@ double dt,omf,dx;
 int nx, ny, nz, size_x, size_y, size_z,stride,pitch;
 
 Parameters params;
+Planet planet;
 
 double Nu(double x);
 double Cs(double X);
@@ -121,6 +146,7 @@ void set_Lamex(void);
 void output_torque(char *directory);
 void set_avg(int p);
 double cfl(void);
+void read_planet_file(int n, char *directory);
 
 
 int main(int argc, char *argv[]) {
@@ -430,8 +456,9 @@ void potential(void) {
     i=j=k=0;
     double xpl, ypl;
     double smoothing,distp,rad;
-    xpl = params.a;
-    ypl = 0;
+    xpl = planet.x;
+    ypl = planet.y;
+    double mp = planet.mp;
     distp = sqrt(xpl*xpl + ypl*ypl);
 
     smoothing = params.h*pow(distp,params.flaringindex)*distp*params.soft;
@@ -440,9 +467,9 @@ void potential(void) {
     for(j=0;j<size_y;j++) {
         for(i=0;i<size_x;i++) {
             rad = (XC-xpl)*(XC-xpl) + (YC-ypl)*(YC-ypl);
-            Pot[l] = -1./ymed(j);
-            Pot[l] -= params.mp/sqrt(rad + smoothing);
-            //Pot[l] += params.mp*(xd*xpl+yd*ypl)/(distp*distp*distp);
+            Pot[l] = -G*MSTAR/ymed(j);
+            Pot[l] += -G*mp/sqrt(rad + smoothing);
+            //Pot[l] += G*mp*(xd*xpl+yd*ypl)/(distp*distp*distp);
         }
     }
     return;
@@ -1027,6 +1054,67 @@ void read_domain(char *directory) {
 
     return;
 }
+void read_planet_file(int n, char *directory) {
+    char filename[512],filename2[512];
+    FILE *f,*f1;
+    int i;
+    double xpl,ypl,zpl,vxpl,vypl,vzpl,mpl,tpl,omfpl;
+    double epl,apl,vpl,psipl,phipl,ipl,wpl,alphapl;
+    int scanned = 0;
+
+    sprintf(filename,"%splanet0.dat",directory);
+    printf("Reading %s\n",filename);
+    f = fopen(filename,"r");
+    while ( (scanned = fscanf(f,"%d\t%lg\t%lg\t%lg\t%lg\t%lg\t%lg\t%lg\t%lg\t%lg\n",
+                &i,&xpl,&ypl,&zpl,&vxpl,&vypl,&vzpl,&mpl,&tpl,&omfpl)) != EOF) {
+
+            if (i == n) {
+                planet.x = xpl; 
+                planet.y = ypl; 
+                planet.z = zpl; 
+                planet.vx = vxpl; 
+                planet.vy = vypl; 
+                planet.vz = vzpl; 
+                planet.mp = mpl; 
+                planet.omf = omfpl; 
+                planet.t = tpl;
+                printf("%d\t%.16f\t%.16f\t%.16f\t%.16f\t%.16f\t%.16f\t%.16f\t%.16f\t%.16f\n",
+                        i,xpl,ypl,zpl,vxpl,vypl,vzpl,mpl,tpl,omfpl);
+                break;
+            }
+
+    }
+
+
+    fclose(f);
+    sprintf(filename2,"%sorbit0.dat",directory);
+    printf("Reading %s\n",filename2);
+    f1 = fopen(filename2,"r");
+
+    while ( (scanned = fscanf(f1,"%lg\t%lg\t%lg\t%lg\t%lg\t%lg\t%lg\t%lg\t%lg\t%lg\n",
+                &tpl,&epl,&apl,&mpl,&vpl,&psipl,&phipl,&ipl,&wpl,&alphapl)) != EOF) {
+
+            if (fabs(tpl-planet.t)<1e-8) {
+                planet.orbit.e = epl; 
+                planet.orbit.a = apl; 
+                planet.orbit.M = mpl; 
+                planet.orbit.V = vpl; 
+                planet.orbit.psi = psipl; 
+                planet.orbit.phi = phipl; 
+                planet.orbit.i = ipl; 
+                planet.orbit.w = wpl; 
+                planet.orbit.alpha = alphapl; 
+                printf("\n\n%.16f\t%.16f\t%.16f\t%.16f\t%.16f\t%.16f\t%.16f\t%.16f\t%.16f\t%.16f\n",
+                        tpl,epl,apl,mpl,vpl,psipl,phipl,ipl,wpl,alphapl);
+                break;
+            }
+
+    }
+    fclose(f1);
+    omf = planet.omf;
+    return;
+
+}
 void read_single_file(int n, int i,char *directory) {
     char filename[512];
     FILE *f;
@@ -1038,6 +1126,7 @@ void read_single_file(int n, int i,char *directory) {
     fread(vy,sizeof(double),size_x*size_y*size_z,f);
     fread(vx,sizeof(double),size_x*size_y*size_z,f);
     fclose(f);
+    read_planet_file(n,directory);
     return;
 
 }
@@ -1067,12 +1156,11 @@ void read_files(int n, char *directory) {
             }
         }
     }
-
-
-
     fclose(fd);
     fclose(fx);
     fclose(fy);
+
+    read_planet_file(n,directory);
     return;
 
 }

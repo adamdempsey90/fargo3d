@@ -5,7 +5,7 @@ Setup			fargo
 
 AspectRatio     	0.05            Thickness over Radius in the disc
 Sigma0			1.0 #6.3661977237e-4	Surface Density at r=1
-Alpha			0.0		Uniform kinematic viscosity
+Alpha			0.01		Uniform kinematic viscosity
 SigmaSlope		0.5		Slope of the surface density
 FlaringIndex		0.0
 
@@ -34,7 +34,7 @@ Frame			C
 
 Ntot			100		Total number of time steps
 Ninterm	 		1 	Time steps between outputs
-DT			    .00001    #0.0000314159265359	Time step length. 2PI = 1 orbit
+DT			    .001    #0.0000314159265359	Time step length. 2PI = 1 orbit
 OutputDir		@outputs/fargo2
 
 #Plotting parameters
