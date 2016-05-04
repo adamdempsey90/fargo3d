@@ -105,11 +105,6 @@ void AlgoGas () {
     FARGO_SAFE(ComputePressureFieldPoly());
 #endif
     
-  fwrite(&Density->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_1);
-  fwrite(&Vy->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_1);
-  fwrite(&Vx->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_1);
-  fwrite(&Pot->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_1);
-  fclose(file_1);
     /// AT THIS STAGE Vx IS THE INITIAL TOTAL VELOCITY IN X
     
 #ifdef X
@@ -131,6 +126,11 @@ void AlgoGas () {
 
     printf("dt = %.4e\n",dt);
 
+  fwrite(&Density->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_1);
+  fwrite(&Vy->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_1);
+  fwrite(&Vx->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_1);
+  fwrite(&Pot->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_1);
+  fclose(file_1);
 #ifdef POTENTIAL
     FARGO_SAFE(compute_potential(dt));
 #endif

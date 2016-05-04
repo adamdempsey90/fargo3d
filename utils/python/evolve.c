@@ -147,6 +147,10 @@ void output_torque(char *directory);
 void set_avg(int p);
 double cfl(void);
 void read_planet_file(int n, char *directory);
+void get_accel(double *q, double *k, double dtn);
+void move_planet_step(double dtn);
+void rotate_sys(double angle);
+void move_planet(void);
 
 
 int main(int argc, char *argv[]) {
@@ -174,8 +178,8 @@ int main(int argc, char *argv[]) {
 
     allocate_all();
     read_domain(directory);
-    //read_files(n,directory);
-    read_single_file(n,2,directory);
+    read_files(n,directory);
+    //read_single_file(n,1,directory);
     cfl_dt = cfl();
     if (cfl_dt < dt) {
         printf("Using cfl limited timestep of %.4e instead of %.4e\n",cfl_dt,dt);
@@ -190,12 +194,17 @@ int main(int argc, char *argv[]) {
     
         printf("potential\n"); 
         potential();
+        printf("Move planet\n");
+        printf("omf before %.16f\n",omf);
+        move_planet();
+        printf("omf after %.16f\n",omf);
         printf("sourcel\n"); 
+    
        source_step();
        
         set_Lamex();
         printf("viscl\n"); 
-        viscosity();
+       viscosity();
     
         printf("copyl\n"); 
         temp_to_vel();
@@ -205,12 +214,13 @@ int main(int argc, char *argv[]) {
         
         vel_to_temp();
         printf("transport\n"); 
-        
+/*        
         transport_step();
         printf("bc\n"); 
+*/      
 
     }
-    //temp_to_vel();   
+    temp_to_vel();   
     printf("ang\n"); 
     set_avg(1);
     set_Lamdep();
@@ -413,7 +423,7 @@ void viscosity(void) {
             vx_temp[l] += 2.0*(tauxx[l]-tauxx[lxm])/(zone_size_x(j,k)*(dens[l]+dens[lxm]))*dt;
             fac =  (ymin(j+1)*ymin(j+1)*tauxy[lyp]-ymin(j)*ymin(j)*tauxy[l])/((ymin(j+1)-ymin(j))*ymed(j));
             facp =  (ymin(j+1)*ymin(j+1)*tauxy[lxp+pitch]-ymin(j)*ymin(j)*tauxy[lxp])/((ymin(j+1)-ymin(j))*ymed(j));
-            vx_temp[l] += dt*fac*2.0/(ymed(j)*(dens[l]+dens[lxp]));
+            vx_temp[l] += dt*fac*2.0/(ymed(j)*(dens[l]+dens[lxm]));
             // Y
             vy_temp[l] += 2.0*(ymed(j)*tauyy[l]-ymed(j-1)*tauyy[lym])/((ymed(j)-ymed(j-1))*(dens[l]+dens[lym])*ymin(j))*dt;
             vy_temp[l] += 2.0*(tauxy[lxp]-tauxy[l])/(dx*ymin(j)*(dens[l]+dens[lym]))*dt;
@@ -1291,3 +1301,145 @@ double cfl(void) {
     return res;
 
 }
+void get_accel(double *q, double *k, double dtn) {
+    double rp,coeff;
+    rp = sqrt(q[0]*q[0] + q[1]*q[1] + q[2]*q[2]);
+    coeff = -G*MSTAR*pow(rp,-3.0);
+    k[0] = q[3] * dtn;
+    k[1] = q[4] * dtn;
+    k[2] = q[5] * dtn;
+    k[3] = coeff * q[0] * dtn;
+    k[4] = coeff * q[1] * dtn;
+    k[5] = coeff * q[2] * dtn;
+#ifdef INDIRECT
+    coeff = G*planet.mp/(rp*rp*rp);
+    k[3] -= coeff * q[0] * dtn;
+    k[4] -= coeff * q[1] * dtn;
+    k[5] -= coeff * q[2] * dtn;
+#endif
+    return;
+}
+void move_planet_step(double dtn) {
+    int i;
+    double k1[6] ={0,0,0,0,0,0};
+    double k2[6] ={0,0,0,0,0,0};
+    double k3[6] ={0,0,0,0,0,0};
+    double k4[6] ={0,0,0,0,0,0};
+    double k5[6] ={0,0,0,0,0,0};
+    double k6[6] ={0,0,0,0,0,0};
+    double q0[6] ={0,0,0,0,0,0};
+    double q1[6] ={0,0,0,0,0,0};
+    double cvals1[5] =  {0.2, 0.0, 0.0, 0.0, 0.0};
+    double cvals2[5] = {0.075, 0.225, 0.0, 0.0, 0.0};
+    double cvals3[5] = { 0.3, -0.9, 1.2, 0.0, 0.0};
+    double cvals4[5] = {-11.0/54.0, 2.5, -70.0/27.0, 35.0/27.0, 0.0 };
+    double cvals5[5] = {1631.0/55296.0, 175.0/512.0, 575.0/13824.0, 44275.0/110592.0, 253.0/4096.0 };
+    q0[0] = planet.x;
+    q0[1] = planet.y;
+    q0[2] = planet.z;
+    q0[3] = planet.vx;
+    q0[4] = planet.vy;
+    q0[5] = planet.vz;
+
+    get_accel(q0, k1, dtn);
+    for(i=0;i<6;i++) {
+        q1[i] = q0[i] + cvals1[0]*k1[i] + cvals1[1]*k2[i] + cvals1[2]*k3[i] + cvals1[3]*k4[i] + cvals1[4]*k5[i];
+    }
+
+    get_accel(q1, k2, dtn);
+    for(i=0;i<6;i++) {
+        q1[i] = q0[i] + cvals2[0]*k1[i] + cvals2[1]*k2[i] + cvals2[2]*k3[i] + cvals2[3]*k4[i] + cvals2[4]*k5[i];
+    }
+
+
+    get_accel(q1, k3, dtn);
+    for(i=0;i<6;i++) {
+        q1[i] = q0[i] + cvals3[0]*k1[i] + cvals3[1]*k2[i] + cvals3[2]*k3[i] + cvals3[3]*k4[i] + cvals3[4]*k5[i];
+    }
+
+    get_accel(q1, k4, dtn);
+    for(i=0;i<6;i++) {
+        q1[i] = q0[i] + cvals4[0]*k1[i] + cvals4[1]*k2[i] + cvals4[2]*k3[i] + cvals4[3]*k4[i] + cvals4[4]*k5[i];
+    }
+
+    get_accel(q1, k5, dtn);
+    for(i=0;i<6;i++) {
+        q1[i] = q0[i] + cvals5[0]*k1[i] + cvals5[1]*k2[i] + cvals5[2]*k3[i] + cvals5[3]*k4[i] + cvals5[4]*k5[i];
+    }
+
+    get_accel(q1, k6, dtn);
+
+    for (i = 0; i < 6; i++) {
+        q1[i] = (q0[i]+
+                    37.0/378.0*k1[i]  + 
+                    250.0/621.0*k3[i] + 
+                    125.0/594.0*k4[i] + 
+                    512.0/1771.0*k6[i]);
+    }
+    planet.x = q1[0];
+    planet.y = q1[1];
+    planet.z = q1[2];
+    planet.vx = q1[3];
+    planet.vy = q1[4];
+    planet.vz = q1[5];
+    return;
+}
+void rotate_sys(double angle) {
+
+    double xt, yt,vxt,vyt;
+    xt = planet.x;
+    yt = planet.y;
+    vxt = planet.vx;
+    vyt = planet.vy;
+
+    planet.x = xt * cos(angle)  + yt * sin(angle);
+    planet.y = -xt * sin(angle)  + yt * cos(angle);
+
+    planet.vx = vxt * cos(angle)  + vyt * sin(angle);
+    planet.vy = -vxt * sin(angle)  + vyt * cos(angle);
+
+    return;
+}
+void move_planet(void) {
+    int i,j,k;
+    int subcycles = 5;
+    double dt_frac = 1./(double)subcycles;
+    double omf_new;
+    double xpl0,ypl0;
+    double xpl1,ypl1;
+    double d1, d2,cross,domega;
+
+    xpl0 = planet.x;
+    ypl0 = planet.y;
+
+    for(i=0;i<subcycles;i++) {
+        move_planet_step(dt*dt_frac);
+    }
+    xpl1 = planet.x;
+    ypl1 = planet.y;
+    
+    d2 = sqrt(xpl1*xpl1 + ypl1*ypl1);
+    d1 = sqrt(xpl0*xpl0+ypl0*ypl0);
+    cross = xpl0*ypl1-xpl1*ypl0;
+    omf_new = asin(cross/(d1*d2))/dt;
+    domega = omf_new - omf;
+    omf = omf_new;
+    rotate_sys(omf*dt);
+
+    i = j = k = 0;
+    double res;
+    for(k=0;k<size_z;k++) {
+        for(j=0;j<size_y;j++) {
+            for(i=0;i<size_x;i++) {
+                vx[l] -= domega * ymed(j);
+                res += vx[l];
+            }
+            res /=(double)nx;
+            vxbar[j] = res;
+        }
+    }
+
+
+    return;
+}
+
