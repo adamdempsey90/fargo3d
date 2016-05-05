@@ -9,6 +9,7 @@
 #define G 1.0
 #define MSTAR 1.0
 #define CFL 0.44
+#define INDIRECT
 //#define EXACTPOT
 
 #define MALLOC_SAFE(ptr) if (ptr == NULL) printf("Malloc error at line %d!\n",__LINE__);
@@ -476,12 +477,30 @@ void potential(void) {
     smoothing = params.h*pow(distp,params.flaringindex)*distp*params.soft;
     smoothing *= smoothing;
     printf("Smoothing = %.16f\n",smoothing);
+
+#ifdef INDIRECT
+    double resx = 0;
+    double resy = 0;
+    double cellmass;
+    for(j=NGHY;j<size_y-NGHY;j++) {
+        for(i=0;i<size_x;i++)  {
+            cellmass = Vol(j,k)*dens[l];
+            rad = XC*XC + YC*YC;
+            rad = pow(rad+smoothing,-1.5);
+            resx += G * cellmass * XC * rad;
+            resy += G * cellmass * YC * rad;
+        }
+    }
+#endif
     for(j=0;j<size_y;j++) {
         for(i=0;i<size_x;i++) {
             rad = (XC-xpl)*(XC-xpl) + (YC-ypl)*(YC-ypl);
             Pot[l] = -G*MSTAR/ymed(j);
             Pot[l] += -G*mp/sqrt(rad + smoothing);
-            //Pot[l] += G*mp*(xd*xpl+yd*ypl)/(distp*distp*distp);
+#ifdef INDIRECT
+	        Pot[l] += G*planet.mp*(XC*xpl+YC*ypl)/(distp*distp*distp); 
+	        Pot[l]  -= resx*XC + resy*YC ;
+#endif
         }
     }
     return;
@@ -893,7 +912,7 @@ void set_Lamex(void) {
     double res;
 #ifdef EXACTPOT
     double rad,smoothing;
-    double distp = params.a;
+    double distp = sqrt(planet.x*planet.x+planet.y*planet.y);
     smoothing = params.h*pow(distp,params.flaringindex)*distp*params.soft;
     smoothing *= smoothing;
 #endif

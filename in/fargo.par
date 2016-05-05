@@ -16,7 +16,7 @@ ThicknessSmoothing 	0.6
 RocheSmoothing 		0.0
 Eccentricity		0.0
 ExcludeHill		no
-IndirectTerm		No
+IndirectTerm		Yes
 
 
 ### Mesh parameters
