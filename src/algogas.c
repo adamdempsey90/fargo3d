@@ -131,10 +131,13 @@ void AlgoGas () {
   fwrite(&Vx->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_1);
   fwrite(&Pot->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_1);
   fclose(file_1);
+  printf("planet before %.16f\t%.16f\t%.16f\t%.16f\t%.16f\n",
+          Sys->x[0], Sys->y[0], Sys->vx[0], Sys->vy[0], OMEGAFRAME);
 #ifdef POTENTIAL
     FARGO_SAFE(compute_potential(dt));
 #endif
-  printf("%s omf = %.16f\n",file_2_name,OMEGAFRAME);
+  printf("planet after %.16f\t%.16f\t%.16f\t%.16f\t%.16f\n",
+          Sys->x[0], Sys->y[0], Sys->vx[0], Sys->vy[0], OMEGAFRAME);
   fwrite(&Density->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_2);
   fwrite(&Vy->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_2);
   fwrite(&Vx->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_2);

@@ -195,9 +195,11 @@ int main(int argc, char *argv[]) {
         printf("potential\n"); 
         potential();
         printf("Move planet\n");
-        printf("omf before %.16f\n",omf);
+        printf("planet before %.16f\t%.16f\t%.16f\t%.16f\t%.16f\n",
+                planet.x, planet.y, planet.vx, planet.vy,omf);
         move_planet();
-        printf("omf after %.16f\n",omf);
+        printf("planet after %.16f\t%.16f\t%.16f\t%.16f\t%.16f\n",
+                planet.x, planet.y, planet.vx, planet.vy,omf);
         printf("sourcel\n"); 
     
        source_step();
@@ -214,13 +216,13 @@ int main(int argc, char *argv[]) {
         
         vel_to_temp();
         printf("transport\n"); 
-/*        
+        
         transport_step();
         printf("bc\n"); 
-*/      
+      
 
     }
-    temp_to_vel();   
+//    temp_to_vel();   
     printf("ang\n"); 
     set_avg(1);
     set_Lamdep();
@@ -903,7 +905,7 @@ void set_Lamex(void) {
             rad = pow(rad +smoothing,-1.5);
             res -= params.mp*dens[l] * sin(xmed(i))*params.a*ymed(j)*rad;
 #else
-            res -= dens[l]*(Pot[lxp]-Pot[lxm])/(dx);
+            res -= dens[l]*(Pot[lxp]-Pot[lxm])/(2*dx);
 #endif
         }
         res /=(double)nx;
