@@ -135,6 +135,8 @@ void update_density_Y(double dt);
 void set_bc(void);
 void ymax_bound(void);
 void ymin_bound(void);
+void ymin_bound_acc(void);
+void ymax_bound_acc(void);
 void read_param_file(char *filename);
 void read_domain(char *directory);
 void read_single_file(int n,int i, char *directory);
@@ -182,13 +184,15 @@ int main(int argc, char *argv[]) {
     read_files(n,directory);
     //read_single_file(n,1,directory);
     cfl_dt = cfl();
+    dt = cfl_dt;
+    /*
     if (cfl_dt < dt) {
         printf("Using cfl limited timestep of %.4e instead of %.4e\n",cfl_dt,dt);
         dt = cfl_dt;
     }
+    */
     set_bc();
     set_avg(0);
-    printf("%lg\n",omf);
     output_init(directory);
     int i;
     for(i=0; i <nsteps; i++) {
@@ -937,8 +941,8 @@ void set_Lamex(void) {
 }
 void set_bc(void) {
     
-    ymin_bound();
-    ymax_bound();
+    ymin_bound_acc();
+    ymax_bound_acc();
     return;
 
 }
@@ -979,7 +983,120 @@ void ymax_bound(void) {
 
     return;
 }
+void ymin_bound_acc(void) {
 
+  int i;
+  int j;
+  int k;
+  int jact;
+  int jgh;
+  int kact;
+  int kgh;
+  int lgh;
+  int lghs;
+  int lactb;
+  int lactbs;
+  int lactbs_null;
+  int nghy = NGHY;
+  double sig1;
+ double vr1;
+ double ri1;
+ double fh1;
+ double rm1;
+  double omegaframe = omf;
+  double nu_0 = params.alpha*params.h*params.h;
+  double m3p = params.mdot/(3*M_PI);
+  double nu_index = 0.5 + 2*params.flaringindex;
+  double vnorm = -1.5*params.alpha*params.h*params.h;
+  double vr_index = -0.5 + 2*params.flaringindex;
+  double pi = M_PI;
+
+
+  i = j = k = 0;
+
+  for(k=0; k<size_z; k++) {
+    for(j=0; j<NGHY; j++) {
+      for(i=0; i<size_x; i++) {
+
+	lgh = l;
+	lghs = l;
+	lactb = i + (2*nghy-j-1)*pitch + k*stride;
+	lactbs = i + (2*nghy-j)*pitch + k*stride;
+	lactbs_null = i + nghy*pitch + k*stride;
+	jgh = j;
+	jact = (2*nghy-j-1);
+
+	sig1 = dens[ i + (nghy)*pitch + k*stride];
+	ri1 = ymed(nghy);
+	rm1 = ymin(nghy);
+	vr1 = vy[ i + (nghy)*pitch + k*stride];
+	dens[lgh] = sig1*pow(ri1/ymed(jgh),nu_index);
+	vx[lgh] = (vx[lactb]+ymed(jact)*omegaframe)*sqrt(ymed(jact)/ymed(jgh))-ymed(jgh)*omegaframe;
+	vy[lghs] = vr1*pow(ymed(jgh)/ri1,vr_index);
+	vy[lactbs_null] = vr1*pow(rm1/ri1,vr_index);
+      }
+    }
+  }
+  return;
+}
+
+void ymax_bound_acc(void) {
+  int i;
+  int j;
+  int k;
+  int jact;
+  int jgh;
+  int kact;
+  int kgh;
+  int lgh;
+  int lghs;
+  int lactb;
+  int lactbs;
+  int lactbs_null;
+  double sig1;
+ double vr1;
+ double ri1;
+ double fh1;
+ double rm1;
+  int nghy = NGHY;
+  double mdot = params.mdot;
+  double omegaframe = omf;
+  double nu_0 = params.alpha*params.h*params.h;
+  double m3p = params.mdot/(3*M_PI);
+  double nu_index = 0.5 + 2*params.flaringindex;
+  double vnorm = -1.5*params.alpha*params.h*params.h;
+  double vr_index = -0.5 + 2*params.flaringindex;
+  double pi = M_PI;
+
+  i = j = k = 0;
+
+  for(k=0; k<size_z; k++) {
+    for(j=0; j<NGHY; j++) {
+      for(i=0; i<size_x; i++) {
+
+	lgh = i + (ny+nghy+j)*pitch + k*stride;
+	lghs = i + (ny+nghy+1+j)*pitch + k*stride;
+	lactb = i + (ny+nghy-1-j)*pitch + k*stride;
+	lactbs = i + (ny+nghy-1-j)*pitch + k*stride;
+	lactbs_null = i + (ny+nghy)*pitch + k*stride;
+	jgh = (ny+nghy+j);
+	jact = (ny+nghy-1-j);
+
+	sig1 = dens[ i + (ny+nghy-1)*pitch + k*stride];
+	vr1 = vy[ i + (ny +  nghy)*pitch + k*stride];
+	ri1 = ymed(ny+nghy-1);
+	rm1 = ymin(ny+nghy);
+	fh1 = 3*pi*nu_0*pow(ri1,nu_index+0.5)*sig1;
+	dens[lgh] = (fh1+mdot*(sqrt(ymed(jgh))-sqrt(ri1)))/(3*pi*nu_0*pow(ymed(jgh),nu_index+0.5));
+	vx[lgh] = (vx[lactb]+ymed(jact)*omegaframe)*sqrt(ymed(jact)/ymed(jgh))-ymed(jgh)*omegaframe;
+	if (j<size_y-1)
+		vy[lghs] = vnorm*pow(ymin(jgh),vr_index)*mdot*sqrt(ymin(jgh))/(fh1+mdot*(sqrt(ymin(jgh))-sqrt(ri1)));
+	vy[lactbs_null] = vnorm*pow(ymin(jgh),vr_index)*mdot*sqrt(ymin(jgh))/(fh1+mdot*(sqrt(ymin(jgh))-sqrt(ri1)));
+      }
+    }
+  }
+  return;
+}
 void ymin_bound(void) {
 
   int i;
@@ -1031,7 +1148,7 @@ void read_param_file(char *filename) {
     fscanf(f,"%lg\n",&params.alpha);
     fscanf(f,"%lg\n",&params.mp);
     fscanf(f,"%lg\n",&params.a);
-    fscanf(f,"%lg\n",&params.omf);
+    //fscanf(f,"%lg\n",&params.omf);
     fscanf(f,"%lg\n",&params.h);
     fscanf(f,"%lg\n",&params.flaringindex);
     fscanf(f,"%lg\n",&params.mdot);
@@ -1040,7 +1157,7 @@ void read_param_file(char *filename) {
 
     params.nuindex = 2*params.flaringindex + 0.5;
     params.vrindex = params.nuindex - 1.0;
-    omf = params.omf;
+    omf = 1.0;
     fclose(f);
     printf("nx=%d\tny=%d\tnz=%d\n",nx,ny,nz);
     printf("alpha=%.1e\tmp=%.1e\ta=%lg\n",params.alpha,params.mp,params.a);

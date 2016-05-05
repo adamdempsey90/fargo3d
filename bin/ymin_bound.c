@@ -35,6 +35,11 @@ OUTPUT(Vy);
   int lact;
   int lacts;
   int lacts_null;
+  real sig1;
+ real vr1;
+ real ri1;
+ real fh1;
+ real rm1;
 //<\INTERNAL>
 
 //<EXTERNAL>
@@ -53,6 +58,12 @@ OUTPUT(Vy);
   int stride = Stride_cpu;
   real dx = Dx;
   real omegaframe = OMEGAFRAME;
+  real nu_0 = ALPHA*ASPECTRATIO*ASPECTRATIO;
+  real m3p = MDOT/(3*M_PI);
+  real nu_index = 0.5 + 2*FLARINGINDEX;
+  real vnorm = -1.5*ALPHA*ASPECTRATIO*ASPECTRATIO;
+  real vr_index = -0.5 + 2*FLARINGINDEX;
+  real pi = M_PI;
 //<\EXTERNAL>
 
 //<CONSTANT>
@@ -84,10 +95,14 @@ OUTPUT(Vy);
 	jgh = j;
 	jact = (2*nghy-j-1);
 
-	density[lgh] = density[lact];
+	sig1 = density[ i + (nghy)*pitch + k*stride];
+	ri1 = ymed(nghy);
+	rm1 = ymin(nghy);
+	vr1 = vy[ i + (nghy)*pitch + k*stride];
+	density[lgh] = sig1*pow(ri1/ymed(jgh),nu_index);
 	vx[lgh] = (vx[lact]+ymed(jact)*omegaframe)*sqrt(ymed(jact)/ymed(jgh))-ymed(jgh)*omegaframe;
-	vy[lghs] = -vy[lacts];
-	vy[lacts_null] = 0;
+	vy[lghs] = vr1*pow(ymed(jgh)/ri1,vr_index);
+	vy[lacts_null] = vr1*pow(rm1/ri1,vr_index);
 //<\#>
 #ifdef X
       }
