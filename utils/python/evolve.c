@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <sys/stat.h>
 
 #define NGHY 3
 #define TRUE 1
@@ -9,11 +10,14 @@
 #define G 1.0
 #define MSTAR 1.0
 #define CFL 0.44
+#ifndef M_PI
+#define M_PI (3.14159265358979323846)
+#endif
 #define INDIRECT
 //#define EXACTPOT
 
 #define MALLOC_SAFE(ptr) if (ptr == NULL) printf("Malloc error at line %d!\n",__LINE__);
-#define FREE_SAFE(ptr) free(ptr); ptr=NULL;
+//#define FREE_SAFE(ptr) free(ptr); ptr=NULL; 
 
 #define ymed(j) Ymed[(j)]
 #define xmed(i) Xmed[(i)]
@@ -159,17 +163,26 @@ void move_planet(void);
 int main(int argc, char *argv[]) {
 
     int n,nsteps;
+    int status;
     double cfl_dt;
-    char directory[256];
+    char directory[256],outputdir[256];
     char param_fname[100];
 
+    if (argc > 4) {
+        printf("Too many arguments.Only using first 3.\n");
+    }
     n = atoi(argv[1]);
     nsteps = atoi(argv[2]);
     strcpy(directory,argv[3]);
+
+    sprintf(outputdir,"%stemp_files/",directory);
+    status = mkdir(outputdir,S_IRWXU | S_IRWXG | S_IRWXO);
+    if (status == -33)  {
+        printf("Status is -33 for some reason.\n");
+    }
     sprintf(param_fname,"%sparam_file.txt",directory);
 
 
-    printf("Reading param file %s\n",param_fname);
     read_param_file(param_fname);
 
     size_x = nx;
@@ -193,47 +206,33 @@ int main(int argc, char *argv[]) {
     */
     set_bc();
     set_avg(0);
-    output_init(directory);
+    output_init(outputdir);
     int i;
     for(i=0; i <nsteps; i++) {
     
-        printf("potential\n"); 
         potential();
-        printf("Move planet\n");
-        printf("planet before %.16f\t%.16f\t%.16f\t%.16f\t%.16f\n",
-                planet.x, planet.y, planet.vx, planet.vy,omf);
         move_planet();
-        printf("planet after %.16f\t%.16f\t%.16f\t%.16f\t%.16f\n",
-                planet.x, planet.y, planet.vx, planet.vy,omf);
-        printf("sourcel\n"); 
     
        source_step();
        
         set_Lamex();
-        printf("viscl\n"); 
        viscosity();
     
-        printf("copyl\n"); 
         temp_to_vel();
-        printf("bcl\n"); 
         set_bc();
-        printf("copyl\n"); 
         
         vel_to_temp();
-        printf("transport\n"); 
         
         transport_step();
-        printf("bc\n"); 
       
 
     }
 //    temp_to_vel();   
-    printf("ang\n"); 
     set_avg(1);
     set_Lamdep();
-    output(directory);
-    output_torque(directory);
-    free_all();
+    output(outputdir);
+    output_torque(outputdir);
+    //free_all();
     return 0;
 }
 double Nu(double x) {
@@ -350,50 +349,49 @@ void allocate_all(void) {
     return;
 }
 void free_all(void) {
-    printf("Freeing.\n");
     
-    FREE_SAFE(Ymin);
-    FREE_SAFE(Xmin);
+    free(Ymin);
+    free(Xmin);
 
-    FREE_SAFE(Ymed);
-    FREE_SAFE(Xmed);
+    free(Ymed);
+    free(Xmed);
     
-    FREE_SAFE(dens);
-    FREE_SAFE(vx);
-    FREE_SAFE(vy);
-    FREE_SAFE(vx_temp);
-    FREE_SAFE(vy_temp);
-    FREE_SAFE(Pres);
-    FREE_SAFE(energy);
-    FREE_SAFE(Pot);
-    FREE_SAFE(Pixm);
-    FREE_SAFE(Pixp);
-    FREE_SAFE(Piym);
-    FREE_SAFE(Piyp);
-    FREE_SAFE(denstar);
-    FREE_SAFE(Qs);
-    FREE_SAFE(slope);
-    FREE_SAFE(divrho);
-    FREE_SAFE(tauxx);
-    FREE_SAFE(tauxy);
-    FREE_SAFE(tauyy);
+    free(dens);
+    free(vx);
+    free(vy);
+    free(vx_temp);
+    free(vy_temp);
+    free(Pres);
+    free(energy);
+    free(Pot);
+    free(Pixm);
+    free(Pixp);
+    free(Piym);
+    free(Piyp);
+    free(denstar);
+    free(Qs);
+    free(slope);
+    free(divrho);
+    free(tauxx);
+    free(tauxy);
+    free(tauyy);
 
-    FREE_SAFE(Lt);
-    FREE_SAFE(Ld);
-    FREE_SAFE(Lw);
-    FREE_SAFE(drFt);
-    FREE_SAFE(drFd);
-    FREE_SAFE(drFw);
-    FREE_SAFE(Lamdep);
-    FREE_SAFE(Lamex);
-    FREE_SAFE(tauxyavg);
-    FREE_SAFE(vxbar);
-    FREE_SAFE(vybar);
-    FREE_SAFE(dbar);
-    FREE_SAFE(dbarstar);
-    FREE_SAFE(dtLt);
-    FREE_SAFE(dtLd);
-    FREE_SAFE(dtLw);
+    free(Lt);
+    free(Ld);
+    free(Lw);
+    free(drFt);
+    free(drFd);
+    free(drFw);
+    free(Lamdep);
+    free(Lamex);
+    free(tauxyavg);
+    free(dbar);
+    free(vxbar);
+    free(vybar);
+    free(dbarstar);
+    free(dtLt);
+    free(dtLd);
+    free(dtLw);
     return;
 }
 void viscosity(void) {
@@ -401,6 +399,8 @@ void viscosity(void) {
     i=j=k=0;
     double visc, viscm,div_v;
     double res,fac,facp;
+    visc = 0;
+    viscm = 0;
     compute_energy();
     for(j=1;j<size_y-1;j++) {
         for(i=0;i<size_x;i++) {
@@ -460,7 +460,6 @@ void compute_Pres(void) {
 void compute_energy(void) {
     int i,j,k;
     i=j=k=0;
-    double cs2;
     for(j=0;j<size_y;j++) {
         for(i=0;i<size_x;i++) {
             energy[l] = params.h * pow(ymed(j),params.flaringindex) * sqrt(1./ymed(j));
@@ -480,7 +479,6 @@ void potential(void) {
 
     smoothing = params.h*pow(distp,params.flaringindex)*distp*params.soft;
     smoothing *= smoothing;
-    printf("Smoothing = %.16f\n",smoothing);
 
 #ifdef INDIRECT
     double resx = 0;
@@ -514,11 +512,10 @@ void source_step(void) {
     i=j=k=0;
     double vxc;
     compute_Pres();
-    double res,resL;
     for(j=1;j<size_y-1;j++) {
         for(i=0;i<size_x;i++) {
             // X
-            vx_temp[l] =vx[l] -2*dt/(dens[l]+dens[lxm]) *(Pres[l]-Pres[lxm])/zone_size_x(j,k);
+            vx_temp[l] = vx[l] -2*dt/(dens[l]+dens[lxm]) *(Pres[l]-Pres[lxm])/zone_size_x(j,k);
             vx_temp[l] -= dt*(Pot[l]-Pot[lxm])/zone_size_x(j,k);
 
             // Y
@@ -534,6 +531,7 @@ void source_step(void) {
 }
 void vel_to_temp(void) {
     int i,j,k;
+    i = j = k =0;
     for(k=0;k<size_z;k++) {
         for(j=0;j<size_y;j++) {
             for(i=0;i<size_x;i++) {
@@ -546,6 +544,7 @@ void vel_to_temp(void) {
 }
 void temp_to_vel(void) {
     int i,j,k;
+    i = j = k = 0;
     for(k=0;k<size_z;k++) {
         for(j=0;j<size_y;j++) {
             for(i=0;i<size_x;i++) {
@@ -567,7 +566,6 @@ void transport_step(void) {
 void set_momenta(void) {
     int i,j,k;
     i=j=k=0;
-    double res,resd,resv;
     for(j=0;j<size_y-1;j++) {
         for(i=0;i<size_x;i++) {
             Pixm[l] = ymed(j)*(vx_temp[l]+omf*ymed(j))*dens[l];
@@ -634,8 +632,7 @@ void DividebyRho(double *q) {
     return;
 }
 void DividebyRhoavg(double *q) {
-    int i,j,k;
-    i=j=k=0;
+    int j;
     for(j=0;j<size_y;j++) {
         divrho[j] = q[j]/dbar[j];
     }
@@ -676,7 +673,6 @@ void set_vel(void) {
 
     int i,j,k;
     i=j=k=0;
-    double resv, resd;
     for(j=1;j<size_y;j++) {
         for(i=0;i<size_x;i++) {
             vy[l] = (Piym[l] + Piyp[lym])/(dens[l]+dens[lym]);
@@ -719,8 +715,7 @@ void vanleer_y_a(double *q) {
     return;
 }
 void vanleer_y_a_avg(double *q) {
-    int i,j,k;
-    i=j=k=0;
+    int j;
     double dqm, dqp;
     for(j=1;j<size_y-1;j++) {
 
@@ -847,7 +842,7 @@ void update_flux_avg(double *qs) {
 void update_flux(double *qs) {
     int i,j,k;
     i=j=k=0;
-    double res,fac;
+    double res;
     for(j=0;j<size_y-1;j++) {
         res = 0;
         for(i=0;i<size_x;i++) {    
@@ -871,6 +866,7 @@ void updateY(double *q, double *qs,double dt) {
 }
 void update_density_Y(double dt) {
     int i,j,k;
+    i=j=k=0;
 
     for(j=0;j<size_y-1;j++) {
         for(i=0;i<size_x;i++) {
@@ -883,6 +879,7 @@ void update_density_Y(double dt) {
 }
 void update_density_X(double dt) {
     int i,j,k;
+    i = j= k =0;
 
     for(j=0;j<size_y;j++) {
         for(i=0;i<size_x;i++) {
@@ -894,10 +891,7 @@ void update_density_X(double dt) {
     return;
 }
 void set_Lamdep(void) {
-    int i,j,k;
-    i=j=k=0;
-    double resL, resv, resd, Ldnew;
-
+    int j;
     for(j=NGHY;j<size_y - NGHY;j++) {
         dtLt[j] = (Lt[j+size_y]-Lt[j])/dt;
         dtLd[j] = (Ld[j+size_y]-Ld[j])/dt;
@@ -952,14 +946,11 @@ void ymax_bound(void) {
 
   int jact;
   int jgh;
-  int kact;
-  int kgh;
   int lgh;
   int lghs;
   int lactb;
   int lactbs;
   int lactbs_null;
-  int nghy = NGHY;
   for(k=0; k<size_z; k++) {
     for(j=0; j<NGHY; j++) {
       for(i=0; i<size_x; i++) {
@@ -990,26 +981,18 @@ void ymin_bound_acc(void) {
   int k;
   int jact;
   int jgh;
-  int kact;
-  int kgh;
   int lgh;
   int lghs;
   int lactb;
-  int lactbs;
   int lactbs_null;
   int nghy = NGHY;
   double sig1;
  double vr1;
  double ri1;
- double fh1;
  double rm1;
   double omegaframe = omf;
-  double nu_0 = params.alpha*params.h*params.h;
-  double m3p = params.mdot/(3*M_PI);
   double nu_index = 0.5 + 2*params.flaringindex;
-  double vnorm = -1.5*params.alpha*params.h*params.h;
   double vr_index = -0.5 + 2*params.flaringindex;
-  double pi = M_PI;
 
 
   i = j = k = 0;
@@ -1021,7 +1004,6 @@ void ymin_bound_acc(void) {
 	lgh = l;
 	lghs = l;
 	lactb = i + (2*nghy-j-1)*pitch + k*stride;
-	lactbs = i + (2*nghy-j)*pitch + k*stride;
 	lactbs_null = i + nghy*pitch + k*stride;
 	jgh = j;
 	jact = (2*nghy-j-1);
@@ -1046,23 +1028,17 @@ void ymax_bound_acc(void) {
   int k;
   int jact;
   int jgh;
-  int kact;
-  int kgh;
   int lgh;
   int lghs;
   int lactb;
-  int lactbs;
   int lactbs_null;
   double sig1;
- double vr1;
  double ri1;
  double fh1;
- double rm1;
   int nghy = NGHY;
   double mdot = params.mdot;
   double omegaframe = omf;
   double nu_0 = params.alpha*params.h*params.h;
-  double m3p = params.mdot/(3*M_PI);
   double nu_index = 0.5 + 2*params.flaringindex;
   double vnorm = -1.5*params.alpha*params.h*params.h;
   double vr_index = -0.5 + 2*params.flaringindex;
@@ -1077,15 +1053,12 @@ void ymax_bound_acc(void) {
 	lgh = i + (ny+nghy+j)*pitch + k*stride;
 	lghs = i + (ny+nghy+1+j)*pitch + k*stride;
 	lactb = i + (ny+nghy-1-j)*pitch + k*stride;
-	lactbs = i + (ny+nghy-1-j)*pitch + k*stride;
 	lactbs_null = i + (ny+nghy)*pitch + k*stride;
 	jgh = (ny+nghy+j);
 	jact = (ny+nghy-1-j);
 
 	sig1 = dens[ i + (ny+nghy-1)*pitch + k*stride];
-	vr1 = vy[ i + (ny +  nghy)*pitch + k*stride];
 	ri1 = ymed(ny+nghy-1);
-	rm1 = ymin(ny+nghy);
 	fh1 = 3*pi*nu_0*pow(ri1,nu_index+0.5)*sig1;
 	dens[lgh] = (fh1+mdot*(sqrt(ymed(jgh))-sqrt(ri1)))/(3*pi*nu_0*pow(ymed(jgh),nu_index+0.5));
 	vx[lgh] = (vx[lactb]+ymed(jact)*omegaframe)*sqrt(ymed(jact)/ymed(jgh))-ymed(jgh)*omegaframe;
@@ -1104,8 +1077,6 @@ void ymin_bound(void) {
   int k;
   int jact;
   int jgh;
-  int kact;
-  int kgh;
   int lgh;
   int lghs;
   int lactb;
@@ -1136,7 +1107,6 @@ for(k=0; k<size_z; k++) {
 void read_param_file(char *filename) {
     FILE *f;
     
-    printf("Reading %s\n",filename);
     f = fopen(filename,"r");
     if (f == NULL) {
         printf("Can't find parameter file, %s\n",filename);
@@ -1163,7 +1133,6 @@ void read_param_file(char *filename) {
     printf("alpha=%.1e\tmp=%.1e\ta=%lg\n",params.alpha,params.mp,params.a);
     printf("omf=%lg\th=%lg\tflaring=%lg\n",params.omf,params.h,params.flaringindex);
     printf("mdot=%.2e\tsoft=%lg\n",params.mdot,params.soft);
-    printf("dt=%.12f\t\n",dt);
     return;
 }
 
@@ -1171,11 +1140,9 @@ void read_domain(char *directory) {
     FILE *fx, *fy;
     char filename[512];
     char filename2[512];
-    double temp;
     int i,j;
 
     sprintf(filename,"%sdomain_x.dat",directory);
-    printf("Reading %s\n",filename);
     fx = fopen(filename,"r");
     if (fx == NULL) printf("Error reading %s\n",filename);
 
@@ -1184,7 +1151,6 @@ void read_domain(char *directory) {
     }
     fclose(fx);
     sprintf(filename2,"%sdomain_y.dat",directory);
-    printf("Reading %s\n",filename2);
     fy = fopen(filename2,"r");
     if (fy == NULL) printf("Error reading %s\n",filename);
     for(j=0;j<size_y+1;j++) {
@@ -1211,7 +1177,6 @@ void read_planet_file(int n, char *directory) {
     int scanned = 0;
 
     sprintf(filename,"%splanet0.dat",directory);
-    printf("Reading %s\n",filename);
     f = fopen(filename,"r");
     while ( (scanned = fscanf(f,"%d\t%lg\t%lg\t%lg\t%lg\t%lg\t%lg\t%lg\t%lg\t%lg\n",
                 &i,&xpl,&ypl,&zpl,&vxpl,&vypl,&vzpl,&mpl,&tpl,&omfpl)) != EOF) {
@@ -1226,8 +1191,6 @@ void read_planet_file(int n, char *directory) {
                 planet.mp = mpl; 
                 planet.omf = omfpl; 
                 planet.t = tpl;
-                printf("%d\t%.16f\t%.16f\t%.16f\t%.16f\t%.16f\t%.16f\t%.16f\t%.16f\t%.16f\n",
-                        i,xpl,ypl,zpl,vxpl,vypl,vzpl,mpl,tpl,omfpl);
                 break;
             }
 
@@ -1236,7 +1199,6 @@ void read_planet_file(int n, char *directory) {
 
     fclose(f);
     sprintf(filename2,"%sorbit0.dat",directory);
-    printf("Reading %s\n",filename2);
     f1 = fopen(filename2,"r");
 
     while ( (scanned = fscanf(f1,"%lg\t%lg\t%lg\t%lg\t%lg\t%lg\t%lg\t%lg\t%lg\t%lg\n",
@@ -1252,8 +1214,6 @@ void read_planet_file(int n, char *directory) {
                 planet.orbit.i = ipl; 
                 planet.orbit.w = wpl; 
                 planet.orbit.alpha = alphapl; 
-                printf("\n\n%.16f\t%.16f\t%.16f\t%.16f\t%.16f\t%.16f\t%.16f\t%.16f\t%.16f\t%.16f\n",
-                        tpl,epl,apl,mpl,vpl,psipl,phipl,ipl,wpl,alphapl);
                 break;
             }
 
@@ -1267,7 +1227,6 @@ void read_single_file(int n, int i,char *directory) {
     char filename[512];
     FILE *f;
     sprintf(filename,"%ssubstep_%d_%d.dat",directory,i,n);
-    printf("Reading %s\n",filename);
     f = fopen(filename,"r");
     if (f == NULL) printf("Error loading %s\n",filename); 
     fread(dens,sizeof(double),size_x*size_y*size_z,f);
@@ -1284,15 +1243,12 @@ void read_files(int n, char *directory) {
     FILE *fd,*fx,*fy;
     int i,j,k;
     sprintf(filename,"%sgasdens%d.dat",directory,n);
-    printf("Reading %s\n",filename);
     fd = fopen(filename,"r");
     if (fd == NULL) printf("Error loading %s\n",filename); 
     sprintf(filename,"%sgasvx%d.dat",directory,n);
-    printf("Reading %s\n",filename);
     fx = fopen(filename,"r");
     if (fx == NULL) printf("Error loading %s\n",filename); 
     sprintf(filename,"%sgasvy%d.dat",directory,n);
-    printf("Reading %s\n",filename);
     fy = fopen(filename,"r");
     if (fy == NULL) printf("Error loading %s\n",filename); 
     for(k=0;k<size_z;k++) {
@@ -1313,12 +1269,9 @@ void read_files(int n, char *directory) {
 
 }
 void output_init(char *directory) {
-    int i,j,k;
-    i=j=k=0;
     FILE *f;
     char fname[256];
-    sprintf(fname,"%stemp_files/output_init.dat",directory);
-    printf("Outputting initial conditions to %s\n",fname);
+    sprintf(fname,"%soutput_init.dat",directory);
     f = fopen(fname,"w");
     fwrite(&dens[0],sizeof(double),size_x*size_y*size_z,f);
     fwrite(&vy[0],sizeof(double),size_x*size_y*size_z,f);
@@ -1327,12 +1280,9 @@ void output_init(char *directory) {
     return;
 }
 void output(char *directory) {
-    int i,j,k;
-    i=j=k=0;
     FILE *f;
     char fname[256];
-    sprintf(fname,"%stemp_files/output.dat",directory);
-    printf("Outputing final results to %s\n",fname);
+    sprintf(fname,"%soutput.dat",directory);
     f = fopen(fname,"w");
     fwrite(&Ymin[0],sizeof(double),size_y+1,f);
     fwrite(&Xmin[0],sizeof(double),size_x+1,f);
@@ -1345,12 +1295,9 @@ void output(char *directory) {
     return;
 }
 void output_torque(char *directory) {
-    int i,j,k;
-    i=j=k=0;
     FILE *f;
     char fname[256];
-    sprintf(fname,"%stemp_files/torque.dat",directory);
-    printf("Outputing torque results to %s\n",fname);
+    sprintf(fname,"%storque.dat",directory);
     f = fopen(fname,"w");
     fwrite(&Ymed[NGHY],sizeof(double),ny,f);
     fwrite(&Lt[NGHY],sizeof(double),ny,f);
@@ -1400,7 +1347,6 @@ void set_avg(int p) {
 double cfl(void) {
     int i,j,k;
     i=j=k=0;
-    double vxx, vxxp;
     double soundspeed2,soundspeed,visc;
     double cfl1_a, cfl1_b, cfl1;
     double cfl7_a, cfl7_b, cfl7;
@@ -1410,8 +1356,6 @@ double cfl(void) {
     res = 1e99;
     for(j=NGHY;j<size_y-NGHY;j++) {
         for(i=0;i<size_x;i++) {
-            vxx = vx[l];
-            vxxp = vx[lxp];
             soundspeed2 = energy[l]*energy[l];
             visc = params.alpha*energy[l]*energy[l]*sqrt(ymed(j)*ymed(j)*ymed(j));
             soundspeed = sqrt(soundspeed2);
@@ -1565,9 +1509,10 @@ void move_planet(void) {
     rotate_sys(omf*dt);
 
     i = j = k = 0;
-    double res;
+    double res=0;
     for(k=0;k<size_z;k++) {
         for(j=0;j<size_y;j++) {
+            res = 0;
             for(i=0;i<size_x;i++) {
                 vx[l] -= domega * ymed(j);
                 res += vx[l];

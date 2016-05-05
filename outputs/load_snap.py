@@ -87,18 +87,22 @@ class Fargo():
         return
 class Torque():
 
-    def __init__(self,directory='temp_files/',nx=384,ny=128):
+    def __init__(self,directory='temp_files/'):
 
         dat = np.loadtxt('param_file.txt')
-        self.alpha = dat[3]
-        self.mp = dat[4]
-        self.q = dat[5]
-        self.omf = dat[6]
-        self.flaringindex = dat[7]
-        self.soft = dat[9]
-        self.dt = dat[11]
+        nx = dat[0]
+        ny = dat[1]
         self.nx = nx
         self.ny = ny
+        self.nz = dat[2]
+        self.alpha = dat[3]
+        self.mp = dat[4]
+        self.a = dat[5]
+        self.h = dat[6]
+      #  self.omf = dat[6]
+        self.flaringindex = dat[7]
+        self.soft = dat[9]
+      #  self.dt = dat[11]
         dat = np.fromfile(directory+'torque.dat')
         self.y = dat[:ny]
         dat=dat[ny:]
@@ -149,6 +153,30 @@ class Torque():
             if logx:
                 ax.set_xscale('log')
             ax.legend(loc='best')
+        return
+    def plot_lam(self,planet=None,logx=None,fig=None,ax=None,**kargs):
+        figsize = kargs.pop('figsize',(10,8))
+        fontsize = kargs.pop('fontsize',15)
+        if fig is None:
+            fig = plt.figure(figsize=figsize)
+            ax = fig.add_subplot(111)
+
+        if planet is None:
+            x = self.y
+            xstr = '$r$'
+        else:
+            x = (self.y - planet)/(planet*self.h)
+            xstr = '$(r-a)/H_p$'
+
+        ax.plot(x,self.Lamex,label='$\\Lambda_{ex}$',**kargs)
+        ax.plot(x,self.Lamdep,label='$\\Lambda_{dep}$',**kargs)
+        ax.plot(x,self.drFw,label='div($F_w$)',linestyle='--',**kargs)
+        ax.plot(x,self.dtLw,label='$\\dot{L}_w$',linestyle='--',**kargs)
+        if logx and planet is not None:
+            ax.set_xscale('log')
+        ax.set_xlabel(xstr,fontsize=fontsize)
+        ax.legend(loc='best')
+
         return
 
 def compare(dat,fld,i=-1,relerror=False):
