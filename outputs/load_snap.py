@@ -104,12 +104,9 @@ class Torque():
         self.soft = dat[9]
       #  self.dt = dat[11]
         dat = np.fromfile(directory+'torque.dat')
-        self.y = dat[:ny]
-        dat=dat[ny:]
-
-        attrs = ['Lt','Ltn','Ld','Ldn','Lw','Lwn',
+        attrs = ['y','dbar','Lt','Ltn','Ld','Ldn','Lw','Lwn',
                 'drFt','drFd','drFw',
-                'Lamex','Lamdep',
+                'Lamex','indLam','Lamdep',
                 'dtLt','dtLd','dtLw']
 
         for i,a in enumerate(attrs):
@@ -154,7 +151,7 @@ class Torque():
                 ax.set_xscale('log')
             ax.legend(loc='best')
         return
-    def plot_lam(self,planet=None,logx=None,fig=None,ax=None,**kargs):
+    def plot_lam(self,planet=None,plotdens=True,indirect=False,logx=None,fig=None,ax=None,xlims=None,ylims=None,**kargs):
         figsize = kargs.pop('figsize',(10,8))
         fontsize = kargs.pop('fontsize',15)
         if fig is None:
@@ -168,14 +165,37 @@ class Torque():
             x = (self.y - planet)/(planet*self.h)
             xstr = '$(r-a)/H_p$'
 
-        ax.plot(x,self.Lamex,label='$\\Lambda_{ex}$',**kargs)
-        ax.plot(x,self.Lamdep,label='$\\Lambda_{dep}$',**kargs)
-        ax.plot(x,self.drFw,label='div($F_w$)',linestyle='--',**kargs)
-        ax.plot(x,self.dtLw,label='$\\dot{L}_w$',linestyle='--',**kargs)
+        if xlims is not None:
+            ind = (x >= xlims[0])&(x<= xlims[1])
+        else:
+            ind = np.array([True]*len(self.y))
+
+        ax.plot(x[ind],self.Lamdep[ind],'-g',label='$\\Lambda_{dep}$',**kargs)
+        ax.plot(x[ind],self.drFw[ind],'--r',label='div($F_w$)',**kargs)
+        if indirect:
+            ax.plot(x[ind],self.Lamex[ind]+self.indLam[ind],'-b',label='$\\Lambda_{ex}$',**kargs)
+            ax.plot(x[ind],self.dtLw[ind],'--m',label='$\\dot{L}_w$',**kargs)
+
+        else:
+            ax.plot(x[ind],self.Lamex[ind],'-b',label='$\\Lambda_{ex}$',**kargs)
+            ax.plot(x[ind],self.dtLw[ind]-self.indLam[ind],'--m',label='$\\dot{L}_w$',**kargs)
         if logx and planet is not None:
             ax.set_xscale('log')
+        if xlims is not None:
+            ax.set_xlim(xlims)
+        if ylims is not None:
+            ax.set_ylim(ylims)
+        ax.minorticks_on()
+
         ax.set_xlabel(xstr,fontsize=fontsize)
         ax.legend(loc='best')
+
+        if plotdens:
+            ax1 = ax.twinx()
+            ax1.plot(x[ind],self.dbar[ind],'--k')
+            ax1.minorticks_on()
+            if logx and planet is not None:
+                ax1.set_xscale('log')
 
         return
 

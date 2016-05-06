@@ -13,8 +13,6 @@
 #ifndef M_PI
 #define M_PI (3.14159265358979323846)
 #endif
-#define INDIRECT
-//#define EXACTPOT
 
 #define MALLOC_SAFE(ptr) if (ptr == NULL) printf("Malloc error at line %d!\n",__LINE__);
 //#define FREE_SAFE(ptr) free(ptr); ptr=NULL; 
@@ -87,7 +85,7 @@ typedef struct Planet {
 } Planet;
 
 
-double *dens, *vx, *vy, *Pres, *Pot, *energy;
+double *dens, *vx, *vy, *Pres, *indPot,*Pot, *energy;
 double *dbar, *vxbar, *vybar, *dbarstar;
 double *vx_temp, *vy_temp;
 double *Pixp, *Pixm, *Piym, *Piyp;
@@ -257,6 +255,7 @@ void allocate_all(void) {
     MALLOC_SAFE((Pres = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((energy = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((Pot = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
+    MALLOC_SAFE((indPot = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((Pixm = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((Pixp = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((Piym = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
@@ -277,7 +276,7 @@ void allocate_all(void) {
     MALLOC_SAFE((drFd = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((drFw = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((Lamdep = (double *)malloc(sizeof(double)*(size_y))));
-    MALLOC_SAFE((Lamex = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((Lamex = (double *)malloc(sizeof(double)*(size_y*2))));
     MALLOC_SAFE((tauxyavg = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((dbar = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((vxbar = (double *)malloc(sizeof(double)*(size_y))));
@@ -302,6 +301,8 @@ void allocate_all(void) {
         drFd[j] = 0;
         drFw[j] = 0;
         Lamex[j] = 0;
+        Lamex[j+size_y] = 0;
+
         Lamdep[j] = 0;
         tauxyavg[j] = 0;
         vxbar[j] = 0;
@@ -331,6 +332,7 @@ void allocate_all(void) {
                 Pres[l]=0;
                 energy[l]=0;
                 Pot[l]=0;
+                indPot[l]=0;
                 Pixm[l]=0;
                 Pixp[l]=0;
                 Piym[l]=0;
@@ -364,6 +366,7 @@ void free_all(void) {
     free(Pres);
     free(energy);
     free(Pot);
+    free(indPot);
     free(Pixm);
     free(Pixp);
     free(Piym);
@@ -480,7 +483,6 @@ void potential(void) {
     smoothing = params.h*pow(distp,params.flaringindex)*distp*params.soft;
     smoothing *= smoothing;
 
-#ifdef INDIRECT
     double resx = 0;
     double resy = 0;
     double cellmass;
@@ -493,16 +495,13 @@ void potential(void) {
             resy += G * cellmass * YC * rad;
         }
     }
-#endif
     for(j=0;j<size_y;j++) {
         for(i=0;i<size_x;i++) {
             rad = (XC-xpl)*(XC-xpl) + (YC-ypl)*(YC-ypl);
             Pot[l] = -G*MSTAR/ymed(j);
             Pot[l] += -G*mp/sqrt(rad + smoothing);
-#ifdef INDIRECT
-	        Pot[l] += G*planet.mp*(XC*xpl+YC*ypl)/(distp*distp*distp); 
-	        Pot[l]  -= resx*XC + resy*YC ;
-#endif
+	        indPot[l] = G*planet.mp*(XC*xpl+YC*ypl)/(distp*distp*distp); 
+	        indPot[l]  -= resx*XC + resy*YC ;
         }
     }
     return;
@@ -517,12 +516,14 @@ void source_step(void) {
             // X
             vx_temp[l] = vx[l] -2*dt/(dens[l]+dens[lxm]) *(Pres[l]-Pres[lxm])/zone_size_x(j,k);
             vx_temp[l] -= dt*(Pot[l]-Pot[lxm])/zone_size_x(j,k);
+            vx_temp[l] -= dt*(indPot[l]-indPot[lxm])/zone_size_x(j,k);
 
             // Y
             vy_temp[l] = vy[l] -2*dt/(dens[l]+dens[lym])*(Pres[l]-Pres[lym])/(ymed(j)-ymed(j-1));
             vxc = .25*(vx[l]+vx[lxp]+vx[lym]+vx[lxp-pitch])+omf*ymin(j);
             vy_temp[l] += dt*vxc*vxc/ymin(j);
             vy_temp[l] -= dt*(Pot[l]-Pot[lym])/(ymed(j)-ymed(j-1));
+            vy_temp[l] -= dt*(indPot[l]-indPot[lym])/(ymed(j)-ymed(j-1));
         }
     }
 
@@ -907,26 +908,18 @@ void set_Lamex(void) {
     int i,j,k;
     i=j=k=0;
     
-    double res;
-#ifdef EXACTPOT
-    double rad,smoothing;
-    double distp = sqrt(planet.x*planet.x+planet.y*planet.y);
-    smoothing = params.h*pow(distp,params.flaringindex)*distp*params.soft;
-    smoothing *= smoothing;
-#endif
+    double res,resi;
     for(j=NGHY;j<size_y-NGHY;j++) {
         res = 0;
+        resi = 0;
         for(i=0;i<size_x;i++) {
-#ifdef EXACTPOT
-            rad = ymed(j)*ymed(j)+params.a*params.a -2*ymed(j)*params.a*cos(xmed(i));
-            rad = pow(rad +smoothing,-1.5);
-            res -= params.mp*dens[l] * sin(xmed(i))*params.a*ymed(j)*rad;
-#else
             res -= dens[l]*(Pot[lxp]-Pot[lxm])/(2*dx);
-#endif
+            resi -= dens[l]*(indPot[lxp]-indPot[lxm])/(2*dx);
         }
         res /=(double)nx;
+        resi /=(double)nx;
         Lamex[j] = res;
+        Lamex[j + size_y] = resi;
 
     }
 
@@ -1300,6 +1293,7 @@ void output_torque(char *directory) {
     sprintf(fname,"%storque.dat",directory);
     f = fopen(fname,"w");
     fwrite(&Ymed[NGHY],sizeof(double),ny,f);
+    fwrite(&dbar[NGHY],sizeof(double),ny,f);
     fwrite(&Lt[NGHY],sizeof(double),ny,f);
     fwrite(&Lt[NGHY+size_y],sizeof(double),ny,f);
     fwrite(&Ld[NGHY],sizeof(double),ny,f);
@@ -1310,6 +1304,7 @@ void output_torque(char *directory) {
     fwrite(&drFd[NGHY],sizeof(double),ny,f);
     fwrite(&drFw[NGHY],sizeof(double),ny,f);
     fwrite(&Lamex[NGHY],sizeof(double),ny,f);
+    fwrite(&Lamex[NGHY+size_y],sizeof(double),ny,f);
     fwrite(&Lamdep[NGHY],sizeof(double),ny,f);
     fwrite(&dtLt[NGHY],sizeof(double),ny,f);
     fwrite(&dtLd[NGHY],sizeof(double),ny,f);
@@ -1393,12 +1388,10 @@ void get_accel(double *q, double *k, double dtn) {
     k[3] = coeff * q[0] * dtn;
     k[4] = coeff * q[1] * dtn;
     k[5] = coeff * q[2] * dtn;
-#ifdef INDIRECT
     coeff = G*planet.mp/(rp*rp*rp);
     k[3] -= coeff * q[0] * dtn;
     k[4] -= coeff * q[1] * dtn;
     k[5] -= coeff * q[2] * dtn;
-#endif
     return;
 }
 void move_planet_step(double dtn) {
