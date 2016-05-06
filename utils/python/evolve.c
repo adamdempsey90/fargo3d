@@ -86,7 +86,7 @@ typedef struct Planet {
 
 
 double *dens, *vx, *vy, *Pres, *indPot,*Pot, *energy;
-double *dbar, *vxbar, *vybar, *dbarstar;
+double *dbar,*dbart, *vxbar, *vybar, *dbarstar;
 double *vx_temp, *vy_temp;
 double *Pixp, *Pixm, *Piym, *Piyp;
 double *slope, *divrho, *denstar, *Qs;
@@ -96,7 +96,7 @@ double *Lt, *Ld, *Lw, *drFw, *drFd, *drFt, *Lamdep, *Lamex;
 double *dtLt, *dtLd, *dtLw;
 
 double dt,omf,dx;
-int nx, ny, nz, size_x, size_y, size_z,stride,pitch;
+int nx, ny, nz, size_x, size_y, size_z,stride,pitch,nsteps;
 
 Parameters params;
 Planet planet;
@@ -156,11 +156,12 @@ void get_accel(double *q, double *k, double dtn);
 void move_planet_step(double dtn);
 void rotate_sys(double angle);
 void move_planet(void);
+void time_avg(void);
 
 
 int main(int argc, char *argv[]) {
 
-    int n,nsteps;
+    int n;
     int status;
     double cfl_dt;
     char directory[256],outputdir[256];
@@ -202,11 +203,12 @@ int main(int argc, char *argv[]) {
         dt = cfl_dt;
     }
     */
-    set_bc();
-    set_avg(0);
-    output_init(outputdir);
+   output_init(outputdir);
     int i;
     for(i=0; i <nsteps; i++) {
+        printf("Step %d of %d\n",i+1,nsteps);
+        set_bc();
+        set_avg(0);
     
         potential();
         move_planet();
@@ -223,11 +225,12 @@ int main(int argc, char *argv[]) {
         
         transport_step();
       
+        set_avg(1);
 
+        set_Lamdep();
     }
 //    temp_to_vel();   
-    set_avg(1);
-    set_Lamdep();
+    time_avg();
     output(outputdir);
     output_torque(outputdir);
     //free_all();
@@ -279,6 +282,7 @@ void allocate_all(void) {
     MALLOC_SAFE((Lamex = (double *)malloc(sizeof(double)*(size_y*2))));
     MALLOC_SAFE((tauxyavg = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((dbar = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((dbart = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((vxbar = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((vybar = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((dbarstar = (double *)malloc(sizeof(double)*(size_y))));
@@ -308,6 +312,7 @@ void allocate_all(void) {
         vxbar[j] = 0;
         vybar[j] = 0;
         dbar[j] = 0;
+        dbart[j] = 0;
         dbarstar[j] = 0;
         dtLt[j] = 0;
         dtLd[j] = 0;
@@ -389,6 +394,7 @@ void free_all(void) {
     free(Lamex);
     free(tauxyavg);
     free(dbar);
+    free(dbart);
     free(vxbar);
     free(vybar);
     free(dbarstar);
@@ -440,9 +446,9 @@ void viscosity(void) {
             vy_temp[l] -= (tauxx[l]+tauxx[lym])/(ymin(j)*(dens[l]+dens[lym]))*dt;
             res += .5*(fac+facp);
         }
-         drFt[j] = -res/(double)nx;
+         drFt[j] += -res/(double)nx;
         //drFd[j] = -(ymin(j+1)*ymin(j+1)*tauxyavg[j+1]*SurfY(j+1,k) - ymin(j)*ymin(j)*tauxyavg[j]*SurfY(j,k))*InvVol(j,k);
-        drFd[j]  =  -(ymin(j+1)*ymin(j+1)*tauxyavg[j+1]-ymin(j)*ymin(j)*tauxyavg[j])/((ymin(j+1)-ymin(j))*ymed(j));
+        drFd[j]  +=  -(ymin(j+1)*ymin(j+1)*tauxyavg[j+1]-ymin(j)*ymin(j)*tauxyavg[j])/((ymin(j+1)-ymin(j))*ymed(j));
 
     }
     return;
@@ -894,8 +900,8 @@ void update_density_X(double dt) {
 void set_Lamdep(void) {
     int j;
     for(j=NGHY;j<size_y - NGHY;j++) {
-        dtLt[j] = (Lt[j+size_y]-Lt[j])/dt;
-        dtLd[j] = (Ld[j+size_y]-Ld[j])/dt;
+        dtLt[j] += (Lt[j+size_y]-Lt[j])/dt;
+        dtLd[j] += (Ld[j+size_y]-Ld[j])/dt;
         dtLw[j] = dtLt[j] - dtLd[j];
         Lamdep[j] = dtLd[j] + drFd[j];
         drFw[j] = drFt[j] - drFd[j];
@@ -918,8 +924,8 @@ void set_Lamex(void) {
         }
         res /=(double)nx;
         resi /=(double)nx;
-        Lamex[j] = res;
-        Lamex[j + size_y] = resi;
+        Lamex[j] += res;
+        Lamex[j + size_y] += resi;
 
     }
 
@@ -1287,13 +1293,38 @@ void output(char *directory) {
     fclose(f);
     return;
 }
+void time_avg(void) {
+    int j;
+
+    for(j=0;j<size_y;j++) {
+        dbart[j]/=(double)nsteps;
+        //Lt[j]/=(double)nsteps;
+        //Lt[j+size_y]/=(double)nsteps;
+        //Ld[j]/=(double)nsteps;
+        //Ld[j+size_y]/=(double)nsteps;
+        Lw[j]/=(double)nsteps;
+        Lw[j+size_y]/=(double)nsteps;
+        drFt[j]/=(double)nsteps;
+        drFd[j]/=(double)nsteps;
+        drFw[j]/=(double)nsteps;
+        Lamex[j]/=(double)nsteps;
+        Lamex[j+size_y]/=(double)nsteps;
+        Lamdep[j]/=(double)nsteps;
+        dtLt[j]/=(double)nsteps;
+        dtLd[j]/=(double)nsteps;
+        dtLw[j]/=(double)nsteps;
+
+
+    }
+    return;
+}
 void output_torque(char *directory) {
     FILE *f;
     char fname[256];
     sprintf(fname,"%storque.dat",directory);
     f = fopen(fname,"w");
     fwrite(&Ymed[NGHY],sizeof(double),ny,f);
-    fwrite(&dbar[NGHY],sizeof(double),ny,f);
+    fwrite(&dbart[NGHY],sizeof(double),ny,f);
     fwrite(&Lt[NGHY],sizeof(double),ny,f);
     fwrite(&Lt[NGHY+size_y],sizeof(double),ny,f);
     fwrite(&Ld[NGHY],sizeof(double),ny,f);
@@ -1333,6 +1364,7 @@ void set_avg(int p) {
         vybar[j] = resy/(double)nx;
         dbar[j] = resd/(double)nx;
         Lt[j + p*size_y] = resL/(double)nx;
+        if (p==1) dbart[j] += dbar[j];
 
         Ld[j + p*size_y] = ymed(j)*( vxbar[j] + omf*ymed(j))*dbar[j];
         Lw[j + p*size_y] = Lt[j + p*size_y] - Ld[j + p*size_y];
