@@ -46,7 +46,9 @@ int main(int argc, char *argv[]) {
         dt = cfl_dt;
     }
     */
+
    output_init(outputdir);
+   init_rk5();
     int i;
     for(i=0; i <nsteps; i++) {
         printf("Step %d of %d\n",i+1,nsteps);
@@ -73,9 +75,12 @@ int main(int argc, char *argv[]) {
         set_Lamdep();
     }
 //    temp_to_vel();   
+
     time_avg();
+
     output(outputdir);
     output_torque(outputdir);
+    free_rk5();
     //free_all();
     return 0;
 }

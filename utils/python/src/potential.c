@@ -1,6 +1,6 @@
 #include "evolve.h"
 void potential(void) {
-    int i,j,k,p;
+    int i,j,k,n;
     i=j=k=0;
     double xpl, ypl,mp;
     double smoothing,rad,distp;
@@ -22,13 +22,13 @@ void potential(void) {
     for(j=0;j<size_y;j++) {
         for(i=0;i<size_x;i++) {
             Pot[l] = 0;
-            for(p=0;p<nb;p++) {
+            for(n=0;n<nb;n++) {
+                mp = psys[n].mp;
+                xpl = psys[n].x;
+                ypl = psys[n].y;
                 distp = sqrt(xpl*xpl + ypl*ypl);
                 smoothing = params.h*pow(distp,params.flaringindex)*distp*params.soft;
                 smoothing *= smoothing;
-                mp = psys[p].mp;
-                xpl = psys[p].x;
-                ypl = psys[p].y;
                 rad = (XC-xpl)*(XC-xpl) + (YC-ypl)*(YC-ypl);
                 Pot[l] -= G*mp/sqrt(rad + smoothing);
             }

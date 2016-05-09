@@ -159,4 +159,6 @@ void move_planet_step(double dtn);
 void rotate_sys(double angle);
 void move_planet(void);
 void time_avg(void);
+void init_rk5(void);
+void free_rk5(void);
 
