@@ -5,6 +5,11 @@ void ComputeIndirectTerm () {
   IndirectTerm.x = -DiskOnPrimaryAcceleration.x;
   IndirectTerm.y = -DiskOnPrimaryAcceleration.y;
   IndirectTerm.z = -DiskOnPrimaryAcceleration.z;
+#ifndef NOINDIRECTDISK
+    IndirectTerm.x = 0.0;
+    IndirectTerm.y = 0.0;
+    IndirectTerm.z = 0.0;
+#endif
   if (!INDIRECTTERM) {
     IndirectTerm.x = 0.0;
     IndirectTerm.y = 0.0;
@@ -104,7 +109,6 @@ void AdvanceSystemFromDisk(real dt) {
       Sys->vx[k] += dt * gamma.x;
       Sys->vy[k] += dt * gamma.y;
       Sys->vz[k] += dt * gamma.z;
-      printf("%\t%lg\t%lg\t%lg\t%lg\n", gamma.x,Sys->vx[k],gamma.y,Sys->vy[k]);
     }
   }
 }

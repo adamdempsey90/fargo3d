@@ -21,13 +21,13 @@ WKZIN           0.05
 WKZOUT          0.2
 ### Planet parameters
 
-PlanetConfig		planets/jupiter.cfg
+PlanetConfig		planets/jupiter_star.cfg
 ThicknessSmoothing 	0.6
 RocheSmoothing 		0.0
 Eccentricity		0.0
-ExcludeHill	        Yes
-IndirectTerm		Yes
-MassTaper           3.0
+ExcludeHill	        No
+IndirectTerm		No
+MassTaper           0.0
 
 ### Mesh parameters
 
@@ -41,10 +41,10 @@ Frame			C
 Spacing 		LOG
 ### Output control parameters
 
-Ntot		10000		Total number of time steps
-Ninterm	 		20		Time steps between outputs
+Ntot		100		Total number of time steps
+Ninterm	 		1		Time steps between outputs
 DT			6.28	Time step length. 2PI = 1 orbit
-OutputDir  outputs/speed_test
+OutputDir  outputs/speed_test2
 #Plotting parameters
 
 Log			yes

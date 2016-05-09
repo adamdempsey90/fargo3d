@@ -19,7 +19,8 @@ FARGO_OPT += -DNOWAVEKILLRHO
 FARGO_OPT += -DSTOCKHOLMACC
 
 #Time the first time-step, excluding all startup and shutdown procedures
-FARGO_OPT += -DTIMER
+#FARGO_OPT += -DTIMER
+#FARGO_OPT += -DNOINDIRECTDISK
 
 #Use only a single mode of the potential
 #FARGO_OPT += -DFTPOTENTIAL
@@ -37,9 +38,9 @@ FARGO_OPT +=  -DCYLINDRICAL # COORDINATE SYSTEM. IN FARGO         SETUP, ALWAYS 
 #Transport Algorithm
 #FARGO_OPT += -DSTANDARD# YOU CAN USE THIS OPTION IF YOU WANT TO COMPARE THE
                                                         # SPEEDUP OF THE FARGO ALGORITHM RESPECT TO THE
-                                                                                # STANDARD ADVECTION ALGORITHM.
-                                                                                FARGO_OPT += -DLEGACY
-
+                                                                              # STANDARD ADVECTION ALGORITHM.
+FARGO_OPT += -DLEGACY
+FARGO_OPT += -DNODEFAULTSTAR
 
 #FARGO_OPT += -DDONOR
 

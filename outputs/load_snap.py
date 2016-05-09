@@ -102,6 +102,7 @@ class Torque():
       #  self.omf = dat[6]
         self.flaringindex = dat[7]
         self.soft = dat[9]
+        self.indirectterm = bool(dat[10])
       #  self.dt = dat[11]
         dat = np.fromfile(directory+'torque.dat')
         attrs = ['y','dbar','Lt','Ltn','Ld','Ldn','Lw','Lwn',
@@ -112,7 +113,8 @@ class Torque():
         for i,a in enumerate(attrs):
             setattr(self,a,dat[i*ny:(i+1)*ny])
 
-
+        if not self.indirectterm:
+            self.indLam = np.zeros(self.indLam.shape)
         return
     def plot(self,**kargs):
         figsize = kargs.pop('figsize',(20,10))

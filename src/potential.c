@@ -164,7 +164,9 @@ void Potential_cpu() {
 	    pot[l] += G*mp*(XC*xplanet[n]+YC*yplanet[n]+ZC*zplanet[n])/(planetdistance*
 										planetdistance*
 										planetdistance); 
+#ifndef NOINDIRECTDISK
 	    pot[l] -= indirectx*XC + indirecty*YC + indirectz*ZC; /* Indirect term due to gas */
+#endif
 	  }
 #endif
 #ifdef NODEFAULTSTAR

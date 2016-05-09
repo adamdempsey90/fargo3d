@@ -1,0 +1,23 @@
+#!/bin/bash
+
+CFLAGS="-c -O3 -Wall -Wextra -std=c99"
+gcc $CFLAGS allocate.c -o bin/allocate.o
+gcc $CFLAGS average.c -o bin/average.o
+gcc $CFLAGS boundary.c -o bin/boundary.o
+gcc $CFLAGS cfl.c -o bin/cfl.o
+gcc $CFLAGS disk.c -o bin/disk.o
+gcc $CFLAGS evolve.c -o bin/evolve.o
+gcc $CFLAGS input.c -o bin/input.o
+gcc $CFLAGS lambda.c -o bin/lambda.o
+gcc $CFLAGS output.c -o bin/output.o
+gcc $CFLAGS planets.c -o bin/planets.o
+gcc $CFLAGS potential.c -o bin/potential.o
+gcc $CFLAGS pressure.c -o bin/pressure.o
+gcc $CFLAGS source_step.c -o bin/source_step.o
+gcc $CFLAGS time_avg.c -o bin/time_avg.o
+gcc $CFLAGS transport.c -o bin/transport.o
+gcc $CFLAGS update.c -o bin/update.o
+gcc $CFLAGS vanleer.c -o bin/vanleer.o
+gcc $CFLAGS viscosity.c -o bin/viscosity.o
+
+gcc bin/allocate.o bin/average.o bin/boundary.o bin/cfl.o bin/disk.o bin/evolve.o bin/input.o bin/lambda.o bin/output.o bin/planets.o bin/potential.o bin/pressure.o bin/source_step.o bin/time_avg.o bin/transport.o bin/update.o bin/vanleer.o bin/viscosity.o -lm -o ../run_step
