@@ -1088,6 +1088,25 @@ class Sim(Mesh,Parameters):
 
         return
 
+    def plot_resonance(self,ax=None):
+        if ax is None:
+            fig=figure()
+            ax=fig.add_subplot(111)
+        omd = self.vx.data/self.ymed[:,newaxis] + self.omf
+        kapd = (omd[2:,:]*self.ymed[2:,newaxis]**2 - omd[:-2,:]*self.ymed[:-2,newaxis]**2)/(2*self.dlr[0])
+        omd = omd[1:-1,:]
+        y = self.ymed[1:-1]
+        kapd *= 2*omd/((y*y)[:,newaxis])
+        omd = omd.mean(axis=1)
+        kapd = kapd.mean(axis=1)
+        res = (kapd/(omd - self.omf)**2)
+        x = (y-self.a)/(self.params.aspectratio*self.a)
+        ax.plot(x[res>0],sqrt(res[res>0]))
+        ax.set_xlabel('$(r-a)/H(a)$',fontsize=15)
+        ax.set_ylabel('$m$',fontsize=15)
+        ax.set_yscale('log')
+
+
     def fpred(self,x):
         scalar = False
         try:

@@ -40,6 +40,7 @@ int main(int argc, char *argv[]) {
     //read_single_file(n,1,directory);
     cfl_dt = cfl();
     dt = cfl_dt;
+    printf("dt = %lg\n",dt);
     /*
     if (cfl_dt < dt) {
         printf("Using cfl limited timestep of %.4e instead of %.4e\n",cfl_dt,dt);
