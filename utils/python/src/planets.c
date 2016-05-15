@@ -147,6 +147,8 @@ void move_planet(void) {
     omf = omf_new;
     rotate_sys(omf*dt);
 
+
+#ifndef NBODY
     i = j = k = 0;
     double res=0;
     for(k=0;k<size_z;k++) {
@@ -160,7 +162,7 @@ void move_planet(void) {
             vxbar[j] = res;
         }
     }
-
+#endif
 
     return;
 }
@@ -199,4 +201,63 @@ void free_rk5(void) {
     free(q0);
     free(q1);
     return;
+}
+void read_planet_file(int n, char *directory) {
+    char filename[512],filename2[512];
+    FILE *f,*f1;
+    int i,j;
+    double xpl,ypl,zpl,vxpl,vypl,vzpl,mpl,tpl,omfpl;
+    double epl,apl,vpl,psipl,phipl,ipl,wpl,alphapl;
+    int scanned = 0;
+
+    for(j=0;j<nb;j++) {
+        sprintf(filename,"%splanet%d.dat",directory,j);
+        f = fopen(filename,"r");
+        while ( (scanned = fscanf(f,"%d\t%lg\t%lg\t%lg\t%lg\t%lg\t%lg\t%lg\t%lg\t%lg\n",
+                    &i,&xpl,&ypl,&zpl,&vxpl,&vypl,&vzpl,&mpl,&tpl,&omfpl)) != EOF) {
+
+                if (i == n) {
+                    psys[j].x = xpl; 
+                    psys[j].y = ypl; 
+                    psys[j].z = zpl; 
+                    psys[j].vx = vxpl; 
+                    psys[j].vy = vypl; 
+                    psys[j].vz = vzpl; 
+                    psys[j].mp = mpl; 
+                    psys[j].omf = omfpl; 
+                    psys[j].t = tpl;
+                    break;
+                }
+
+        }
+
+
+        fclose(f);
+        sprintf(filename2,"%sorbit%d.dat",directory,j);
+        f1 = fopen(filename2,"r");
+
+        while ( (scanned = fscanf(f1,"%lg\t%lg\t%lg\t%lg\t%lg\t%lg\t%lg\t%lg\t%lg\t%lg\n",
+                    &tpl,&epl,&apl,&mpl,&vpl,&psipl,&phipl,&ipl,&wpl,&alphapl)) != EOF) {
+
+                if (fabs(tpl-psys[j].t)<1e-8) {
+                    psys[j].orbit.e = epl; 
+                    psys[j].orbit.a = apl; 
+                    psys[j].orbit.M = mpl; 
+                    psys[j].orbit.V = vpl; 
+                    psys[j].orbit.psi = psipl; 
+                    psys[j].orbit.phi = phipl; 
+                    psys[j].orbit.i = ipl; 
+                    psys[j].orbit.w = wpl; 
+                    psys[j].orbit.alpha = alphapl; 
+                    break;
+                }
+
+        }
+        fclose(f1);
+    }
+    omf = psys[0].omf;
+
+
+    return;
+
 }

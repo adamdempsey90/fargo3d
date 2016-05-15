@@ -39,6 +39,7 @@ void allocate_all(void) {
     MALLOC_SAFE((Lamex = (double *)malloc(sizeof(double)*(size_y*2))));
     MALLOC_SAFE((tauxyavg = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((dbar = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((mdotavg = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((dbart = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((vxbar = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((vybar = (double *)malloc(sizeof(double)*(size_y))));
@@ -69,6 +70,7 @@ void allocate_all(void) {
         vxbar[j] = 0;
         vybar[j] = 0;
         dbar[j] = 0;
+        mdotavg[j] = 0;
         dbart[j] = 0;
         dbarstar[j] = 0;
         dtLt[j] = 0;
@@ -151,6 +153,7 @@ void free_all(void) {
     free(Lamex);
     free(tauxyavg);
     free(dbar);
+    free(mdotavg);
     free(dbart);
     free(vxbar);
     free(vybar);

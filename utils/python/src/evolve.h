@@ -87,6 +87,7 @@ typedef struct Planet {
 
 double *dens, *vx, *vy, *Pres, *indPot,*Pot, *energy;
 double *dbar,*dbart, *vxbar, *vybar, *dbarstar;
+double *mdotavg;
 double *vx_temp, *vy_temp;
 double *Pixp, *Pixm, *Piym, *Piyp;
 double *slope, *divrho, *denstar, *Qs;
