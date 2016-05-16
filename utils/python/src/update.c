@@ -25,6 +25,17 @@ void update_flux_avg(double *qs) {
 
         drFd[j] -= dt*res;
     }
+    /*
+    for(j=0;j<size_y;j++) {
+        res = 0;
+        for(i=0;i<size_x;i++) {    
+            res += (vy_temp[l]*denstar[l]);
+        }
+        res /=(double)nx;
+
+        mdotavg[j] -= res*2*M_PI*ymin(j);
+    }
+    */
     return;
 }
 void update_flux(double *qs) {
@@ -55,13 +66,19 @@ void updateY(double *q, double *qs,double dt) {
 void update_density_Y(double dt) {
     int i,j,k;
     i=j=k=0;
-
+    double fac,res;
     for(j=0;j<size_y-1;j++) {
+        res = 0;
+        fac = 0;
         for(i=0;i<size_x;i++) {
 
-            dens[l] += ((vy_temp[l]*denstar[l]*SurfY(j,k)-vy_temp[lyp]*denstar[lyp]*SurfY(j+1,k))*dt*InvVol(j,k));
+            fac = ((vy_temp[l]*denstar[l]*SurfY(j,k)-vy_temp[lyp]*denstar[lyp]*SurfY(j+1,k))*InvVol(j,k));
+            dens[l] += fac*dt;
+            res += fac;
 
         }
+        res /= (double)nx;
+        mdotavg[j] += res;
     }
     return;
 }

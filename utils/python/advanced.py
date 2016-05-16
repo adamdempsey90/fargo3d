@@ -2630,10 +2630,13 @@ class Torque():
         attrs = ['y','dbar','Lt','Ltn','Ld','Ldn','Lw','Lwn',
                 'drFt','drFd','drFw',
                 'Lamex','indLam','Lamdep',
-                'dtLt','dtLd','dtLw']
+                'dtLt','dtLd','dtLw','mdot']
 
         for i,a in enumerate(attrs):
             setattr(self,a,dat[i*ny:(i+1)*ny])
+
+        #self.ymin = dat[-2*(ny+1):-(ny+1)]
+        #self.mdot= dat[-(ny+1):]
 
         if not self.indirectterm:
             self.indLam = np.zeros(self.indLam.shape)

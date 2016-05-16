@@ -19,6 +19,7 @@ void time_avg(void) {
         dtLt[j]/=(double)nsteps;
         dtLd[j]/=(double)nsteps;
         dtLw[j]/=(double)nsteps;
+        mdotavg[j]/=(double)nsteps;
 
 
     }
