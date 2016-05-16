@@ -1996,22 +1996,6 @@ class Sim(Mesh,Parameters):
         execdir = self.fargodir+'utils/python/'
         execname = 'run_step'
 
-        lines='%d\n' % self.params.nx
-        lines +='%d\n' % self.params.ny
-        lines +='%d\n' %  self.params.nz
-        lines +='%f\n' %  self.params.alpha
-        lines +='%f\n' %  self.mp
-        lines +='%f\n' %  self.a
-        lines +='%f\n' %  self.params.aspectratio
-        lines +='%f\n' %  self.params.flaringindex
-        lines +='%f\n' %  self.params.mdot
-        lines +='%f\n' %  self.params.thicknesssmoothing
-        lines +='%d\n' % (1-self.params.nz)
-
-        with open(self.directory + 'param_file.txt','w') as f:
-            f.write(lines)
-
-        print dt
         callstr = [execdir + execname,'%d'%self.n,'%.2f'%dt,self.directory]
         print callstr
         call(callstr)
@@ -2611,21 +2595,23 @@ class Torque():
 
     def __init__(self,directory='temp_files/'):
 
-        dat = np.loadtxt('param_file.txt')
-        nx = dat[0]
-        ny = dat[1]
-        self.nx = nx
-        self.ny = ny
-        self.nz = dat[2]
-        self.alpha = dat[3]
-        self.mp = dat[4]
-        self.a = dat[5]
-        self.h = dat[6]
-      #  self.omf = dat[6]
-        self.flaringindex = dat[7]
-        self.soft = dat[9]
-        self.indirectterm = bool(dat[10])
-      #  self.dt = dat[11]
+        with open('variables.par','r') as f:
+            lines = f.readlines()
+
+        for line in lines:
+            if line[0] != '#':
+                line = line.strip().split()
+                try:
+                    setattr(self,line[0].lower(),float(line[1]))
+                    print line[0].lower(), getattr(self,line[0].lower())
+                except ValueError:
+                    setattr(self,line[0].lower(),line[1])
+        self.h = self.aspectratio
+        self.mp = 1e-3
+        self.a = 1.0
+        self.nx = int(self.nx)
+        self.ny = int(self.ny)
+        self.nz = int(self.nz)
         dat = np.fromfile(directory+'torque.dat')
         attrs = ['y','dbar','Lt','Ltn','Ld','Ldn','Lw','Lwn',
                 'drFt','drFd','drFw',
@@ -2633,7 +2619,7 @@ class Torque():
                 'dtLt','dtLd','dtLw','mdot']
 
         for i,a in enumerate(attrs):
-            setattr(self,a,dat[i*ny:(i+1)*ny])
+            setattr(self,a,dat[i*self.ny:(i+1)*self.ny])
 
         #self.ymin = dat[-2*(ny+1):-(ny+1)]
         #self.mdot= dat[-(ny+1):]

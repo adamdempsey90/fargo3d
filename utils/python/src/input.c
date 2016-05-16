@@ -1,4 +1,5 @@
 #include "evolve.h"
+/*
 void read_param_file(char *filename) {
     FILE *f;
     
@@ -29,6 +30,7 @@ void read_param_file(char *filename) {
     printf("mdot=%.2e\tsoft=%lg\n",params.mdot,params.soft);
     return;
 }
+*/
 
 void read_domain(char *directory) {
     FILE *fx, *fy;
@@ -103,6 +105,16 @@ void read_files(int n, char *directory) {
     fclose(fx);
     fclose(fy);
 
+    for(j=0;j<size_y;j++) {
+        dens0[j] = params.mdot/(3*M_PI*Nu(ymed(j)));
+        vx0[j] = pow(ymed(j),-.5);
+        vy0[j] = -1.5*Nu(ymin(j))/ymin(j);
+	    vx0[j] *= sqrt(1.0+pow(params.h,2)*pow(ymed(j),2*params.flaringindex)*
+			  (2.0*params.flaringindex - 1.5));
+        vx0[j] -= omf*ymed(j);
+
+    }
+    
     read_planet_file(n,directory);
     return;
 

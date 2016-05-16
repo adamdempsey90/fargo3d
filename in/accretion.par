@@ -8,8 +8,8 @@ Sigma0			1.0   Surface Density at r=1
 Alpha			0.01		Uniform kinematic viscosity
 SigmaSlope		0.5		Slope of the surface density
 FlaringIndex		0.0
-Mdot0                0.0000236
-Mdot                 0.0000236
+Mdot0                0.00001
+Mdot                 0.00001
 CPI                    3.141592653589793238462643383279502884
 NOISE               0.0
 SIGMAIN             0.00000001
@@ -18,7 +18,7 @@ LAMBDABC             No
 MSTART          2
 MEND            2
 WKZIN           0.05
-WKZOUT          0.2
+WKZOUT          0.1
 ### Planet parameters
 
 PlanetConfig		planets/jupiter_star.cfg
@@ -35,16 +35,16 @@ Nx  128			Azimuthal number of zones
 Ny     64          	Radial number of zones
 Xmin			-3.14159265358979323844
 Xmax			3.14159265358979323844
-Ymin			0.1    	Inner boundary radius
-Ymax			10.0		Outer boundary radius
+Ymin			0.3    	Inner boundary radius
+Ymax			4.0		Outer boundary radius
 Frame			C
 Spacing 		LOG
 ### Output control parameters
 
-Ntot		1		Total number of time steps
+Ntot		10		Total number of time steps
 Ninterm	 		1		Time steps between outputs
-DT			6.28	Time step length. 2PI = 1 orbit
-OutputDir  outputs/speed_test
+DT			.628	Time step length. 2PI = 1 orbit
+OutputDir  outputs/accretion
 #Plotting parameters
 
 Log			yes

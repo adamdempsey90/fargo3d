@@ -3,6 +3,7 @@
 #include <string.h>
 #include <math.h>
 #include <sys/stat.h>
+#include <ctype.h>
 
 #define NGHY 3
 #define TRUE 1
@@ -10,7 +11,6 @@
 #define G 1.0
 #define MSTAR 1.0
 #define MAXSTEPS 1000000
-#define CFL 0.44
 #define CVNR 1.41
 #define CVNL 0.05
 #define MINDT 1e-10
@@ -54,16 +54,32 @@
 
 
 typedef struct Parameters {
+    double wkzout;
+    double xmin;
+    double dt;
+    double ymin;
+    double mdot;
+    double flaringindex;
+    double xmax;
+    double wkzin;
+    double ymax;
+    double soft;
     double alpha;
+    double h;
+    int ninterm;
+    int ntot;
+    int nx;
+    int ny;
+    int log;
+    int corotate;
+    int indirect;
+    double cfl;
+    int nz;
     double mp;
     double a;
     double omf;
-    double h;
-    double flaringindex;
     double nuindex;
     double vrindex;
-    double mdot;
-    double soft;
 
 } Parameters;
 
@@ -93,6 +109,7 @@ typedef struct Planet {
 
 
 double *dens, *vx, *vy, *Pres, *indPot,*Pot, *energy;
+double *dens0, *vx0, *vy0;
 double *dbar,*dbart, *vxbar, *vybar, *dbarstar;
 double *mdotavg;
 double *vx_temp, *vy_temp;
@@ -104,6 +121,7 @@ double *Lt, *Ld, *Lw, *drFw, *drFd, *drFt, *Lamdep, *Lamex;
 double *dtLt, *dtLd, *dtLw;
 
 double dt,omf,dx,time_step;
+double CFL;
 int nx, ny, nz, size_x, size_y, size_z,stride,pitch,nsteps;
 int nb;
 int IndirectTerm;
@@ -149,7 +167,6 @@ void ymax_bound(void);
 void ymin_bound(void);
 void ymin_bound_acc(void);
 void ymax_bound_acc(void);
-void read_param_file(char *filename);
 void read_domain(char *directory);
 void read_single_file(int n,int i, char *directory);
 void read_files(int n, char *directory);
@@ -171,3 +188,5 @@ void init_rk5(void);
 void free_rk5(void);
 void artificial_visc(void);
 void move_to_com(void);
+void read_param_file(char *directory);
+void stockholm(void);

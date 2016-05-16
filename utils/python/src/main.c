@@ -12,7 +12,6 @@ int main(int argc, char *argv[]) {
     }
     n = atoi(argv[1]);
     time_step = atof(argv[2]);
-    printf("time step = %lg\n",time_step);
     strcpy(directory,argv[3]);
 
     nb = 2;
@@ -22,10 +21,16 @@ int main(int argc, char *argv[]) {
     if (status == -33)  {
         printf("Status is -33 for some reason.\n");
     }
-    sprintf(param_fname,"%sparam_file.txt",directory);
+    //sprintf(param_fname,"%sparam_file.txt",directory);
 
 
-    read_param_file(param_fname);
+    printf("Reading\n");
+    read_param_file(directory);
+    nx = params.nx;
+    ny = params.ny;
+    nz = params.nz;
+    CFL = params.cfl;
+    IndirectTerm = params.indirect;
 
     size_x = nx;
     size_y = ny+2*NGHY;
@@ -38,7 +43,6 @@ int main(int argc, char *argv[]) {
     read_domain(directory);
     read_files(n,directory);
     //read_single_file(n,1,directory);
-    printf("dt = %lg\n",dt);
     /*
     if (cfl_dt < dt) {
         printf("Using cfl limited timestep of %.4e instead of %.4e\n",cfl_dt,dt);
@@ -46,8 +50,10 @@ int main(int argc, char *argv[]) {
     }
     */
 
+    printf("time step = %lg\n",time_step);
     //move_to_com();
    output_init(outputdir);
+   printf("output initial.\n");
    init_rk5();
     nsteps = 0;
     double tstart = psys[0].t;
@@ -69,7 +75,6 @@ int main(int argc, char *argv[]) {
     
         potential();
         move_planet();
-        //printf("r0=(%.12lg,%.12lg)\tr1=(%12.lg,%12.lg)\n",psys[0].x,psys[0].y,psys[1].x,psys[0].y);
     
        source_step();
        
@@ -90,7 +95,10 @@ int main(int argc, char *argv[]) {
 
         set_Lamdep();
 
+        stockholm();
+
         time += dt;
+        printf("Advancing by %lg to %lg\n",dt,time);
         nsteps++;
     }
 //    temp_to_vel();   

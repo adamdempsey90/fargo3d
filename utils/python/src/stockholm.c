@@ -1,15 +1,16 @@
 #include "evolve.h"
 
 
-void stockholm_bc(void) {
+void stockholm(void) {
     int i,j,k;
     i=j=k=0;
     double tau,taud;
-    double vr_target, vp_target,dens_target;
+    double vy_target, vx_target,dens_target;
     double wkzin = params.wkzin;
     double wkzout = params.wkzout;
     double Y_inf = params.ymin + (params.ymax-params.ymin)*wkzin;
     double Y_sup = params.ymax - (params.ymax-params.ymin)*wkzout;
+
 
     double ds = 0.03333;
     double rampy = 0;
@@ -34,7 +35,6 @@ void stockholm_bc(void) {
                 rampy *= rampy;
                 tau = ds*pow(ymed(j),1.5);
                 if (rampy > 0.0) {
-                    
                     taud = tau/rampy;
                     dens[l] = (dens[l]*taud + dens_target*dt)/(dt+taud);
                     vx[l] = (vx[l]*taud + vx_target*dt)/(dt+taud);

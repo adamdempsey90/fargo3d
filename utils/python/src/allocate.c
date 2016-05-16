@@ -7,6 +7,9 @@ void allocate_all(void) {
     MALLOC_SAFE((Ymed = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((Xmed = (double *)malloc(sizeof(double)*(size_x))));
     
+    MALLOC_SAFE((dens0 = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((vx0 = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((vy0 = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((dens = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((vx = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((vy = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
