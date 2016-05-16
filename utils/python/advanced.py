@@ -1992,7 +1992,7 @@ class Sim(Mesh,Parameters):
 
         return res * norm * sgn
 
-    def load_torque(self):
+    def load_torque(self,dt=6.28):
         execdir = self.fargodir+'utils/python/'
         execname = 'run_step'
 
@@ -2011,7 +2011,10 @@ class Sim(Mesh,Parameters):
         with open(self.directory + 'param_file.txt','w') as f:
             f.write(lines)
 
-        call([execdir + execname,'%d'%self.n,'1',self.directory])
+        print dt
+        callstr = [execdir + execname,'%d'%self.n,'%.2f'%dt,self.directory]
+        print callstr
+        call(callstr)
 
         self.torque = Torque()
         return

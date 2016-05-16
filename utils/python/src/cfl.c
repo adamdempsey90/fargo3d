@@ -5,9 +5,12 @@ double cfl(void) {
     double soundspeed2,soundspeed,visc;
     double cfl1_a, cfl1_b, cfl1;
     double cfl7_a, cfl7_b, cfl7;
+    double cfl5_a,cfl5_b,cfl5;
     double cfl2, cfl3;
     double res,fac;
 
+    cfl5_a = 0;
+    cfl5_b = 0;
     res = 1e99;
     for(j=NGHY;j<size_y-NGHY;j++) {
         for(i=0;i<size_x;i++) {
@@ -24,10 +27,16 @@ double cfl(void) {
 	        cfl7_a = 1.0/zone_size_x(j,k);	
         	cfl7_b = 1.0/zone_size_y(j,k);
 	        cfl7 = 4.0*visc*pow(fmax(cfl7_a,cfl7_b),2);
-
+#ifdef ARTIFICIALVISCOSITY
+            cfl5_a = fabs(vx[lxp]-vx[l])/zone_size_x(j,k);
+            cfl5_b = fabs(vy[lyp]-vy[l])/zone_size_y(j,k);
+            cfl5 = fmax(cfl5_a, cfl5_b)*4.0*CVNR;
+#else
+            cfl5 = 0;
+#endif
 
 	        fac = CFL/sqrt(cfl1*cfl1 + cfl2*cfl2 + 
-			     cfl3*cfl3 + cfl7*cfl7);
+			     cfl3*cfl3 + cfl5*cfl5 +  cfl7*cfl7);
 
             if (fac < res) {
                 res = fac;

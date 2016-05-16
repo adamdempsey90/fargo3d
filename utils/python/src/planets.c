@@ -23,6 +23,9 @@ void get_accel(double *q, double *k, double dtn) {
 
             }
         }
+        k[3 + i*6] *= dtn;
+        k[4 + i*6] *= dtn;
+        k[5 + i*6] *= dtn;
     }
     return;
 }
@@ -198,5 +201,13 @@ void free_rk5(void) {
     free(k6);
     free(q0);
     free(q1);
+    return;
+}
+void move_to_com(void) {
+    psys[1].x = -psys[0].x*psys[0].mp/psys[1].mp;
+    psys[1].y = -psys[0].y*psys[0].mp/psys[1].mp;
+    psys[1].vx = -psys[0].vx*psys[0].mp/psys[1].mp;
+    psys[1].vy = -psys[0].vy*psys[0].mp/psys[1].mp;
+
     return;
 }

@@ -99,6 +99,7 @@ void AlgoGas () {
     dtemp+=dt;
     if(dtemp>DT)  dt = DT - (dtemp-dt); // updating dt
 
+    printf("dt = %.12lg\n",dt);
 #ifdef POTENTIAL
 #ifdef FTPOTENTIAL
     if (InitPotential) {

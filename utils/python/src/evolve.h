@@ -9,10 +9,17 @@
 #define FALSE 0
 #define G 1.0
 #define MSTAR 1.0
+#define MAXSTEPS 1000000
 #define CFL 0.44
+#define CVNR 1.41
+#define CVNL 0.05
+#define MINDT 1e-10
 #ifndef M_PI
 #define M_PI (3.14159265358979323846)
 #endif
+
+#define ARTIFICIALVISCOSITY
+
 
 #define MALLOC_SAFE(ptr) if (ptr == NULL) printf("Malloc error at line %d!\n",__LINE__);
 //#define FREE_SAFE(ptr) free(ptr); ptr=NULL; 
@@ -95,7 +102,7 @@ double *tauxx, *tauxy, *tauyy, *tauxyavg;
 double *Lt, *Ld, *Lw, *drFw, *drFd, *drFt, *Lamdep, *Lamex;
 double *dtLt, *dtLd, *dtLw;
 
-double dt,omf,dx;
+double dt,omf,dx,time_step;
 int nx, ny, nz, size_x, size_y, size_z,stride,pitch,nsteps;
 int nb;
 int IndirectTerm;
@@ -161,4 +168,5 @@ void move_planet(void);
 void time_avg(void);
 void init_rk5(void);
 void free_rk5(void);
-
+void artificial_visc(void);
+void move_to_com(void);

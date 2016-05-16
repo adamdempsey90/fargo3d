@@ -2,8 +2,8 @@
 void set_Lamdep(void) {
     int j;
     for(j=NGHY;j<size_y - NGHY;j++) {
-        dtLt[j] += (Lt[j+size_y]-Lt[j])/dt;
-        dtLd[j] += (Ld[j+size_y]-Ld[j])/dt;
+        dtLt[j] += (Lt[j+size_y]-Lt[j]);
+        dtLd[j] += (Ld[j+size_y]-Ld[j]);
         dtLw[j] = dtLt[j] - dtLd[j];
         Lamdep[j] = dtLd[j] + drFd[j];
         drFw[j] = drFt[j] - drFd[j];
@@ -26,8 +26,8 @@ void set_Lamex(void) {
         }
         res /=(double)nx;
         resi /=(double)nx;
-        Lamex[j] += res;
-        Lamex[j + size_y] += resi;
+        Lamex[j] += dt*res;
+        Lamex[j + size_y] += dt*resi;
 
     }
 

@@ -23,7 +23,7 @@ void update_flux_avg(double *qs) {
         }
         res /=(double)nx;
 
-        drFd[j] -= res;
+        drFd[j] -= dt*res;
     }
     return;
 }
@@ -37,7 +37,7 @@ void update_flux(double *qs) {
             res += ((vy_temp[l]*qs[l]*denstar[l]*SurfY(j,k)-vy_temp[lyp]*qs[lyp]*denstar[lyp]*SurfY(j+1,k))*InvVol(j,k));
         }
         res /=(double)nx;
-        drFt[j] -= res*.5;
+        drFt[j] -= dt*res*.5;
     }
     return;
 }
