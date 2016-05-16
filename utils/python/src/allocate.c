@@ -10,6 +10,8 @@ void allocate_all(void) {
     MALLOC_SAFE((dens0 = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((vx0 = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((vy0 = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((qR = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
+    MALLOC_SAFE((qL = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((dens = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((vx = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((vy = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
@@ -31,6 +33,7 @@ void allocate_all(void) {
     MALLOC_SAFE((tauxy = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((tauyy = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
 
+    MALLOC_SAFE((nshift = (int *)malloc(sizeof(int)*(size_y*size_z))));
 
     MALLOC_SAFE((Lt = (double *)malloc(sizeof(double)*(size_y*2))));
     MALLOC_SAFE((Ld = (double *)malloc(sizeof(double)*(size_y*2))));

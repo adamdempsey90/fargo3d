@@ -37,6 +37,9 @@ int main(int argc, char *argv[]) {
     size_z = nz;
     stride = size_x*size_y;
     pitch = size_x;
+    pitch2d = size_y;
+    size_t double_to_int = sizeof(double)/sizeof(int);
+    pitch2d_int = pitch*(int)double_to_int;
     dx = 2*M_PI/nx;
 
     allocate_all();

@@ -42,6 +42,8 @@
 #define lact   ((i)+(jact)*(nx)+((k)*stride))
 #define lxp (((i)<(nx-1)) ? ((l)+1) : ((l)-(nx-1)))
 #define lxm (((i)>0) ? ((l)-1) : ((l)+(nx-1)))
+#define l2D ((j)+((k)*pitch2d))
+#define l2D_int ((j)+((k)*pitch2d_int))
 
 #define ixm ((i)>0 ? ((i)-1) : nx-1)
 #define ixp ((i)<nx-1 ? ((i)+1) : 0)
@@ -109,6 +111,7 @@ typedef struct Planet {
 
 
 double *dens, *vx, *vy, *Pres, *indPot,*Pot, *energy;
+double *qR, *qL;
 double *dens0, *vx0, *vy0;
 double *dbar,*dbart, *vxbar, *vybar, *dbarstar;
 double *mdotavg;
@@ -119,10 +122,11 @@ double *Ymed, *Xmed, *Ymin, *Xmin;
 double *tauxx, *tauxy, *tauyy, *tauxyavg;
 double *Lt, *Ld, *Lw, *drFw, *drFd, *drFt, *Lamdep, *Lamex;
 double *dtLt, *dtLd, *dtLw;
+int *nshift;
 
 double dt,omf,dx,time_step;
 double CFL;
-int nx, ny, nz, size_x, size_y, size_z,stride,pitch,nsteps;
+int nx, ny, nz, size_x, size_y, size_z,stride,pitch,pitch2d,pitch2d_int,nsteps;
 int nb;
 int IndirectTerm;
 
