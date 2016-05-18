@@ -1,7 +1,7 @@
 #include "evolve.h"
 
 int main(int argc, char *argv[]) {
-
+    int j;
     int n;
     int status;
     char directory[256],outputdir[256];
@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
     //sprintf(param_fname,"%sparam_file.txt",directory);
 
 
-    printf("Reading\n");
+    
     read_param_file(directory);
     nx = params.nx;
     ny = params.ny;
@@ -42,7 +42,10 @@ int main(int argc, char *argv[]) {
     dx = 2*M_PI/nx;
 
     allocate_all();
+    
     read_domain(directory);
+    
+    
     read_files(n,directory);
     //read_single_file(n,1,directory);
     /*
@@ -52,10 +55,20 @@ int main(int argc, char *argv[]) {
     }
     */
 
-    printf("time step = %lg\n",time_step);
+    
     //move_to_com();
+
+    for(j=0;j<size_y;j++) {
+        dens0[j] = params.mdot/(3*M_PI*Nu(ymed(j)));
+        vx0[j] = pow(ymed(j),-.5);
+        vy0[j] = -1.5*Nu(ymin(j))/ymin(j);
+	    vx0[j] *= sqrt(1.0+pow(params.h,2)*pow(ymed(j),2*params.flaringindex)*
+			  (2.0*params.flaringindex - 1.5));
+        vx0[j] -= omf*ymed(j);
+
+    }
    output_init(outputdir);
-   printf("output initial.\n");
+   
    init_rk5();
     nsteps = 0;
     double tstart = psys[0].t;
@@ -76,13 +89,16 @@ int main(int argc, char *argv[]) {
         set_avg(0);
     
         potential();
+        
         move_planet();
     
+       
        source_step();
        
         set_Lamex();
        viscosity();
 #ifdef ARTIFICIALVISCOSITY
+        
         artificial_visc();
 #endif
     
@@ -91,7 +107,9 @@ int main(int argc, char *argv[]) {
         
         vel_to_temp();
         
+        
         transport_step();
+        
       
         set_avg(1);
 
@@ -106,7 +124,6 @@ int main(int argc, char *argv[]) {
 //    temp_to_vel();   
 
     dt = tend - tstart;
-    int j;
     for(j=0;j<size_y;j++) {
         dbart[j]/=dt;
         //Lt[j]/=dt;

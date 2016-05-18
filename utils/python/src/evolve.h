@@ -19,6 +19,7 @@
 #endif
 
 #define ARTIFICIALVISCOSITY
+//#define FARGO
 
 
 #define MALLOC_SAFE(ptr) if (ptr == NULL) printf("Malloc error at line %d!\n",__LINE__);
@@ -43,7 +44,7 @@
 #define lxp (((i)<(nx-1)) ? ((l)+1) : ((l)-(nx-1)))
 #define lxm (((i)>0) ? ((l)-1) : ((l)+(nx-1)))
 #define l2D ((j)+((k)*pitch2d))
-#define l2D_int ((j)+((k)*pitch2d_int))
+#define l2D_int ((j)+((k)*pitch2d))
 
 #define ixm ((i)>0 ? ((i)-1) : nx-1)
 #define ixp ((i)<nx-1 ? ((i)+1) : 0)
@@ -152,7 +153,7 @@ void set_momenta(void);
 void transportY(void);
 void DividebyRho(double *q);
 void DividebyRhoavg(double *q);
-void transportX(void);
+void transportX(double *vxt, int ppa);
 void set_vel(void);
 void vanleer_y_a(double *q);
 void vanleer_y_a_avg(double *q);
@@ -195,3 +196,7 @@ void move_to_com(void);
 void read_param_file(char *directory);
 void stockholm(void);
 void fargo_transport(void);
+void vanleer_ppa_b(double dt, double *q, double *qs, double *vxt);
+void vanleer_ppa_a(double *q);
+void advect_shift(double *q, int *nshift);
+void compute_residuals(double dt);

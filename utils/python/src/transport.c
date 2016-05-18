@@ -36,7 +36,9 @@ void transport_step(void) {
     advect_shift(Pixm, nshift);
     advect_shift(Piyp, nshift);
     advect_shift(Piym, nshift);
+    
     advect_shift(dens, nshift);
+   
 #else
     transportX(vx_temp,FALSE);
 #endif

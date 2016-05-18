@@ -9,12 +9,12 @@ void advect_shift(double *q, int *nshift) {
     
     int itarget,ltarget;
 
-    for(k=0;k<size_x;k++) {
+    for(k=0;k<size_z;k++) {
         for(j=0;j<size_y;j++) {
             for(i=0;i<size_x;i++) {
             
 
-	            itarget = i-nshift[((j)+((k)*(ny+2*NGHY)))]; // l2D_int
+	            itarget = i-nshift[l2D_int]; // l2D_int
 	            while (itarget <  0)  {
                     itarget += nx;
                 }
@@ -31,13 +31,13 @@ void advect_shift(double *q, int *nshift) {
     return;
 
 }
-void compute_residual(double dt) {
+void compute_residuals(double dt) {
     int i,j,k;
     i=j=k=0;
     double ntilde, nround;
     double res;
 
-    for(k=0;k<size_x;k++) {
+    for(k=0;k<size_z;k++) {
         for(j=0;j<size_y;j++) {
             res = 0;
             for(i=0;i<size_x;i++) {
@@ -61,6 +61,7 @@ void compute_residual(double dt) {
 
     return;
 }
+/*
 void fargo_transport(void) {
 
   compute_residual(dt);
@@ -75,3 +76,4 @@ void fargo_transport(void) {
 
     return;
 }
+*/

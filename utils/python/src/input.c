@@ -81,39 +81,39 @@ void read_single_file(int n, int i,char *directory) {
 
 void read_files(int n, char *directory) {
     char filename[512];
-    FILE *fd,*fx,*fy;
+    FILE *fd,*fx,*fy,*fe;
     int i,j,k;
     sprintf(filename,"%sgasdens%d.dat",directory,n);
     fd = fopen(filename,"r");
     if (fd == NULL) printf("Error loading %s\n",filename); 
+
     sprintf(filename,"%sgasvx%d.dat",directory,n);
     fx = fopen(filename,"r");
     if (fx == NULL) printf("Error loading %s\n",filename); 
+
     sprintf(filename,"%sgasvy%d.dat",directory,n);
     fy = fopen(filename,"r");
     if (fy == NULL) printf("Error loading %s\n",filename); 
+
+    sprintf(filename,"%sgasenergy%d.dat",directory,n);
+    fe = fopen(filename,"r");
+    if (fe == NULL) printf("Error loading %s\n",filename); 
+    i=j=k=0;
     for(k=0;k<size_z;k++) {
         for(j =NGHY; j<size_y-NGHY;j++) {
             for(i=0;i<size_x;i++) {
                 fread(&dens[l],sizeof(double),1,fd);
                 fread(&vx[l],sizeof(double),1,fx);
                 fread(&vy[l],sizeof(double),1,fy);
+                fread(&energy[l],sizeof(double),1,fe);
             }
         }
     }
     fclose(fd);
     fclose(fx);
     fclose(fy);
+    fclose(fe);
 
-    for(j=0;j<size_y;j++) {
-        dens0[j] = params.mdot/(3*M_PI*Nu(ymed(j)));
-        vx0[j] = pow(ymed(j),-.5);
-        vy0[j] = -1.5*Nu(ymin(j))/ymin(j);
-	    vx0[j] *= sqrt(1.0+pow(params.h,2)*pow(ymed(j),2*params.flaringindex)*
-			  (2.0*params.flaringindex - 1.5));
-        vx0[j] -= omf*ymed(j);
-
-    }
     
     read_planet_file(n,directory);
     return;
