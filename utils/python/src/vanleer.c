@@ -98,7 +98,7 @@ void vanleer_y_b_avg(double *q, double *qs, double dt) {
     }
     return;
 }
-void vanleer_x_b(double *q, double *qs, double dt) {
+void vanleer_x_b(double *q, double *qs, double dt,double *vxt) {
     int i,j,k;
     i=j=k=0;
 
@@ -106,11 +106,11 @@ void vanleer_x_b(double *q, double *qs, double dt) {
 
         for(i=0;i<size_x;i++) {
 
-            if (vx_temp[l] > 0.) {
-                qs[l] = q[lxm] + .5*(zone_size_x(j,k)-vx_temp[l]*dt)*slope[lxm];
+            if (vxt[l] > 0.) {
+                qs[l] = q[lxm] + .5*(zone_size_x(j,k)-vxt[l]*dt)*slope[lxm];
             }
             else {
-                qs[l] = q[l] - .5*(zone_size_x(j,k)+vx_temp[l]*dt)*slope[l];
+                qs[l] = q[l] - .5*(zone_size_x(j,k)+vxt[l]*dt)*slope[l];
             }
 
         }

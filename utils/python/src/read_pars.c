@@ -109,7 +109,7 @@ void read_param_file(char *directory) {
     int int_val;
     int bool_val;
     char testbool;
-    int i;
+    unsigned int i;
     char fname[256];
     sprintf(fname,"%svariables.par",directory);
 

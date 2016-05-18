@@ -5,7 +5,6 @@ int main(int argc, char *argv[]) {
     int n;
     int status;
     char directory[256],outputdir[256];
-    char param_fname[100];
 
     if (argc > 4) {
         printf("Too many arguments.Only using first 3.\n");

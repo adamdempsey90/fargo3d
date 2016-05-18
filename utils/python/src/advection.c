@@ -1,6 +1,8 @@
 #include "evolve.h"
 
-void advect_shift(double *q, double *nshift) {
+
+
+void advect_shift(double *q, int *nshift) {
     /* Assume NGHX = 0 */
     int i,j,k;
     i=j=k=0;
@@ -37,6 +39,7 @@ void compute_residual(double dt) {
 
     for(k=0;k<size_x;k++) {
         for(j=0;j<size_y;j++) {
+            res = 0;
             for(i=0;i<size_x;i++) {
                 res += vx_temp[l];
             }
@@ -54,6 +57,20 @@ void compute_residual(double dt) {
     }
 
 
+
+
+    return;
+}
+void fargo_transport(void) {
+
+  compute_residual(dt);
+  transportX (vx, dt); // Vx => variable residual
+  vanleer_ppa (vx_temp, dt); // Vx_temp => fixed residual @ given r. This one only is done with PPA
+  advect_shift(Pixp, nshift);
+  advect_shift(Pixm, nshift);
+  advect_shift(Piyp, nshift);
+  advect_shift(Piym, nshift);
+  advect_shift(dens, nshift);
 
 
     return;
