@@ -35,22 +35,16 @@ void compute_residuals(double dt) {
     int i,j,k;
     i=j=k=0;
     double ntilde, nround;
-    double res;
 
     for(k=0;k<size_z;k++) {
         for(j=0;j<size_y;j++) {
-            res = 0;
             for(i=0;i<size_x;i++) {
-                res += vx_temp[l];
-            }
-            res /=(double)nx;
-            for(i=0;i<size_x;i++) {
-                ntilde = res*dt/zone_size_x(j,k);
+                ntilde = vmed[l2D]*dt/zone_size_x(j,k);
                 nround = floor(ntilde+0.5);
                 if(i == 0) {
                     nshift[l2D_int] = (int)nround;
                 }
-                vx[l] = vx_temp[l] - res;
+                vx[l] = vx_temp[l] - vmed[l2D];
                 vx_temp[l] = (ntilde-nround)*zone_size_x(j,k)/dt;
             }
         }

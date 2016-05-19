@@ -11,7 +11,6 @@ void stockholm(void) {
     double Y_inf = params.ymin + (params.ymax-params.ymin)*wkzin;
     double Y_sup = params.ymax - (params.ymax-params.ymin)*wkzout;
 
-    printf("%.16f\t%lg\t%lg\n",omf0,wkzin,wkzout);
     double ds = 0.03333;
     double rampy = 0;
     for(k=0;k<size_z;k++) {

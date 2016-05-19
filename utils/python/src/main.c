@@ -36,9 +36,9 @@ int main(int argc, char *argv[]) {
     size_z = nz;
     stride = size_x*size_y;
     pitch = size_x;
-    pitch2d = size_y;
-    size_t double_to_int = sizeof(double)/sizeof(int);
-    pitch2d_int = pitch*(int)double_to_int;
+    pitch2d = 0;
+    //size_t double_to_int = sizeof(double)/sizeof(int);
+    pitch2d_int = 0 ;//pitch*(int)double_to_int;
     dx = 2*M_PI/nx;
 
     allocate_all();
@@ -85,7 +85,11 @@ int main(int argc, char *argv[]) {
     double tend = psys[0].t + time_step;
     double time = tstart;
     printf("Starting time = %lg\nEnding time = %lg\n",tstart,tend);
+    set_bc();
     while ((time < tend) && nsteps<MAXSTEPS) {
+#ifdef FARGO
+        compute_vmed(vx);
+#endif
         dt = cfl();
         if (dt <= MINDT) {
             printf("Timestep has fallen below minimum!\n");
@@ -95,7 +99,6 @@ int main(int argc, char *argv[]) {
             dt = tend-time;
         }
         printf("Time %lg dt = %.16f\n",time,dt);
-        set_bc();
         set_avg(0);
     
         potential();
@@ -116,19 +119,21 @@ int main(int argc, char *argv[]) {
         set_bc();
         
         vel_to_temp();
-        
-        
+       
+#ifdef FARGO
+        compute_vmed(vx_temp);
+#endif        
         transport_step();
         
+        time += dt;
       
         set_avg(1);
 
         set_Lamdep();
 
         stockholm();
-
-        output_psys(outputdir,nsteps);
-        time += dt;
+        set_bc();
+        //output_psys(outputdir,nsteps);
         nsteps++;
     }
 //    temp_to_vel();   

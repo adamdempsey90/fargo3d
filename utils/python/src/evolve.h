@@ -112,6 +112,7 @@ typedef struct Planet {
 
 
 double *dens, *vx, *vy, *Pres, *indPot,*Pot, *energy;
+double *vmed;
 double *qR, *qL;
 double *dens0, *vx0, *vy0;
 double *dbar,*dbart, *vxbar, *vybar, *dbarstar;
@@ -198,8 +199,10 @@ void stockholm(void);
 void fargo_transport(void);
 void vanleer_ppa_b(double dt, double *q, double *qs, double *vxt);
 void vanleer_ppa_a(double *q);
+void vanleer_ppa(double dt, double *q, double *qs, double *vxt);
 void advect_shift(double *q, int *nshift);
 void compute_residuals(double dt);
 void output_stock(char *directory);
 void read_stockholm(char *directory);
 void output_psys(char *directory, int n);
+void compute_vmed(double *vt);

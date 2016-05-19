@@ -98,3 +98,8 @@ void vanleer_ppa_b(double dt, double *q, double *qs, double *vxt) {
 
     return;
 }
+void vanleer_ppa(double dt, double *q, double *qs, double *vxt) {
+    vanleer_ppa_a(q);
+    vanleer_ppa_b(dt,q,qs,vxt);
+    return;
+}

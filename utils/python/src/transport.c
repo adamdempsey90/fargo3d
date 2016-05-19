@@ -125,29 +125,27 @@ void transportX(double *vxt, int ppa) {
     // X direction
 
     if (ppa) {
-        vanleer_ppa_a(dens);
-        vanleer_ppa_b(dt,dens,denstar,vxt);
+        vanleer_ppa(dt,dens,denstar,vxt);
     }
     else {
         vanleer_x_a(dens);
         vanleer_x_b(dens,denstar,dt,vxt);
     }
+/* Pixm */
     DividebyRho(Pixm);
     if (ppa) {
-        vanleer_ppa_a(divrho);
-        vanleer_ppa_b(dt,divrho,Qs,vxt);
-        updateX(Pixm,Qs,dt,vxt);
+        vanleer_ppa(dt,divrho,Qs,vxt);
     }
     else {
         vanleer_x_a(divrho);
         vanleer_x_b(divrho,Qs,dt,vxt);
-        updateX(Pixm,Qs,dt,vx_temp);
     }
+    updateX(Pixm,Qs,dt,vxt);
 
+/* Pixp */
     DividebyRho(Pixp);
     if (ppa) {
-        vanleer_ppa_a(divrho);
-        vanleer_ppa_b(dt,divrho,Qs,vxt);
+        vanleer_ppa(dt,divrho,Qs,vxt);
     }
     else {
         vanleer_x_a(divrho);
@@ -155,21 +153,21 @@ void transportX(double *vxt, int ppa) {
     }
     updateX(Pixp,Qs,dt,vxt);
 
+
+/* Piym */
     DividebyRho(Piym);
     if (ppa) {
-        vanleer_ppa_a(divrho);
-        vanleer_ppa_b(dt,divrho,Qs,vxt);
+        vanleer_ppa(dt,divrho,Qs,vxt);
     }
     else {
         vanleer_x_a(divrho);
         vanleer_x_b(divrho,Qs,dt,vxt);
     }
     updateX(Piym,Qs,dt,vxt);
-
+/* Piyp */
     DividebyRho(Piyp);
     if (ppa) {
-        vanleer_ppa_a(divrho);
-        vanleer_ppa_b(dt,divrho,Qs,vxt);
+        vanleer_ppa(dt,divrho,Qs,vxt);
     }
     else {
         vanleer_x_a(divrho);
@@ -177,6 +175,7 @@ void transportX(double *vxt, int ppa) {
     }
     updateX(Piyp,Qs,dt,vxt);
 
+/* Density */
     update_density_X(dt,vxt);
 
     return;

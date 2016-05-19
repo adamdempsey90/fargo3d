@@ -8,25 +8,14 @@ double cfl(void) {
     double cfl5_a,cfl5_b,cfl5;
     double cfl2, cfl3;
     double res,fac,vxx,vxxp;
-#ifdef FARGO
-    double med;
-#endif
     cfl5_a = 0;
     cfl5_b = 0;
     res = 1e99;
     for(j=NGHY;j<size_y-NGHY;j++) {
-#ifdef FARGO
-        med = 0;
-        for(i=0;i<size_x;i++) {
-
-            med += vx[l];
-        }
-        med /= (double)nx;
-#endif
         for(i=0;i<size_x;i++) {
 #ifdef FARGO
-            vxx = vx[l] - med;
-            vxxp = vx[lxp] - med;
+            vxx = vx[l] - vmed[l2D];
+            vxxp = vx[lxp] - vmed[l2D];
 #else
             vxx = vx[l];
             vxxp = vx[lxp];
