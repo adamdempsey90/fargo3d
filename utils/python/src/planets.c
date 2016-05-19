@@ -1,12 +1,13 @@
 #include "evolve.h"
 double *k1,*k2,*k3,*k4,*k5,*k6,*q0,*q1;
+
 void get_accel(double *q, double *k, double dtn) {
     int i,j;
     double xpl,ypl,zpl,coeff,distp;
     for(i=0;i<nb;i++) {
-        k[0+i*6] = q[3+i*6] * dtn;
-        k[1+i*6] = q[4+i*6] * dtn;
-        k[2+i*6] = q[5+i*6] * dtn;
+        k[0+i*6] = q[3+i*6];
+        k[1+i*6] = q[4+i*6];
+        k[2+i*6] = q[5+i*6];
         k[3+i*6] = 0;
         k[4+i*6] = 0;
         k[5+i*6] = 0;
@@ -16,16 +17,16 @@ void get_accel(double *q, double *k, double dtn) {
                 ypl = q[1 + i*6] - q[1 + j*6];
                 zpl = q[2 + i*6] - q[2 + j*6];
                 distp = xpl*xpl + ypl*ypl + zpl*zpl; 
-                coeff = -G*psys[j].mp *pow(distp,-3.0);
+                coeff = -G*psys[j].mp *pow(distp,-1.5);
                 k[3 + i*6] += coeff*xpl;
                 k[4 + i*6] += coeff*ypl;
                 k[5 + i*6] += coeff*zpl;
 
             }
         }
-        k[3 + i*6] *= dtn;
-        k[4 + i*6] *= dtn;
-        k[5 + i*6] *= dtn;
+    }
+    for(i=0;i<nb*6;i++) {
+        k[i] *= dtn;
     }
     return;
 }

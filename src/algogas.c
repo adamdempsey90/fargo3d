@@ -127,8 +127,8 @@ void AlgoGas () {
     if(dtemp>DT)  dt = DT - (dtemp-dt); // updating dt
 
 
+  printf("%.16f\t%.16f\n",PhysicalTime,dt);
 #ifdef OUTSUBSTEPS
-printf("dt = %.4e\n",dt);
   fwrite(&Density->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_1);
   fwrite(&Vy->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_1);
   fwrite(&Vx->field_cpu[0],sizeof(real),size_x*size_y*size_z,file_1);

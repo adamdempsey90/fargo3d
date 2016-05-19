@@ -45,7 +45,7 @@ double cfl(void) {
         	cfl7_b = 1.0/zone_size_y(j,k);
 	        cfl7 = 4.0*visc*pow(fmax(cfl7_a,cfl7_b),2);
 #ifdef ARTIFICIALVISCOSITY
-            cfl5_a = fabs(vxxp-vxx)/zone_size_x(j,k);
+            cfl5_a = fabs(vx[lxp]-vx[l])/zone_size_x(j,k);
             cfl5_b = fabs(vy[lyp]-vy[l])/zone_size_y(j,k);
             cfl5 = fmax(cfl5_a, cfl5_b)*4.0*CVNR;
 #else

@@ -18,7 +18,7 @@
 #define M_PI (3.14159265358979323846)
 #endif
 
-#define ARTIFICIALVISCOSITY
+//#define ARTIFICIALVISCOSITY
 //#define FARGO
 
 
@@ -125,7 +125,7 @@ double *Lt, *Ld, *Lw, *drFw, *drFd, *drFt, *Lamdep, *Lamex;
 double *dtLt, *dtLd, *dtLw;
 int *nshift;
 
-double dt,omf,dx,time_step;
+double dt,omf,dx,time_step,omf0;
 double CFL;
 int nx, ny, nz, size_x, size_y, size_z,stride,pitch,pitch2d,pitch2d_int,nsteps;
 int nb;
@@ -200,3 +200,6 @@ void vanleer_ppa_b(double dt, double *q, double *qs, double *vxt);
 void vanleer_ppa_a(double *q);
 void advect_shift(double *q, int *nshift);
 void compute_residuals(double dt);
+void output_stock(char *directory);
+void read_stockholm(char *directory);
+void output_psys(char *directory, int n);

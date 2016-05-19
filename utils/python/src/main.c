@@ -58,18 +58,28 @@ int main(int argc, char *argv[]) {
     
     //move_to_com();
 
+
+    printf("Calling\n");
+    read_stockholm(directory);
+    printf("Called\n");
+/*
     for(j=0;j<size_y;j++) {
         dens0[j] = params.mdot/(3*M_PI*Nu(ymed(j)));
-        vx0[j] = pow(ymed(j),-.5);
         vy0[j] = -1.5*Nu(ymin(j))/ymin(j);
+        vx0[j] = pow(ymed(j),-.5);
 	    vx0[j] *= sqrt(1.0+pow(params.h,2)*pow(ymed(j),2*params.flaringindex)*
 			  (2.0*params.flaringindex - 1.5));
         vx0[j] -= omf*ymed(j);
 
     }
-   output_init(outputdir);
+*/
+    omf0 = omf;
+
+    output_stock(outputdir);
+
+    output_init(outputdir);
    
-   init_rk5();
+    init_rk5();
     nsteps = 0;
     double tstart = psys[0].t;
     double tend = psys[0].t + time_step;
@@ -84,7 +94,7 @@ int main(int argc, char *argv[]) {
         if (time + dt > tend) {
             dt = tend-time;
         }
-        printf("Time %lg dt = %lg\n",time,dt);
+        printf("Time %lg dt = %.16f\n",time,dt);
         set_bc();
         set_avg(0);
     
@@ -117,8 +127,8 @@ int main(int argc, char *argv[]) {
 
         stockholm();
 
+        output_psys(outputdir,nsteps);
         time += dt;
-        printf("Advancing by %lg to %lg\n",dt,time);
         nsteps++;
     }
 //    temp_to_vel();   

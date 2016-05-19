@@ -36,6 +36,7 @@ void stockholm(void) {
                 tau = ds*pow(ymed(j),1.5);
                 if (rampy > 0.0) {
                     taud = tau/rampy;
+	                vx_target -= (omf-omf0)*ymed(j);
                     dens[l] = (dens[l]*taud + dens_target*dt)/(dt+taud);
                     vx[l] = (vx[l]*taud + vx_target*dt)/(dt+taud);
                     vy[l] = (vy[l]*taud + vy_target*dt)/(dt+taud);
@@ -48,5 +49,35 @@ void stockholm(void) {
     }
 
 
+
+}
+void read_stockholm(char *directory) {
+    char filename[512];
+    FILE *fd,*fx,*fy;
+
+
+    printf("Inside.\n");
+    sprintf(filename,"%sdensity0_2d.dat",directory);
+    fd = fopen(filename,"r");
+    if (fd == NULL) printf("Error loading %s\n",filename); 
+
+    sprintf(filename,"%svx0_2d.dat",directory);
+    fx = fopen(filename,"r");
+    if (fx == NULL) printf("Error loading %s\n",filename); 
+
+    sprintf(filename,"%svy0_2d.dat",directory);
+    fy = fopen(filename,"r");
+    if (fy == NULL) printf("Error loading %s\n",filename); 
+
+    fread(&dens0[0],sizeof(double),size_y*size_z,fd);
+    fread(&vy0[0],sizeof(double),size_y*size_z,fy);
+    fread(&vx0[0],sizeof(double),size_y*size_z,fx);
+    fclose(fd);
+    fclose(fx);
+    fclose(fy);
+
+    printf("%lg\t%lg\t%lg\t%lg\n",vy0[size_y-4],vy0[size_y-3],vy0[size_y-2],vy0[size_y-1]);
+    
+    return;
 
 }
