@@ -1,4 +1,5 @@
 #include "evolve.h"
+/*
 void read_param_file(char *filename) {
     FILE *f;
     
@@ -29,6 +30,7 @@ void read_param_file(char *filename) {
     printf("mdot=%.2e\tsoft=%lg\n",params.mdot,params.soft);
     return;
 }
+*/
 
 void read_domain(char *directory) {
     FILE *fx, *fy;
@@ -79,30 +81,40 @@ void read_single_file(int n, int i,char *directory) {
 
 void read_files(int n, char *directory) {
     char filename[512];
-    FILE *fd,*fx,*fy;
+    FILE *fd,*fx,*fy,*fe;
     int i,j,k;
     sprintf(filename,"%sgasdens%d.dat",directory,n);
     fd = fopen(filename,"r");
     if (fd == NULL) printf("Error loading %s\n",filename); 
+
     sprintf(filename,"%sgasvx%d.dat",directory,n);
     fx = fopen(filename,"r");
     if (fx == NULL) printf("Error loading %s\n",filename); 
+
     sprintf(filename,"%sgasvy%d.dat",directory,n);
     fy = fopen(filename,"r");
     if (fy == NULL) printf("Error loading %s\n",filename); 
+
+    sprintf(filename,"%sgasenergy%d.dat",directory,n);
+    fe = fopen(filename,"r");
+    if (fe == NULL) printf("Error loading %s\n",filename); 
+    i=j=k=0;
     for(k=0;k<size_z;k++) {
         for(j =NGHY; j<size_y-NGHY;j++) {
             for(i=0;i<size_x;i++) {
                 fread(&dens[l],sizeof(double),1,fd);
                 fread(&vx[l],sizeof(double),1,fx);
                 fread(&vy[l],sizeof(double),1,fy);
+                fread(&energy[l],sizeof(double),1,fe);
             }
         }
     }
     fclose(fd);
     fclose(fx);
     fclose(fy);
+    fclose(fe);
 
+    
     read_planet_file(n,directory);
     return;
 

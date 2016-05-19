@@ -28,7 +28,20 @@ void temp_to_vel(void) {
 void transport_step(void) {
     set_momenta();    
     transportY();
-    transportX();
+#ifdef FARGO
+    compute_residuals(dt);
+    transportX(vx,FALSE);
+    transportX(vx_temp,TRUE);
+    advect_shift(Pixp, nshift);
+    advect_shift(Pixm, nshift);
+    advect_shift(Piyp, nshift);
+    advect_shift(Piym, nshift);
+    
+    advect_shift(dens, nshift);
+   
+#else
+    transportX(vx_temp,FALSE);
+#endif
     set_vel();
     return;
 }
@@ -108,33 +121,62 @@ void DividebyRhoavg(double *q) {
     }
     return;
 }
-void transportX(void) {
+void transportX(double *vxt, int ppa) {
     // X direction
 
-    vanleer_x_a(dens);
-    vanleer_x_b(dens,denstar,dt);
-
+    if (ppa) {
+        vanleer_ppa(dt,dens,denstar,vxt);
+    }
+    else {
+        vanleer_x_a(dens);
+        vanleer_x_b(dens,denstar,dt,vxt);
+    }
+/* Pixm */
     DividebyRho(Pixm);
-    vanleer_x_a(divrho);
-    vanleer_x_b(divrho,Qs,dt);
-    updateX(Pixm,Qs,dt);
+    if (ppa) {
+        vanleer_ppa(dt,divrho,Qs,vxt);
+    }
+    else {
+        vanleer_x_a(divrho);
+        vanleer_x_b(divrho,Qs,dt,vxt);
+    }
+    updateX(Pixm,Qs,dt,vxt);
 
+/* Pixp */
     DividebyRho(Pixp);
-    vanleer_x_a(divrho);
-    vanleer_x_b(divrho,Qs,dt);
-    updateX(Pixp,Qs,dt);
+    if (ppa) {
+        vanleer_ppa(dt,divrho,Qs,vxt);
+    }
+    else {
+        vanleer_x_a(divrho);
+        vanleer_x_b(divrho,Qs,dt,vxt);
+    }
+    updateX(Pixp,Qs,dt,vxt);
 
+
+/* Piym */
     DividebyRho(Piym);
-    vanleer_x_a(divrho);
-    vanleer_x_b(divrho,Qs,dt);
-    updateX(Piym,Qs,dt);
-
+    if (ppa) {
+        vanleer_ppa(dt,divrho,Qs,vxt);
+    }
+    else {
+        vanleer_x_a(divrho);
+        vanleer_x_b(divrho,Qs,dt,vxt);
+    }
+    updateX(Piym,Qs,dt,vxt);
+/* Piyp */
     DividebyRho(Piyp);
-    vanleer_x_a(divrho);
-    vanleer_x_b(divrho,Qs,dt);
-    updateX(Piyp,Qs,dt);
+    if (ppa) {
+        vanleer_ppa(dt,divrho,Qs,vxt);
+    }
+    else {
+        vanleer_x_a(divrho);
+        vanleer_x_b(divrho,Qs,dt,vxt);
+    }
+    updateX(Piyp,Qs,dt,vxt);
 
-    update_density_X(dt);
+/* Density */
+    update_density_X(dt,vxt);
 
     return;
 

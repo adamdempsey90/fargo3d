@@ -7,6 +7,12 @@ void allocate_all(void) {
     MALLOC_SAFE((Ymed = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((Xmed = (double *)malloc(sizeof(double)*(size_x))));
     
+    MALLOC_SAFE((dens0 = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((vmed = (double *)malloc(sizeof(double)*(size_y*size_z))));
+    MALLOC_SAFE((vx0 = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((vy0 = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((qR = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
+    MALLOC_SAFE((qL = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((dens = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((vx = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((vy = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
@@ -28,6 +34,7 @@ void allocate_all(void) {
     MALLOC_SAFE((tauxy = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
     MALLOC_SAFE((tauyy = (double *)malloc(sizeof(double)*(size_y*size_x*size_z))));
 
+    MALLOC_SAFE((nshift = (int *)malloc(sizeof(int)*(size_y*size_z))));
 
     MALLOC_SAFE((Lt = (double *)malloc(sizeof(double)*(size_y*2))));
     MALLOC_SAFE((Ld = (double *)malloc(sizeof(double)*(size_y*2))));
@@ -85,6 +92,7 @@ void allocate_all(void) {
     Xmin[size_x] = 0;
     for(k=0;k<size_z;k++) {
         for(j=0;j<size_y;j++) {
+            vmed[l2D] = 0;
             for(i=0;i<size_x;i++) {
         
                 

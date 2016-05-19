@@ -1732,7 +1732,36 @@ class Sim(Mesh,Parameters):
         if draw_flag:
             fig.canvas.draw()
 #        return log(self.r[rinds]),self.phi[pinds],rr,pp,vr.transpose(),vp.transpose()
+        return sep_lines
 
+    def horseshoe_width(self,noise=.1,npoints=10,rlims=None,plims=(-2,2)):
+        if rlims == None:
+            rlims = (self.dens.ymin,self.dens.ymax)
+        if plims == None:
+            plims = (-pi,pi)
+
+
+        vr = .5*(self.vr.data[1:,:-1] + self.vr.data[:-1,:-1])
+        vp = .5*(self.vx.data[:-1,1:] + self.vx.data[:-1,:-1])
+        dens = copy.copy(self.dens.data[:-1,:-1])
+        y = copy.copy(self.dens.y[:-1])
+        x = copy.copy(self.dens.x[:-1])
+        rinds = (y<=rlims[1])&(y>=rlims[0])
+        pinds = (x<=plims[1])&(x>=plims[0])
+        y = y[rinds]
+        x = x[pinds]
+        vr = vr[rinds,:][:,pinds]
+        vp = vp[rinds,:][:,pinds]
+        dens = dens[rinds,:][:,pinds]
+        #rr,pp = meshgrid(y,x)
+        lr = log(y)
+        phi = x
+        sep_lines = self.separatrix(lr,phi,vr.transpose(),vp.transpose(),noise=noise,npoints=10)
+
+        right_b = max([max(line[:,0]) for line in sep_lines])
+        left_b = min([min(line[:,0]) for line in sep_lines])
+
+        return left_b,right_b,sep_lines
     def calculate_circle(self,d,rlims=None):
         if rlims == None:
             rlims = (self.dens.ymin,self.dens.ymax)

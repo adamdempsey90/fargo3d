@@ -1,11 +1,11 @@
 #include "evolve.h"
-void updateX(double *q, double *qs,double dt) {
+void updateX(double *q, double *qs,double dt,double *vxt) {
     int i,j,k;
     i=j=k=0;
     for(j=0;j<size_y;j++) {
         for(i=0;i<size_x;i++) {
 
-            q[l] += ((vx_temp[l]*qs[l]*denstar[l]-vx_temp[lxp]*qs[lxp]*denstar[lxp])*SurfX(j,k)*dt*InvVol(j,k));
+            q[l] += ((vxt[l]*qs[l]*denstar[l]-vxt[lxp]*qs[lxp]*denstar[lxp])*SurfX(j,k)*dt*InvVol(j,k));
 
         }
     }
@@ -82,14 +82,14 @@ void update_density_Y(double dt) {
     }
     return;
 }
-void update_density_X(double dt) {
+void update_density_X(double dt,double *vxt) {
     int i,j,k;
     i = j= k =0;
 
     for(j=0;j<size_y;j++) {
         for(i=0;i<size_x;i++) {
 
-            dens[l] += ((vx_temp[l]*denstar[l]-vx_temp[lxp]*denstar[lxp])*SurfX(j,k)*dt*InvVol(j,k));
+            dens[l] += ((vxt[l]*denstar[l]-vxt[lxp]*denstar[lxp])*SurfX(j,k)*dt*InvVol(j,k));
 
         }
     }

@@ -3,6 +3,7 @@
 #include <string.h>
 #include <math.h>
 #include <sys/stat.h>
+#include <ctype.h>
 
 #define NGHY 3
 #define TRUE 1
@@ -10,7 +11,6 @@
 #define G 1.0
 #define MSTAR 1.0
 #define MAXSTEPS 1000000
-#define CFL 0.44
 #define CVNR 1.41
 #define CVNL 0.05
 #define MINDT 1e-10
@@ -19,6 +19,7 @@
 #endif
 
 #define ARTIFICIALVISCOSITY
+#define FARGO
 
 
 #define MALLOC_SAFE(ptr) if (ptr == NULL) printf("Malloc error at line %d!\n",__LINE__);
@@ -42,6 +43,8 @@
 #define lact   ((i)+(jact)*(nx)+((k)*stride))
 #define lxp (((i)<(nx-1)) ? ((l)+1) : ((l)-(nx-1)))
 #define lxm (((i)>0) ? ((l)-1) : ((l)+(nx-1)))
+#define l2D ((j)+((k)*pitch2d))
+#define l2D_int ((j)+((k)*pitch2d))
 
 #define ixm ((i)>0 ? ((i)-1) : nx-1)
 #define ixp ((i)<nx-1 ? ((i)+1) : 0)
@@ -54,16 +57,32 @@
 
 
 typedef struct Parameters {
+    double wkzout;
+    double xmin;
+    double dt;
+    double ymin;
+    double mdot;
+    double flaringindex;
+    double xmax;
+    double wkzin;
+    double ymax;
+    double soft;
     double alpha;
+    double h;
+    int ninterm;
+    int ntot;
+    int nx;
+    int ny;
+    int log;
+    int corotate;
+    int indirect;
+    double cfl;
+    int nz;
     double mp;
     double a;
     double omf;
-    double h;
-    double flaringindex;
     double nuindex;
     double vrindex;
-    double mdot;
-    double soft;
 
 } Parameters;
 
@@ -93,6 +112,9 @@ typedef struct Planet {
 
 
 double *dens, *vx, *vy, *Pres, *indPot,*Pot, *energy;
+double *vmed;
+double *qR, *qL;
+double *dens0, *vx0, *vy0;
 double *dbar,*dbart, *vxbar, *vybar, *dbarstar;
 double *mdotavg;
 double *vx_temp, *vy_temp;
@@ -102,9 +124,11 @@ double *Ymed, *Xmed, *Ymin, *Xmin;
 double *tauxx, *tauxy, *tauyy, *tauxyavg;
 double *Lt, *Ld, *Lw, *drFw, *drFd, *drFt, *Lamdep, *Lamex;
 double *dtLt, *dtLd, *dtLw;
+int *nshift;
 
-double dt,omf,dx,time_step;
-int nx, ny, nz, size_x, size_y, size_z,stride,pitch,nsteps;
+double dt,omf,dx,time_step,omf0;
+double CFL;
+int nx, ny, nz, size_x, size_y, size_z,stride,pitch,pitch2d,pitch2d_int,nsteps;
 int nb;
 int IndirectTerm;
 
@@ -130,26 +154,25 @@ void set_momenta(void);
 void transportY(void);
 void DividebyRho(double *q);
 void DividebyRhoavg(double *q);
-void transportX(void);
+void transportX(double *vxt, int ppa);
 void set_vel(void);
 void vanleer_y_a(double *q);
 void vanleer_y_a_avg(double *q);
 void vanleer_x_a(double *q);
 void vanleer_y_b(double *q, double *qs, double dt);
 void vanleer_y_b_avg(double *q, double *qs, double dt);
-void vanleer_x_b(double *q, double *qs, double dt);
-void updateX(double *q, double *qs,double dt);
+void vanleer_x_b(double *q, double *qs, double dt,double *vxt);
+void updateX(double *q, double *qs,double dt,double *vxt);
 void updateY(double *q, double *qs,double dt);
 void update_flux(double *qs);
 void update_flux_avg(double *qs);
-void update_density_X(double dt);
+void update_density_X(double dt,double *vxt);
 void update_density_Y(double dt);
 void set_bc(void);
 void ymax_bound(void);
 void ymin_bound(void);
 void ymin_bound_acc(void);
 void ymax_bound_acc(void);
-void read_param_file(char *filename);
 void read_domain(char *directory);
 void read_single_file(int n,int i, char *directory);
 void read_files(int n, char *directory);
@@ -171,3 +194,15 @@ void init_rk5(void);
 void free_rk5(void);
 void artificial_visc(void);
 void move_to_com(void);
+void read_param_file(char *directory);
+void stockholm(void);
+void fargo_transport(void);
+void vanleer_ppa_b(double dt, double *q, double *qs, double *vxt);
+void vanleer_ppa_a(double *q);
+void vanleer_ppa(double dt, double *q, double *qs, double *vxt);
+void advect_shift(double *q, int *nshift);
+void compute_residuals(double dt);
+void output_stock(char *directory);
+void read_stockholm(char *directory);
+void output_psys(char *directory, int n);
+void compute_vmed(double *vt);

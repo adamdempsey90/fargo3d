@@ -10,6 +10,33 @@ void output_init(char *directory) {
     fclose(f);
     return;
 }
+void output_stock(char *directory) {
+    FILE *f;
+    char fname[256];
+    sprintf(fname,"%soutput_stock.dat",directory);
+    f = fopen(fname,"w");
+    fwrite(&dens0[0],sizeof(double),size_y*size_z,f);
+    fwrite(&vy0[0],sizeof(double),size_y*size_z,f);
+    fwrite(&vx0[0],sizeof(double),size_y*size_z,f);
+    fclose(f);
+    return;
+}
+void output_psys(char *directory,int n) {
+    FILE *f;
+    char fname[256];
+    sprintf(fname,"%spsys.dat",directory);
+    if (n==0) {
+        f = fopen(fname,"w");
+    }
+    else {
+        f = fopen(fname,"a");
+    }
+    fprintf(f,"%d\t%lg\t%lg\t%lg\t%lg\t%lg\t%lg\t%lg\t%lg\n",n,
+            psys[0].x, psys[0].y, psys[0].vx, psys[0].vy,
+            psys[1].x, psys[1].y, psys[1].vx, psys[1].vy);
+    fclose(f);
+    return;
+}
 void output(char *directory) {
     FILE *f;
     char fname[256];
