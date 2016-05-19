@@ -18,8 +18,8 @@
 #define M_PI (3.14159265358979323846)
 #endif
 
-//#define ARTIFICIALVISCOSITY
-//#define FARGO
+#define ARTIFICIALVISCOSITY
+#define FARGO
 
 
 #define MALLOC_SAFE(ptr) if (ptr == NULL) printf("Malloc error at line %d!\n",__LINE__);

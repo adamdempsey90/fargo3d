@@ -17,8 +17,8 @@ SIGMAOUT            0.00001
 LAMBDABC             No
 MSTART          2
 MEND            2
-WKZIN           0.05
-WKZOUT          0.1
+WKZIN           0.0476
+WKZOUT          0.19
 ### Planet parameters
 
 PlanetConfig		planets/jupiter_star.cfg
