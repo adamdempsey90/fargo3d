@@ -11,6 +11,9 @@ void stockholm(void) {
     double Y_inf = params.ymin + (params.ymax-params.ymin)*wkzin;
     double Y_sup = params.ymax - (params.ymax-params.ymin)*wkzout;
 
+    dens_target = 0;
+    vy_target = 0;
+    vx_target = 0;
     double ds = 0.03333;
     double rampy = 0;
     for(k=0;k<size_z;k++) {

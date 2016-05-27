@@ -54,6 +54,9 @@ FARGO_OPT += -DPOTENTIAL
 #Viscosity
 FARGO_OPT += -DALPHAVISCOSITY
 
+#Fix the planetary system, good for just one planet systems
+FARGO_OPT += -DFIXEDPSYS
+
 #Cuda blocks
 ifeq (${GPU}, 1)
 FARGO_OPT += -DBLOCK_X=16

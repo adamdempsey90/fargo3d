@@ -1,9 +1,12 @@
 from matplotlib import _cntr as cntr
+import matplotlib.pyplot as plt
+import numpy as np
 import matplotlib.gridspec as gridspec
 from subprocess import call
 from scipy.optimize import curve_fit
 from scipy.integrate import cumtrapz
 import copy
+import glob
 
 class Mesh():
     """
@@ -1660,6 +1663,7 @@ class Sim(Mesh,Parameters):
     #		axv.set_ylim(-.001,.001)
     	axd.set_title('t = %.1f = %.1f P = %.1f t_visc' % (self.t,self.t/(2*pi*self.a**(1.5)),self.t/self.tvisc))
     def streams(self,rlims=None,plims=None,ax=None,planet=None,noise=.1,clrbar=True,softening=False,sample=1,rasterized=False,**kargs):
+        npoints= kargs.pop('npoints',10)
         draw_flag = False
         if ax == None:
             fig=figure()
@@ -1717,7 +1721,8 @@ class Sim(Mesh,Parameters):
             ax.plot(log(rh), ph,'-r',linewidth=3,rasterized=rasterized)
             ax.plot(log(rs),ps,'--r',linewidth=3,rasterized=rasterized)
 
-        sep_lines = self.separatrix(lr,phi,vr.transpose(),vp.transpose(),noise=noise,npoints=10)
+        lb,rb,sep_lines = self.horseshoe_width(noise=noise,npoints=npoints,rlims=rlims,plims=plims)
+
         for line in sep_lines:
             ax.plot(line[:,0],line[:,1],'-w',linewidth=2,rasterized=rasterized)
 
@@ -1732,7 +1737,7 @@ class Sim(Mesh,Parameters):
         if draw_flag:
             fig.canvas.draw()
 #        return log(self.r[rinds]),self.phi[pinds],rr,pp,vr.transpose(),vp.transpose()
-        return sep_lines
+        return lb,rb
 
     def horseshoe_width(self,noise=.1,npoints=10,rlims=None,plims=(-2,2)):
         if rlims == None:
@@ -1762,6 +1767,48 @@ class Sim(Mesh,Parameters):
         left_b = min([min(line[:,0]) for line in sep_lines])
 
         return left_b,right_b,sep_lines
+    def summary_plot(self,savefile=None):
+        tstr1 = '$q = %.1e, \\alpha = %.1e, K = %.1e$'%(self.mp,self.params.alpha,self.K)
+        tstr2 = '$t = %.2e = %.2e P = %.2e t_{visc,p}$'%(self.t,self.t/self.torb,self.t/self.tviscp)
+        mmr2 = self.a * 2**(2./3)
+        mmr3 = self.a  * 3**(2./3)
+
+        fig,axes = subplots(1,2,figsize=(20,10))
+        lb,rb=self.streams(rlims=(.6,2),plims=(-2,2),ax=axes[1])
+        axes[0].plot(self.dens.y,self.dens.avg,'-k')
+        axes[0].plot(self.dens.y,self.sig0,'--k')
+        axes[0].axvline(mmr2,color='k',linestyle='--')
+        axes[0].axvline(mmr3,color='k',linestyle='--')
+        axes[0].set_xlabel('$r$',fontsize=15)
+        axes[0].set_ylabel('$\\langle \\Sigma \\rangle$',fontsize=15)
+        axes[0].axvline(lb+self.a,color='k',linewidth=2)
+        axes[0].axvline(rb+self.a,color='k',linewidth=2)
+
+        ax = plt.axes([.26,.65,.2,.2])
+        ax.plot(self.dens.y,self.dens.avg,'-k')
+        ax.plot(self.dens.y,self.sig0,'--k')
+        ax.axvline(mmr2,color='k',linestyle='--')
+        ax.axvline(mmr3,color='k',linestyle='--')
+        ax.axvline(lb+self.a,color='k',linewidth=2)
+        ax.axvline(rb+self.a,color='k',linewidth=2)
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+        ax.minorticks_on()
+        axes[0].set_title(tstr1,fontsize=15)
+        axes[1].set_title(tstr2,fontsize=15)
+        if mmr2 < 2:
+            axes[1].axvline(log(mmr2),color='r',linestyle='-',linewidth=2)
+        if mmr3 < 2:
+            axes[1].axvline(log(mmr3),color='r',linestyle='-',linewidth=2)
+
+        for axp in axes:
+            axp.minorticks_on()
+        fig.canvas.draw()
+
+        if savefile is not None:
+            fig.savefig(savefile)
+        return fig,axes
+
     def calculate_circle(self,d,rlims=None):
         if rlims == None:
             rlims = (self.dens.ymin,self.dens.ymax)
@@ -2506,16 +2553,19 @@ def check_mdot_single(i):
 def grab_axis(i):
     return figure(i).get_axes()[0]
 
-def problem_size(nx,ny):
-    return 168. * nx*ny/(1e9)
+def problem_size(nx,ny,nz=1):
+    return 168. * nx*ny*nz/(1e9)
 def get_num_cells(Nh,h,ri,ro):
     ny = int( Nh * log(ro/ri)/h)
     nx = int(2*pi/h * Nh)
     return nx,ny
-def get_optimal_num_points(h,ri,ro,totsize):
-    totsize *= .9
+def get_optimal_num_points(h,ri,ro,totsize=12,nperh=None, 3D = False):
     psize = 2*pi*log(ro/ri)/(h*h)
-    Nh = int(sqrt( totsize * 1e9 /(168*psize) ))
+    if nperh is not None:
+        Nh = nperh
+    else:
+        Nh = int(sqrt( totsize * 1e9 /(168*psize) ))
+        totsize *= .9
     nx,ny = get_num_cells(Nh,h,ri,ro)
     psize = problem_size(nx,ny)
     print 'For a total memory of %.1f GB, total snapshot size of %.3f GB, you can have nx=%d, ny=%d, Nh=%d' % (psize,4*8*nx*ny/(1e9),nx,ny,Nh)
@@ -2754,4 +2804,19 @@ class Torque():
                 ax1.set_xscale('log')
 
         return
+
+def make_summary_plots(dirlist):
+    tot = len(dirlist)
+    for i,d in enumerate(dirlist):
+        dirname= d.split('/')[-2]
+        times=glob.glob(d + 'gasdens*.dat')
+        nt = len(times) - 1
+        if nt >0:
+            fname = d + dirname + '_%d.png'%nt
+            sim = Sim(nt,directory=d)
+            sim.summary_plot(savefile=fname)
+            print 'Finished %d of %d'%(i+1,tot)
+        else:
+            print 'No outputs in %s'%dirname
+    return
 

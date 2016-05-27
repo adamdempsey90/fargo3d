@@ -59,9 +59,7 @@ int main(int argc, char *argv[]) {
     //move_to_com();
 
 
-    printf("Calling\n");
     read_stockholm(directory);
-    printf("Called\n");
 /*
     for(j=0;j<size_y;j++) {
         dens0[j] = params.mdot/(3*M_PI*Nu(ymed(j)));
