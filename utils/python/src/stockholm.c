@@ -5,32 +5,46 @@ void stockholm(void) {
     int i,j,k;
     i=j=k=0;
     double tau,taud;
-    double vy_target, vx_target,dens_target;
+    double vy_target = 0;
+    double vx_target = 0; 
+    double dens_target = 0;
     double wkzin = params.wkzin;
     double wkzout = params.wkzout;
     double Y_inf = params.ymin + (params.ymax-params.ymin)*wkzin;
     double Y_sup = params.ymax - (params.ymax-params.ymin)*wkzout;
 
-    dens_target = 0;
-    vy_target = 0;
-    vx_target = 0;
     double ds = 0.03333;
     double rampy = 0;
+#ifdef _OPENMP
+    #pragma omp parallel for collapse(3) private(i,j,k,rampy,vy_target,vx_target,dens_target,tau,taud)
+#endif
     for(k=0;k<size_z;k++) {
         for(j=0;j<size_y;j++) {
             for(i=0;i<size_x;i++) {
                 rampy = 0;
-
+                dens_target = 0;
+                vx_target = 0;
+                vy_target = 0;
                 if (ymed(j) > Y_sup) {
                     rampy = (ymed(j)-Y_sup)/(params.ymax-Y_sup);
+#ifdef STOCKHOLMACC
+                    vy_target = vybar[j];
+                    vx_target = vxbar[j];
+#else
                     vy_target = vy0[j];
                     vx_target = vx0[j];
+#endif
                     dens_target= dens0[j];
                 }
                 if (ymed(j) < Y_inf) {
                     rampy = (Y_inf-ymed(j))/(Y_inf-params.ymin);
+#ifdef STOCKHOLMACC
+                    vy_target = vybar[j];
+                    vx_target = vxbar[j];
+#else
                     vy_target = vy0[j];
                     vx_target = vx0[j];
+#endif
                     dens_target= dens0[j];
     
                 }
@@ -39,10 +53,12 @@ void stockholm(void) {
                 if (rampy > 0.0) {
                     taud = tau/rampy;
 	                vx_target -= (omf-omf0)*ymed(j);
-                    dens[l] = (dens[l]*taud + dens_target*dt)/(dt+taud);
+
                     vx[l] = (vx[l]*taud + vx_target*dt)/(dt+taud);
                     vy[l] = (vy[l]*taud + vy_target*dt)/(dt+taud);
-
+#ifndef NOWAVEKILLRHO
+                    dens[l] = (dens[l]*taud + dens_target*dt)/(dt+taud);
+#endif
 
                 }
 
@@ -58,7 +74,6 @@ void read_stockholm(char *directory) {
     FILE *fd,*fx,*fy;
 
 
-    printf("Inside.\n");
     sprintf(filename,"%sdensity0_2d.dat",directory);
     fd = fopen(filename,"r");
     if (fd == NULL) printf("Error loading %s\n",filename); 
@@ -78,7 +93,6 @@ void read_stockholm(char *directory) {
     fclose(fx);
     fclose(fy);
 
-    printf("%lg\t%lg\t%lg\t%lg\n",vy0[size_y-4],vy0[size_y-3],vy0[size_y-2],vy0[size_y-1]);
     
     return;
 

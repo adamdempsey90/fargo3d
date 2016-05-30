@@ -1,7 +1,13 @@
 #include "evolve.h"
 void vel_to_temp(void) {
+    memcpy(vx_temp,vx,sizeof(double)*size_x*size_y*size_z);
+    memcpy(vy_temp,vy,sizeof(double)*size_x*size_y*size_z);
+/*
     int i,j,k;
     i = j = k =0;
+#ifdef _OPENMP
+    #pragma omp parallel for collapse(3) private(i,j,k)
+#endif
     for(k=0;k<size_z;k++) {
         for(j=0;j<size_y;j++) {
             for(i=0;i<size_x;i++) {
@@ -10,11 +16,18 @@ void vel_to_temp(void) {
             }
         }
     }
+*/
     return;
 }
 void temp_to_vel(void) {
+    memcpy(vx,vx_temp,sizeof(double)*size_x*size_y*size_z);
+    memcpy(vy,vy_temp,sizeof(double)*size_x*size_y*size_z);
+/*
     int i,j,k;
     i = j = k = 0;
+#ifdef _OPENMP
+    #pragma omp parallel for collapse(3) private(i,j,k)
+#endif
     for(k=0;k<size_z;k++) {
         for(j=0;j<size_y;j++) {
             for(i=0;i<size_x;i++) {
@@ -23,6 +36,7 @@ void temp_to_vel(void) {
             }
         }
     }
+*/
     return;
 }
 void transport_step(void) {
@@ -49,12 +63,17 @@ void transport_step(void) {
 void set_momenta(void) {
     int i,j,k;
     i=j=k=0;
-    for(j=0;j<size_y-1;j++) {
-        for(i=0;i<size_x;i++) {
-            Pixm[l] = ymed(j)*(vx_temp[l]+omf*ymed(j))*dens[l];
-            Pixp[l] = ymed(j)*(vx_temp[lxp]+omf*ymed(j))*dens[l];
-            Piym[l] = vy_temp[l]*dens[l];
-            Piyp[l] = vy_temp[lyp]*dens[l];
+#ifdef _OPENMP
+    #pragma omp parallel for collapse(3) private(i,j,k)
+#endif
+    for(k=0;k<size_z; k++) {
+        for(j=0;j<size_y-1;j++) {
+            for(i=0;i<size_x;i++) {
+                Pixm[l] = ymed(j)*(vx_temp[l]+omf*ymed(j))*dens[l];
+                Pixp[l] = ymed(j)*(vx_temp[lxp]+omf*ymed(j))*dens[l];
+                Piym[l] = vy_temp[l]*dens[l];
+                Piyp[l] = vy_temp[lyp]*dens[l];
+            }
         }
     }
 
@@ -107,9 +126,14 @@ void transportY(void) {
 void DividebyRho(double *q) {
     int i,j,k;
     i=j=k=0;
-    for(j=0;j<size_y;j++) {
-        for(i=0;i<size_x;i++) {
-            divrho[l] = q[l]/dens[l];
+#ifdef _OPENMP
+    #pragma omp parallel for collapse(3) private(i,j,k)
+#endif
+    for(k=0;k<size_z;k++) {
+        for(j=0;j<size_y;j++) {
+            for(i=0;i<size_x;i++) {
+                divrho[l] = q[l]/dens[l];
+            }
         }
     }
     return;
@@ -185,10 +209,15 @@ void set_vel(void) {
 
     int i,j,k;
     i=j=k=0;
-    for(j=1;j<size_y;j++) {
-        for(i=0;i<size_x;i++) {
-            vy[l] = (Piym[l] + Piyp[lym])/(dens[l]+dens[lym]);
-            vx[l] = (Pixm[l] + Pixp[lxm])/(ymed(j)*(dens[l]+dens[lxm])) - omf*ymed(j);
+#ifdef _OPENMP
+    #pragma omp parallel for collapse(3) private(i,j,k)
+#endif
+    for(k=0;k<size_z;k++) {
+        for(j=1;j<size_y;j++) {
+            for(i=0;i<size_x;i++) {
+                vy[l] = (Piym[l] + Piyp[lym])/(dens[l]+dens[lym]);
+                vx[l] = (Pixm[l] + Pixp[lxm])/(ymed(j)*(dens[l]+dens[lxm])) - omf*ymed(j);
+            }
         }
     }
 /*

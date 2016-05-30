@@ -5,6 +5,9 @@ void artificial_visc(void) {
     int i,j,k;
     i=j=k=0;
     double dvx,dvy;
+#ifdef _OPENMP
+    #pragma omp parallel for collapse(3) private(i,j,k,dvx,dvy)
+#endif
     for(k=0;k<size_z;k++) {
         for(j=0;j<size_y-1;j++) {
             for(i=0;i<size_x;i++) {
@@ -28,6 +31,9 @@ void artificial_visc(void) {
     }
 
 
+#ifdef _OPENMP
+    #pragma omp parallel for collapse(3) private(i,j,k)
+#endif
     for(k=0;k<size_z;k++) {
         for(j=1;j<size_y-1;j++) {
             for(i=0;i<size_x;i++) {

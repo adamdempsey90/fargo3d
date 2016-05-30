@@ -19,7 +19,7 @@ void set_avg(int p) {
         vybar[j] = resy/(double)nx;
         dbar[j] = resd/(double)nx;
         Lt[j + p*size_y] = resL/(double)nx;
-        if (p==1) dbart[j] += dbar[j];
+        if (p==1) dbart[j] += dbar[j]*dt;
 
         Ld[j + p*size_y] = ymed(j)*( vxbar[j] + omf*ymed(j))*dbar[j];
         Lw[j + p*size_y] = Lt[j + p*size_y] - Ld[j + p*size_y];

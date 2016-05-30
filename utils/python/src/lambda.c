@@ -1,6 +1,9 @@
 #include "evolve.h"
 void set_Lamdep(void) {
     int j;
+#ifdef _OPENMP
+    #pragma omp parallel for private(j)
+#endif
     for(j=NGHY;j<size_y - NGHY;j++) {
         dtLt[j] += (Lt[j+size_y]-Lt[j]);
         dtLd[j] += (Ld[j+size_y]-Ld[j]);
@@ -17,6 +20,9 @@ void set_Lamex(void) {
     i=j=k=0;
     
     double res,resi;
+#ifdef _OPENMP
+    #pragma omp parallel for private(i,j,res,resi)
+#endif
     for(j=NGHY;j<size_y-NGHY;j++) {
         res = 0;
         resi = 0;

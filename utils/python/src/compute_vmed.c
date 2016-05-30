@@ -6,6 +6,9 @@ void compute_vmed(double *vt) {
     i=j=k=0;
     double res;
 
+#ifdef _OPENMP
+    #pragma omp parallel for collapse(2) private(i,j,k,res)
+#endif
     for(k=0;k<size_z;k++) {
         for(j=0;j<size_y;j++) {
             res = 0;

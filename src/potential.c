@@ -32,6 +32,8 @@ void compute_potential(real dt) {
         InitPotential = NO;
   }
 #endif
+
+#ifndef FIXEDPSYS
   FARGO_SAFE(AdvanceSystemFromDisk(dt));
 
   if (ThereIsACentralBinary)
@@ -47,6 +49,7 @@ void compute_potential(real dt) {
     OMEGAFRAME = OmegaNew;
   }
   RotatePsys(OMEGAFRAME*dt);
+#endif
 }
 
 void Potential_cpu() {

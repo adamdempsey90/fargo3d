@@ -52,10 +52,10 @@ void output(char *directory) {
     fclose(f);
     return;
 }
-void output_torque(char *directory) {
+void output_torque(char *directory,int n) {
     FILE *f;
     char fname[256];
-    sprintf(fname,"%storque.dat",directory);
+    sprintf(fname,"%storque%d.dat",directory,n);
     f = fopen(fname,"w");
     fwrite(&Ymed[NGHY],sizeof(double),ny,f);
     fwrite(&dbart[NGHY],sizeof(double),ny,f);

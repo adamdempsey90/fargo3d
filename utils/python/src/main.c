@@ -6,6 +6,8 @@ int main(int argc, char *argv[]) {
     int status;
     char directory[256],outputdir[256];
 
+
+
     if (argc > 4) {
         printf("Too many arguments.Only using first 3.\n");
     }
@@ -82,6 +84,10 @@ int main(int argc, char *argv[]) {
     double tstart = psys[0].t;
     double tend = psys[0].t + time_step;
     double time = tstart;
+#ifdef _OPENMP
+    //omp_set_num_threads(8);
+    printf("Using %d threads\n",omp_get_max_threads());
+#endif
     printf("Starting time = %lg\nEnding time = %lg\n",tstart,tend);
     set_bc();
     while ((time < tend) && nsteps<MAXSTEPS) {
@@ -101,7 +107,9 @@ int main(int argc, char *argv[]) {
     
         potential();
         
+#ifndef FIXEDPSYS
         move_planet();
+#endif
     
        
        source_step();
@@ -161,7 +169,8 @@ int main(int argc, char *argv[]) {
     }
 
     output(outputdir);
-    output_torque(outputdir);
+    output_torque(directory,n);
+    output_torque(outputdir,n);
     free_rk5();
     //free_all();
     return 0;

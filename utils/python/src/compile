@@ -1,6 +1,16 @@
 #!/bin/bash
 
 CFLAGS="-c -O3 -Wall -Wextra -std=c99"
+LFLAGS="-lm"
+
+
+if [[ "$@" == "-omp" ]] 
+then
+    CFLAGS=$CFLAGS" -fopenmp"
+    LFLAGS=$LFLAGS" -lgomp"
+fi
+
+
 gcc $CFLAGS allocate.c -o bin/allocate.o
 gcc $CFLAGS average.c -o bin/average.o
 gcc $CFLAGS boundary.c -o bin/boundary.o
@@ -25,4 +35,4 @@ gcc $CFLAGS advection.c -o bin/advection.o
 gcc $CFLAGS ppa.c -o bin/ppa.o
 gcc $CFLAGS compute_vmed.c -o bin/compute_vmed.o
 
-gcc bin/allocate.o bin/average.o bin/boundary.o bin/cfl.o bin/artificial_visc.o bin/disk.o bin/main.o bin/input.o bin/lambda.o bin/output.o bin/planets.o bin/potential.o bin/pressure.o bin/source_step.o  bin/transport.o bin/update.o bin/vanleer.o bin/viscosity.o bin/read_pars.o bin/stockholm.o bin/ppa.o bin/advection.o bin/compute_vmed.o -lm -o ../run_step
+gcc bin/allocate.o bin/average.o bin/boundary.o bin/cfl.o bin/artificial_visc.o bin/disk.o bin/main.o bin/input.o bin/lambda.o bin/output.o bin/planets.o bin/potential.o bin/pressure.o bin/source_step.o  bin/transport.o bin/update.o bin/vanleer.o bin/viscosity.o bin/read_pars.o bin/stockholm.o bin/ppa.o bin/advection.o bin/compute_vmed.o $LFLAGS -o ../run_step

@@ -114,9 +114,12 @@ void init_stockholm() {
 void init_stockholm_accretion() {
 
   INPUT(Density);
+  INPUT(Vx);
   INPUT(Vy);
   OUTPUT2D(Density0_avg);
+  OUTPUT2D(Vx0_avg);
   OUTPUT2D(Vy0_avg);
+  FARGO_SAFE(ComputeVxmed(Vx));
   FARGO_SAFE(ComputeVymed(Vy));
   FARGO_SAFE(ComputeRhomed(Density));
 

@@ -9,6 +9,9 @@ void advect_shift(double *q, int *nshift) {
     
     int itarget,ltarget;
 
+#ifdef _OPENMP
+    #pragma omp parallel for collapse(3) private(i,j,k,itarget,ltarget)
+#endif
     for(k=0;k<size_z;k++) {
         for(j=0;j<size_y;j++) {
             for(i=0;i<size_x;i++) {
@@ -36,6 +39,9 @@ void compute_residuals(double dt) {
     i=j=k=0;
     double ntilde, nround;
 
+#ifdef _OPENMP
+    #pragma omp parallel for collapse(3) private(i,j,k,ntilde,nround)
+#endif
     for(k=0;k<size_z;k++) {
         for(j=0;j<size_y;j++) {
             for(i=0;i<size_x;i++) {

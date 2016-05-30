@@ -997,6 +997,20 @@ class Sim(Mesh,Parameters):
         self.rh = (self.mp/3)**(1./3) * self.a
         self.safety_fac  = .5
 
+        try:
+            trqname = 'torque%d.dat'%self.n
+            dat = np.fromfile(trqname)
+            print 'Loaded torque file from %s'%trqname
+            attrs = ['y','dbar','Lt','Ltn','Ld','Ldn','Lw','Lwn',
+                    'drFt','drFd','drFw',
+                    'Lamex','indLam','Lamdep',
+                    'dtLt','dtLd','dtLw','mdot']
+
+            for i,a in enumerate(attrs):
+                setattr(self,'trq_'+a,dat[i*self.params.ny:(i+1)*self.params.ny])
+        except IOError:
+            pass
+
         print 'The time is %.2e, %.2e outer viscous times, %.2e planet viscous times, %.2e planet orbits' %(self.t,self.t/self.tvisc, self.t/self.tviscp,self.t/self.torb)
 #        self.dTr,self.Lambda,self.Fh=self.calc_torques()
 
@@ -2087,10 +2101,13 @@ class Sim(Mesh,Parameters):
         with open(self.directory + 'param_file.txt','w') as f:
             f.write(lines)
 
-        print dt
-        callstr = [execdir + execname,'%d'%self.n,'%.2f'%dt,self.directory]
+        dirval = self.directory
+        if dirval == '':
+            dirval = './'
+
+        callstr = [execdir + execname,'%d'%self.n,'%f'%dt,dirval]
         print callstr
-        call(callstr)
+        #call(callstr)
 
         self.torque = Torque()
         return
@@ -2559,7 +2576,7 @@ def get_num_cells(Nh,h,ri,ro):
     ny = int( Nh * log(ro/ri)/h)
     nx = int(2*pi/h * Nh)
     return nx,ny
-def get_optimal_num_points(h,ri,ro,totsize=12,nperh=None, 3D = False):
+def get_optimal_num_points(h,ri,ro,totsize=12,nperh=None, threed= False):
     psize = 2*pi*log(ro/ri)/(h*h)
     if nperh is not None:
         Nh = nperh
@@ -2690,29 +2707,29 @@ class Torque():
 
     def __init__(self,directory='temp_files/'):
 
-        dat = np.loadtxt('param_file.txt')
-        nx = dat[0]
-        ny = dat[1]
-        self.nx = nx
-        self.ny = ny
-        self.nz = dat[2]
-        self.alpha = dat[3]
-        self.mp = dat[4]
-        self.a = dat[5]
-        self.h = dat[6]
-      #  self.omf = dat[6]
-        self.flaringindex = dat[7]
-        self.soft = dat[9]
-        self.indirectterm = bool(dat[10])
-      #  self.dt = dat[11]
-        dat = np.fromfile(directory+'torque.dat')
+#        dat = np.loadtxt('param_file.txt')
+#        nx = dat[0]
+#        ny = dat[1]
+#        self.nx = nx
+#        self.ny = ny
+#        self.nz = dat[2]
+#        self.alpha = dat[3]
+#        self.mp = dat[4]
+#        self.a = dat[5]
+#        self.h = dat[6]
+#      #  self.omf = dat[6]
+#        self.flaringindex = dat[7]
+#        self.soft = dat[9]
+#        self.indirectterm = bool(dat[10])
+#      #  self.dt = dat[11]
+        dat = np.fromfile('torque%d.dat'%self.n)
         attrs = ['y','dbar','Lt','Ltn','Ld','Ldn','Lw','Lwn',
                 'drFt','drFd','drFw',
                 'Lamex','indLam','Lamdep',
                 'dtLt','dtLd','dtLw','mdot']
 
         for i,a in enumerate(attrs):
-            setattr(self,a,dat[i*ny:(i+1)*ny])
+            setattr(self,'trq_'+a,dat[i*ny:(i+1)*ny])
 
         #self.ymin = dat[-2*(ny+1):-(ny+1)]
         #self.mdot= dat[-(ny+1):]

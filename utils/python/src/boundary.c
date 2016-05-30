@@ -17,6 +17,9 @@ void ymax_bound(void) {
   int lactb;
   int lactbs;
   int lactbs_null;
+#ifdef _OPENMP
+    #pragma omp parallel for collapse(3) private(i,j,k,lgh,lghs,lactb,lactbs,lactbs_null,jgh,jact)
+#endif
   for(k=0; k<size_z; k++) {
     for(j=0; j<NGHY; j++) {
       for(i=0; i<size_x; i++) {
@@ -63,6 +66,9 @@ void ymin_bound_acc(void) {
 
   i = j = k = 0;
 
+#ifdef _OPENMP
+    #pragma omp parallel for collapse(3) private(i,j,k,sig1,ri1,rm1,vr1,lgh,lghs,lactb,lactbs_null,jgh,jact)
+#endif
   for(k=0; k<size_z; k++) {
     for(j=0; j<NGHY; j++) {
       for(i=0; i<size_x; i++) {
@@ -112,6 +118,9 @@ void ymax_bound_acc(void) {
 
   i = j = k = 0;
 
+#ifdef _OPENMP
+    #pragma omp parallel for collapse(3) private(i,j,k,sig1,ri1,fh1,lgh,lghs,lactb,lactbs_null,jgh,jact)
+#endif
   for(k=0; k<size_z; k++) {
     for(j=0; j<NGHY; j++) {
       for(i=0; i<size_x; i++) {
@@ -148,6 +157,9 @@ void ymin_bound(void) {
   int lactb;
   int lactbs;
   int lactbs_null;
+#ifdef _OPENMP
+    #pragma omp parallel for collapse(3) private(i,j,k,lgh,lghs,lactb,lactbs,lactbs_null,jgh,jact)
+#endif
 for(k=0; k<size_z; k++) {
     for(j=0; j<NGHY; j++) {
       for(i=0; i<size_x; i++) {

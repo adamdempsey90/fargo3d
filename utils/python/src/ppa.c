@@ -10,6 +10,11 @@ void vanleer_ppa_a(double *q) {
     double dqm, dqp,temp;
 
 
+#ifdef _OPENMP
+    #pragma omp parallel 
+    {
+    #pragma omp for collapse(3) private(i,j,k,dqm,dqp,temp)
+#endif
     for(k=0;k<size_z;k++) {
         for(j=0;j<size_y;j++) {
             for(i=0;i<size_x;i++) {
@@ -40,6 +45,10 @@ void vanleer_ppa_a(double *q) {
     }
 
 
+#ifdef _OPENMP
+    #pragma omp barrier
+    #pragma omp for collapse(3) private(i,j,k,temp)
+#endif
     for(k=0;k<size_z;k++) {
         for(j=0;j<size_y;j++) {
             for(i=0;i<size_x;i++) {
@@ -52,6 +61,10 @@ void vanleer_ppa_a(double *q) {
     
 
 
+#ifdef _OPENMP
+    #pragma omp barrier
+    #pragma omp for collapse(3) private(i,j,k,diff,cord)
+#endif
     for(k=0;k<size_z;k++) {
         for(j=0;j<size_y;j++) {
             for(i=0;i<size_x;i++) {
@@ -70,7 +83,9 @@ void vanleer_ppa_a(double *q) {
             }
         }
     }
-
+#ifdef _OPENMP
+    }
+#endif
     return;
 }
 void vanleer_ppa_b(double dt, double *q, double *qs, double *vxt) {
@@ -79,6 +94,9 @@ void vanleer_ppa_b(double dt, double *q, double *qs, double *vxt) {
     double ksi;
 
 
+#ifdef _OPENMP
+    #pragma omp parallel for collapse(3) private(i,j,k,ksi)
+#endif
     for(k=0;k<size_z;k++) {
         for(j=0;j<size_y;j++) {
             for(i=0;i<size_x;i++) {

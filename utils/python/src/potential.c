@@ -19,24 +19,29 @@ void potential(void) {
         }
     }
     */
-    for(j=0;j<size_y;j++) {
-        for(i=0;i<size_x;i++) {
-            Pot[l] = 0;
-            for(n=0;n<nb;n++) {
-                mp = psys[n].mp;
-                xpl = psys[n].x;
-                ypl = psys[n].y;
-                distp = sqrt(xpl*xpl + ypl*ypl);
-                smoothing = params.h*pow(distp,params.flaringindex)*distp*params.soft;
-                smoothing *= smoothing;
-                rad = (XC-xpl)*(XC-xpl) + (YC-ypl)*(YC-ypl);
-                Pot[l] -= G*mp/sqrt(rad + smoothing);
+#ifdef _OPENMP
+    #pragma omp parallel for collapse(3) private(i,j,k,n,mp,xpl,ypl,distp,smoothing,rad)
+#endif
+    for(k=0;k<size_z;k++) {
+        for(j=0;j<size_y;j++) {
+            for(i=0;i<size_x;i++) {
+                Pot[l] = 0;
+                for(n=0;n<nb;n++) {
+                    mp = psys[n].mp;
+                    xpl = psys[n].x;
+                    ypl = psys[n].y;
+                    distp = sqrt(xpl*xpl + ypl*ypl);
+                    smoothing = params.h*pow(distp,params.flaringindex)*distp*params.soft;
+                    smoothing *= smoothing;
+                    rad = (XC-xpl)*(XC-xpl) + (YC-ypl)*(YC-ypl);
+                    Pot[l] -= G*mp/sqrt(rad + smoothing);
+                }
+                indPot[l] = 0;
+                /*
+                indPot[l] = G*planet.mp*(XC*xpl+YC*ypl)/(distp*distp*distp); 
+                indPot[l]  -= resx*XC + resy*YC ;
+                */
             }
-            indPot[l] = 0;
-            /*
-	        indPot[l] = G*planet.mp*(XC*xpl+YC*ypl)/(distp*distp*distp); 
-	        indPot[l]  -= resx*XC + resy*YC ;
-            */
         }
     }
     return;

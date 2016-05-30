@@ -4,6 +4,12 @@
 #include <math.h>
 #include <sys/stat.h>
 #include <ctype.h>
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
+
+
 
 #define NGHY 3
 #define TRUE 1
@@ -20,6 +26,9 @@
 
 #define ARTIFICIALVISCOSITY
 #define FARGO
+#define STOCKHOLMACC
+#define NOWAVEKILLRHO
+//#define FIXEDPSYS
 
 
 #define MALLOC_SAFE(ptr) if (ptr == NULL) printf("Malloc error at line %d!\n",__LINE__);
@@ -181,7 +190,7 @@ void output_init(char *directory);
 void set_Lamdep(void);
 void set_waves(void);
 void set_Lamex(void);
-void output_torque(char *directory);
+void output_torque(char *directory,int n);
 void set_avg(int p);
 double cfl(void);
 void read_planet_file(int n, char *directory);
