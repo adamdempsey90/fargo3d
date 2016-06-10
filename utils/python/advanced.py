@@ -168,8 +168,8 @@ class Field(Mesh, Parameters):
             self.alpha = self.alphaviscosity
         self.recalculate()
         try:
-            self.wkz = self.ymin + (self.ymax-self.ymin)*self.wkzin
-            self.wkzr = self.ymax - (self.ymax-self.ymin)*self.wkzout
+            self.wkz = self.ymin + (self.ymax-self.ymin)*.0497
+            self.wkzr = self.ymax - (self.ymax-self.ymin)*.19
         except AttributeError:
             self.wkzr = self.ymax
             self.wkz = self.ymin
@@ -999,7 +999,7 @@ class Sim(Mesh,Parameters):
 
         try:
             trqname = 'torque%d.dat'%self.n
-            dat = np.fromfile(trqname)
+            dat = np.fromfile(self.directory+trqname)
             print 'Loaded torque file from %s'%trqname
             attrs = ['y','dbar','Lt','Ltn','Ld','Ldn','Lw','Lwn',
                     'drFt','drFd','drFw',
@@ -1104,6 +1104,34 @@ class Sim(Mesh,Parameters):
         self.lambda_dep.integral = hstack( ( zeros(self.lambda_dep.ny-len(self.lambda_dep.integral)),self.lambda_dep.integral))
 
         return
+
+    def dump_torque(self,exclude_wkz=False):
+        fname = self.directory + 'trq_%d_out.dat'%self.n
+
+        if exclude_wkz:
+            ind = (self.trq_y > self.dens.wkz)&(self.trq_y < self.dens.wkzr)
+        else:
+            #ind = range(len(self.trq_y))
+            ind = range(10,len(self.trq_y)-10)
+
+
+        header = np.array( [ float(len(self.trq_y[ind])),
+            self.params.alpha,
+            self.params.mdot,
+            self.params.aspectratio,
+            self.params.ymin,
+            self.params.ymax])
+
+
+        np.hstack((header,
+            self.trq_y[ind],
+            self.trq_Lamdep[ind],
+            self.trq_Lamex[ind],
+            self.trq_mdot[ind],
+            self.trq_drFd[ind],
+            self.trq_drFw[ind],
+            self.trq_Ld[ind],
+            self.trq_dbar[ind]) ).tofile(fname)
 
     def plot_resonance(self,ax=None):
         if ax is None:
@@ -1808,6 +1836,35 @@ class Sim(Mesh,Parameters):
         ax.set_xscale('log')
         ax.set_yscale('log')
         ax.minorticks_on()
+
+        try:
+            xt = (self.trq_y -self.a)/self.scaleH(self.a)
+            left_bound = (self.dens.ymin + (self.dens.ymax-self.dens.ymin)*.0497 - self.a)/self.scaleH(self.a)
+            right_bound = 10.
+            ind = (xt>left_bound)&(xt<right_bound)
+            ax2 = plt.axes([.26,.4,.2,.2])
+            ax2.plot(xt[ind],self.trq_Lamex[ind],'-k',linewidth=2)
+            ax2.plot(xt[ind],self.trq_Lamdep[ind],'-r',linewidth=2)
+            ax2.plot(xt[ind],self.trq_drFw[ind],'-b',linewidth=2)
+            mmr2x = (mmr2-self.a)/self.scaleH(self.a)
+            mmr3x = (mmr3-self.a)/self.scaleH(self.a)
+            hsL = (lb+self.a-self.a)/self.scaleH(self.a)
+            hsR = (rb+self.a-self.a)/self.scaleH(self.a)
+            if mmr2x > left_bound and mmr2x < right_bound:
+                ax2.axvline(mmr2x,color='k',linestyle='--')
+            if mmr3x > left_bound and mmr3x < right_bound:
+                ax2.axvline(mmr3x,color='k',linestyle='--')
+            if hsL > left_bound and hsL < right_bound:
+                ax2.axvline(hsL,color='k',linewidth=2)
+            if hsR > left_bound and hsR < right_bound:
+                ax2.axvline(hsR,color='k',linewidth=2)
+            ax2.minorticks_on()
+            ax2.set_xlim(left_bound,right_bound)
+            ax2.set_xlabel('$(r-r_p)/H(r_p)$',fontsize=15)
+            print 'Added torque to plot'
+        except AttributeError:
+            print "Could't find a torque file for this output!"
+
         axes[0].set_title(tstr1,fontsize=15)
         axes[1].set_title(tstr2,fontsize=15)
         if mmr2 < 2:
@@ -2821,6 +2878,19 @@ class Torque():
                 ax1.set_xscale('log')
 
         return
+
+def make_summary_plots_f(dirlist,numlist):
+    tot = len(dirlist)
+
+    print 'Working on:'
+    for i,(d,n) in enumerate(zip(dirlist,numlist)):
+        fname = d  + d.split('/')[-2] + '_f_%d.png'%n
+        print n,d,fname,
+        sim = Sim(n,directory=d)
+        sim.summary_plot(savefile=fname)
+        print 'Finished %d of %d'%(i+1,tot)
+
+    return
 
 def make_summary_plots(dirlist):
     tot = len(dirlist)

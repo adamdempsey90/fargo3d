@@ -30,22 +30,24 @@ void stockholm(void) {
 #ifdef STOCKHOLMACC
                     vy_target = vybar[j];
                     vx_target = vxbar[j];
+                    dens_target= dbar[j];
 #else
                     vy_target = vy0[j];
                     vx_target = vx0[j];
-#endif
                     dens_target= dens0[j];
+#endif
                 }
                 if (ymed(j) < Y_inf) {
                     rampy = (Y_inf-ymed(j))/(Y_inf-params.ymin);
 #ifdef STOCKHOLMACC
                     vy_target = vybar[j];
                     vx_target = vxbar[j];
+                    dens_target= dbar[j];
 #else
                     vy_target = vy0[j];
                     vx_target = vx0[j];
-#endif
                     dens_target= dens0[j];
+#endif
     
                 }
                 rampy *= rampy;
@@ -66,7 +68,7 @@ void stockholm(void) {
         }
     }
 
-
+    return;
 
 }
 void read_stockholm(char *directory) {

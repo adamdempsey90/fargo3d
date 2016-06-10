@@ -44,6 +44,7 @@ int main(int argc, char *argv[]) {
     dx = 2*M_PI/nx;
 
     allocate_all();
+    allocate_conv();
     
     read_domain(directory);
     
@@ -172,6 +173,7 @@ int main(int argc, char *argv[]) {
     output_torque(directory,n);
     output_torque(outputdir,n);
     free_rk5();
+    free_conv();
     //free_all();
     return 0;
 }

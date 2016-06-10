@@ -1,0 +1,2 @@
+#!/bin/bash
+gcc -I/software/FFTW/2.1.5-gcc/include -o conv convolution.c -L/software/FFTW/2.1.5-gcc/lib -lrfftw -lfftw -lm

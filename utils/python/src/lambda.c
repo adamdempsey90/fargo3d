@@ -26,6 +26,9 @@ void set_Lamex(void) {
     for(j=NGHY;j<size_y-NGHY;j++) {
         res = 0;
         resi = 0;
+        
+        convolution_deriv(dens,Pot,Lamex,-dt,j,j,k);
+
         for(i=0;i<size_x;i++) {
             res -= dens[l]*(Pot[lxp]-Pot[lxm])/(2*dx);
             resi -= dens[l]*(indPot[lxp]-indPot[lxm])/(2*dx);

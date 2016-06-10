@@ -20,6 +20,7 @@
 #define CVNR 1.41
 #define CVNL 0.05
 #define MINDT 1e-10
+#define MMAX 30
 #ifndef M_PI
 #define M_PI (3.14159265358979323846)
 #endif
@@ -28,7 +29,7 @@
 #define FARGO
 #define STOCKHOLMACC
 #define NOWAVEKILLRHO
-//#define FIXEDPSYS
+#define FIXEDPSYS
 
 
 #define MALLOC_SAFE(ptr) if (ptr == NULL) printf("Malloc error at line %d!\n",__LINE__);
@@ -215,3 +216,7 @@ void output_stock(char *directory);
 void read_stockholm(char *directory);
 void output_psys(char *directory, int n);
 void compute_vmed(double *vt);
+void convolution(double *fld1, double *fld2, double *result, double fac, int jres, int j, int k);
+void convolution_deriv(double *fld1, double *fld2, double *res, double fac, int jres, int j, int k);
+void free_conv(void);
+void allocate_conv(void);
