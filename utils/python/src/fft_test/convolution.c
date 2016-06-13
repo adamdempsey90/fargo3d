@@ -1,176 +1,95 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <math.h>
-#include <complex.h>
-#include <string.h>
-#include <rfftw.h>
+#include "evolve.h"
+#include "rfftw.h"
 
 
-#define MMAX 50
-#define NGHY 0
-#define ymed(j) Ymed[(j)]
-#define xmed(i) Xmed[(i)]
-#define ymin(j) Ymin[(j)]
-#define xmin(i) Xmed[(i)]
-#define zone_size_x(j,k) (dx*ymed(j))
-#define zone_size_y(j,k) (ymin(j+1)-ymin(j))
-#define SurfY(j,k) ymin(j)*dx
-#define SurfX(j,k) (ymin(j+1)-ymin(j))
-#define InvVol(j,k) 2/(dx*(ymin(j+1)*ymin(j+1) - ymin(j)*ymin(j)))
-#define Vol(j,k) 0.5*(dx*(ymin(j+1)*ymin(j+1) - ymin(j)*ymin(j)))
-#define XC ymed(j)*cos(xmed(i))
-#define YC ymed(j)*sin(xmed(i))
-
-#define l   ((i)+(j)*(nx)+((k)*stride))
-#define l_f(ii,jj,kk)   ((ii)+(jj)*(nx)+((kk)*stride))
-#define lact   ((i)+(jact)*(nx)+((k)*stride))
-#define lxp (((i)<(nx-1)) ? ((l)+1) : ((l)-(nx-1)))
-#define lxm (((i)>0) ? ((l)-1) : ((l)+(nx-1)))
-#define l2D ((j)+((k)*pitch2d))
-#define l2D_int ((j)+((k)*pitch2d))
-
-#define ixm ((i)>0 ? ((i)-1) : nx-1)
-#define ixp ((i)<nx-1 ? ((i)+1) : 0)
-
-#define lyp ((l)+nx)
-#define lym ((l)-nx)
-
-#define lzp (l+stride)
-#define lzm (l-stride)
-
-
-void read_files(void);
-void read_domain(void);
-void allocate(void);
-
-int nx,ny,size_x,size_y,stride,pitch,pitch2d,pitch2d_int;
+double *in1, *in2;
+fftw_real *out1, *out2;
 int size_f;
-int nz,size_z;
-double dx;
-double *Xmin, *Ymin, *Xmed, *Ymed;
-fftw_real *in1, *in2;
-double *dens, *vy;
-double *res;
-fftw_real *out1,*out2;
-rfftw_plan p1;
+double fft_norm_fac;
+rfftw_plan fplan;
 
-int main(int argc, char *argv[]) {
 
-    ny = 512;
-    nx = 700;
-    nz = 1; size_z = nz;
-    size_x = nx;
-    size_y = ny + 2*NGHY;
-    size_f = (size_x+1)/2;
-    stride = size_x*size_y;
-    pitch = size_x;
-    pitch2d = 0;
-    pitch2d_int = 0 ;//pitch*(int)double_to_int;
-    dx = 2*M_PI/nx;
-    
-    allocate();
-    read_domain();
-    read_files();
-
-    printf("Read domain\n");
-
-    p1 = rfftw_create_plan(size_x,FFTW_REAL_TO_COMPLEX,FFTW_ESTIMATE);
-    printf("Allocated plan\n");
-
-    int i,j,k;
-    i = j = k =0;
-    double fac = (double)(size_x * size_x);
-    for(j=0;j<size_y;j++) {
-        i = 0;
-        memcpy(in1,&dens[l],sizeof(double)*size_x);
-        memcpy(in2,&vy[l],sizeof(double)*size_x);
-        rfftw_one(p1,in1,out1);
-        rfftw_one(p1,in2,out2);
-
-        res[j*size_f] = out1[0]*out2[0]/fac;
-        for(i=1;i< size_f ;i++) {
-            res[i + j*size_f] = 2 *( out1[i]*out2[i] + out1[size_x-i]*out2[size_x-i] )/fac;
-        }
-    }
-
-    
-
-    printf("%d\t%d\t%d\n",size_y,(size_x+1)/2,size_y*(size_x+1)/2);
-    FILE *f = fopen("output.dat","w");
-    fwrite(res,sizeof(double),size_y*MMAX,f);
-    fclose(f);
-
-    rfftw_destroy_plan(p1);
-    fftw_free(out1); fftw_free(out2);
-
-    return 0;
+void fft1d(const double *fld1, double *res) {
+    memcpy(&in1[0],&fld1[0],sizeof(double)*size_x);
+    rfftw_one(fplan,in1,out1);
+    memcpy(&res[0],&out1[0],sizeof(double)*size_x);
+    return;
 }
 
-void read_domain(void) {
-    FILE *fx, *fy;
-    char filename[512];
-    char filename2[512];
-    int i,j;
 
-    fx = fopen("domain_x.dat","r");
+void convolution(const double *fld1, const double *fld2, double *res, double fac, int jres, int ncols) {
+    int mi;
+    double temp;
+    
+    memcpy(&in1[0],&fld1[0],sizeof(double)*size_x);
+    memcpy(&in2[0],&fld2[0],sizeof(double)*size_x);
 
-    for(i=0;i<size_x+1;i++) {
-        fscanf(fx,"%lg\n",&Xmin[i]);
+
+    rfftw_one(fplan,in1,out1);
+    rfftw_one(fplan,in2,out2);
+
+    res[jres + ncols] += fac*out1[0]*out2[0]/fft_norm_fac; 
+    
+    for(mi=1;mi<MMAX;mi++) {
+        res[jres + (mi+1)*ncols] += fac*2*(out1[mi]*out2[mi] + out1[size_x-mi]*out2[size_x-mi])/fft_norm_fac;
     }
-    fclose(fx);
-    fx = fopen("domain_y.dat","r");
-
-    for(i=0;i<size_y+1;i++) {
-        fscanf(fx,"%lg\n",&Ymin[i]);
+    temp = 0;
+    for(mi=MMAX; mi<size_f;mi++) {
+        temp += 2*(out1[mi]*out2[mi] + out1[size_x-mi]*out2[size_x-mi]);
     }
-    fclose(fx);
+    if ( NEVEN ) {
+        temp += out1[size_x/2]*out2[size_x/2];
+    }
+    res[jres + (MMAX+1)*ncols] += fac*temp/fft_norm_fac;
+    
 
+    return;
+}
+void convolution_deriv(const double *fld1, const double *fld2, double *res, double fac, int jres,int ncols) {
+    int mi;
+    memcpy(&in1[0],&fld1[0],sizeof(double)*size_x);
+    memcpy(&in2[0],&fld2[0],sizeof(double)*size_x);
+    rfftw_one(fplan,in1,out1);
+    rfftw_one(fplan,in2,out2);
+
+    for(mi=1;mi<MMAX;mi++) {
+        res[jres + (mi+1)*ncols] += mi*fac*2*(out1[mi]*out2[size_x-mi] - out1[size_x-mi]*out2[mi])/fft_norm_fac;
+    }
+    double temp = 0;
+    for(mi=MMAX;mi< size_f;mi++) {
+        temp += mi*2*(out1[mi]*out2[size_x-mi] - out1[size_x-mi]*out2[mi]);
+    }
+    res[jres + (MMAX+1)*ncols] += fac*temp/fft_norm_fac;
+
+
+    return;
+}
+
+void allocate_conv(void) {
+    size_f = (size_x + 1)/2;
+    in1 = (double *)malloc(sizeof(double)*size_x);
+    in2 = (double *)malloc(sizeof(double)*size_x);
+    out1 = (fftw_real *)malloc(sizeof(double)*size_x);
+    out2 = (fftw_real *)malloc(sizeof(double)*size_x);
+    
+    fplan = rfftw_create_plan(size_x,FFTW_REAL_TO_COMPLEX,FFTW_ESTIMATE);
+
+    fft_norm_fac = (double)size_x*size_x;
+    int i;
     for(i=0;i<size_x;i++) {
-        Xmed[i] = .5*(Xmin[i] + Xmin[i+1]);
-    }
-    for(j=0;j<size_y;j++) {
-        Ymed[j] = .5*(Ymin[j] + Ymin[j+1]);
+        in1[i] = 0;
+        in2[i] = 0;
+        out1[i] = 0;
+        out2[i] = 0;
     }
 
     return;
 }
-
-void read_files(void) {
-    FILE *fd,*fy;
-    int i,j,k;
-
-
-    fd = fopen("gasdens30.dat","r");
-    fy = fopen("gasvy30.dat","r");
-
-    i=j=k=0;
-    for(k=0;k<size_z;k++) {
-        for(j =NGHY; j<size_y-NGHY;j++) {
-            for(i=0;i<size_x;i++) {
-                fread(&dens[l],sizeof(double),1,fd);
-                fread(&vy[l],sizeof(double),1,fy);
-            }
-        }
-    }
-    fclose(fd);
-    fclose(fy);
-
+void free_conv(void) {
+    free(in1);
+    free(in2);
+    fftw_free(out1);
+    fftw_free(out2);
+    rfftw_destroy_plan(fplan);
     return;
-
-}
-void allocate(void) {
-    Ymin =(double *) malloc(sizeof(double)*(size_y+1));
-    Xmin =(double *) malloc(sizeof(double)*(size_x+1));
-    Ymed =(double *) malloc(sizeof(double)*size_y);
-    Xmed =(double *) malloc(sizeof(double)*size_x);
-    dens =(double *) malloc(sizeof(double)*size_y*size_x);
-    vy =  (double *) malloc(sizeof(double)*size_y*size_x);
-    in1 =  (fftw_real *) malloc(sizeof(fftw_real)*size_x);
-    out1 = (fftw_real *) fftw_malloc(sizeof(fftw_real)*size_x);
-    in2 =  (fftw_real *) malloc(sizeof(fftw_real)*size_x);
-    out2 = (fftw_real *) fftw_malloc(sizeof(fftw_real)*size_x);
-    res = (double *)malloc(sizeof(double)*size_y*size_f);
-    return;
-
-
 }

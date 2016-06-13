@@ -169,13 +169,17 @@ void StockholmBoundary_cpu(real dt) {
 	  rampy   = (Y_inf-ymed(j))/(Y_inf-y_min);
       vr_target = vy0[l2D];
       vp_target = vx0[l2D];
+      rho_target = rho0[l2D];
+/*
 #ifdef STOCKHOLMACC
       rho_target = rho0_avg[l2D];
 #else
       rho_target = rho0[l2D];
 #endif
+*/
 	}
 	rampy *= rampy;		/* Parabolic ramp as in De Val Borro et al (2006) */
+
 #endif
 #ifdef Z
 	if(zmed(k) > Z_sup) {
@@ -205,6 +209,7 @@ void StockholmBoundary_cpu(real dt) {
 #ifndef NOWAVEKILLRHO
       rho[l] = (rho[l]*taud+rho_target*dt)/(dt+taud);
 #endif
+#ifndef NOWAVEKILLVPHI
 #ifdef X
 	  vx0_target = vx0[l2D];
 	  radius = ymed(j);
@@ -213,6 +218,7 @@ void StockholmBoundary_cpu(real dt) {
 #endif
 	  vx0_target -= (of-of0)*radius;
 	  vx[l] = (vx[l]*taud+vx0_target*dt)/(dt+taud);
+#endif
 #endif
 #ifdef Y
 	  vy[l] = (vy[l]*taud+vr_target*dt)/(dt+taud);

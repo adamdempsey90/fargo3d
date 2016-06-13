@@ -36,14 +36,14 @@ void allocate_all(void) {
 
     MALLOC_SAFE((nshift = (int *)malloc(sizeof(int)*(size_y*size_z))));
 
-    MALLOC_SAFE((Lt = (double *)malloc(sizeof(double)*(size_y*2))));
+    MALLOC_SAFE((Lt = (double *)malloc(sizeof(double)*(size_y*2*(MMAX+2)))));
     MALLOC_SAFE((Ld = (double *)malloc(sizeof(double)*(size_y*2))));
     MALLOC_SAFE((Lw = (double *)malloc(sizeof(double)*(size_y*2))));
     MALLOC_SAFE((drFt = (double *)malloc(sizeof(double)*(size_y))));
-    MALLOC_SAFE((drFd = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((drFd = (double *)malloc(sizeof(double)*(size_y*(MMAX+2)))));
     MALLOC_SAFE((drFw = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((Lamdep = (double *)malloc(sizeof(double)*(size_y))));
-    MALLOC_SAFE((Lamex = (double *)malloc(sizeof(double)*(size_y*2))));
+    MALLOC_SAFE((Lamex = (double *)malloc(sizeof(double)*(size_y*(MMAX+2)))));
     MALLOC_SAFE((tauxyavg = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((dbar = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((mdotavg = (double *)malloc(sizeof(double)*(size_y))));
@@ -51,7 +51,7 @@ void allocate_all(void) {
     MALLOC_SAFE((vxbar = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((vybar = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((dbarstar = (double *)malloc(sizeof(double)*(size_y))));
-    MALLOC_SAFE((dtLt = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((dtLt = (double *)malloc(sizeof(double)*(size_y*(MMAX+2)))));
     MALLOC_SAFE((dtLd = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((dtLw = (double *)malloc(sizeof(double)*(size_y))));
     int i,j,k;
@@ -119,6 +119,16 @@ void allocate_all(void) {
             }
         }
     }
+    int mi;
+    for(mi=0;mi<(MMAX+2);mi++) {
+        for(j=0;j<size_y;j++) {
+            drFd[j + mi*size_y] = 0;
+            Lamex[j + mi*size_y] = 0;
+            Lt[j + mi*size_y] = 0;
+            Lt[j + size_y + mi*size_y] = 0;
+        }
+    }
+
 
     return;
 }

@@ -1,6 +1,6 @@
 #include "fargo3d.h"
 
-void ComputeVymed(Field *V) {
+void ComputeVxmed(Field *V) {
   int j,k;
   int ll2D;
   

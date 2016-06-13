@@ -89,7 +89,22 @@ int main(int argc, char *argv[]) {
     //omp_set_num_threads(8);
     printf("Using %d threads\n",omp_get_max_threads());
 #endif
-    printf("Starting time = %lg\nEnding time = %lg\n",tstart,tend);
+#ifdef ARTIFICIALVISCOSITY
+    printf("Using ARTIFICIAL VISCOSITY\n");
+#endif
+#ifdef FARGO
+    printf("Using FARGO TRANSPORT\n");
+#endif
+#ifdef STOCKHOLMACC
+    printf("Damping to current average in stockholm boundaries.\n");
+#endif
+#ifdef NOWAVEKILLRHO
+    printf("Not damping the density.\n");
+#endif
+#ifdef FIXEDPSYS
+    printf("Planetary system is FIXED.\n");
+#endif
+    printf("Starting time = %.3f\nEnding time = %.3f\n",tstart,tend);
     set_bc();
     while ((time < tend) && nsteps<MAXSTEPS) {
 #ifdef FARGO
@@ -103,7 +118,7 @@ int main(int argc, char *argv[]) {
         if (time + dt > tend) {
             dt = tend-time;
         }
-        printf("Time %lg dt = %.16f\n",time,dt);
+        printf("Time %.3f dt = %.16f\n",time,dt);
         set_avg(0);
     
         potential();
@@ -113,10 +128,10 @@ int main(int argc, char *argv[]) {
 #endif
     
        
-       source_step();
+        source_step();
        
         set_Lamex();
-       viscosity();
+        viscosity();
 #ifdef ARTIFICIALVISCOSITY
         
         artificial_visc();
@@ -160,13 +175,22 @@ int main(int argc, char *argv[]) {
         drFd[j]/=dt;
         drFw[j]/=dt;
         Lamex[j]/=dt;
-        Lamex[j+size_y]/=dt;
+        //Lamex[j+size_y]/=dt;
         Lamdep[j]/=dt;
         dtLt[j]/=dt;
         dtLd[j]/=dt;
         dtLw[j]/=dt;
 
 
+    }
+    int mi;
+    for(mi=1;mi<MMAX+2;mi++) {
+        for(j=0;j<size_y;j++) {
+            Lamex[j + size_y*mi] /= dt;
+            drFd[j + size_y*mi] /= dt;
+            dtLt[j + size_y*mi] /= dt;
+
+        }
     }
 
     output(outputdir);

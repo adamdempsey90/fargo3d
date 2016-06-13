@@ -14,7 +14,7 @@ void time_avg(void) {
         drFd[j]/=(double)nsteps;
         drFw[j]/=(double)nsteps;
         Lamex[j]/=(double)nsteps;
-        Lamex[j+size_y]/=(double)nsteps;
+//        Lamex[j+size_y]/=(double)nsteps;
         Lamdep[j]/=(double)nsteps;
         dtLt[j]/=(double)nsteps;
         dtLd[j]/=(double)nsteps;

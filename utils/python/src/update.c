@@ -23,11 +23,13 @@ void update_flux_avg(double *qs) {
     i=j=k=0;
     double res;
 #ifdef _OPENMP
-    #pragma omp parallel for private(i,j,res)
+    #pragma omp parallel for private(i,j,k,res)
 #endif
     for(j=0;j<size_y-1;j++) {
-        convolution(vy_temp,denstar,drFd,-dt*qs[j]*SurfY(j,k)*InvVol(j,k),j,j,k);
-        convolution(vy_temp,denstar,drFd,dt*qs[j+1]*SurfY(j+1,k)*InvVol(j,k),j,j+1,k);
+        i = 0;
+        convolution(&vy_temp[l],&denstar[l],drFd,-dt*qs[j]*SurfY(j,k)*InvVol(j,k),j,size_y);
+        convolution(&vy_temp[lyp],&denstar[lyp],drFd,dt*qs[j+1]*SurfY(j+1,k)*InvVol(j,k),j,size_y);
+    
         
         res = 0;
         for(i=0;i<size_x;i++) {    
@@ -38,17 +40,6 @@ void update_flux_avg(double *qs) {
 
         drFd[j] -= dt*res;
     }
-    /*
-    for(j=0;j<size_y;j++) {
-        res = 0;
-        for(i=0;i<size_x;i++) {    
-            res += (vy_temp[l]*denstar[l]);
-        }
-        res /=(double)nx;
-
-        mdotavg[j] -= res*2*M_PI*ymin(j);
-    }
-    */
     return;
 }
 void update_flux(double *qs) {

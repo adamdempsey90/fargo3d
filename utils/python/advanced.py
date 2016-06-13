@@ -296,19 +296,6 @@ class Field(Mesh, Parameters):
         return newfield
 
 
-#    def center_to_edge(self,direction='y'):
-#        dqm = zeros(rho.shape)
-#        dqp = zeros(rho.shape)
-#        slope = zeros(rho.shape)
-#        mdot = zeros(rho.shape)
-#
-#
-#        dqm[1:-1,:] =(rho[1:-1,:]  - rho[:-2,:])/dy[1:-1,:]
-#        dqp[1:-1,:] =(rho[2:,:]  - rho[1:-1,:])/dy[2:,:]
-#        ind = sign(dqm*dqp)
-#        slope = (ind>0).astype(int) * 2*dqm*dqp/(dqm+dqp)
-#        mdot[1:-1,:] = (vy>0).astype(int)*(rho[:-2,:]+.5*slope[:-2,:]*dy[:-2,:]) + (vy<=0).astype(int)*(rho[1:,:]-.5*slope[1:,:]*dy[1:,:])
-
     def plotmode_summary(self,mag=False,planet=None,xlims=None,ylims=None,log=False,**karg):
 
 
@@ -1003,11 +990,24 @@ class Sim(Mesh,Parameters):
             print 'Loaded torque file from %s'%trqname
             attrs = ['y','dbar','Lt','Ltn','Ld','Ldn','Lw','Lwn',
                     'drFt','drFd','drFw',
-                    'Lamex','indLam','Lamdep',
+                    'Lamex','Lamdep',
                     'dtLt','dtLd','dtLw','mdot']
 
             for i,a in enumerate(attrs):
                 setattr(self,'trq_'+a,dat[i*self.params.ny:(i+1)*self.params.ny])
+            dat = np.fromfile(self.directory+'torque_m%d.dat'%self.n)
+            self.mmax = 30
+            self.trq_drFdm = dat[:self.params.ny*(self.mmax+2)].reshape(self.mmax+2,self.params.ny)
+            self.trq_Lamexm = dat[self.params.ny*(self.mmax+2):2*self.params.ny*(self.mmax+2)].reshape(self.mmax+2,self.params.ny)
+
+            self.trq_dtLtm = dat[2*self.params.ny*(self.mmax+2):3*self.params.ny*(self.mmax+2)].reshape(self.mmax+2,self.params.ny)
+
+            self.trq_drFtm = self.trq_Lamexm - self.trq_dtLtm
+            self.trq_drFwm =self.trq_drFtm - self.trq_drFdm
+            self.trq_dtLdm = np.zeros(self.trq_drFdm.shape)
+            self.trq_dtLdm[0,:] = self.trq_dtLd
+            self.trq_dtLwm = self.trq_dtLt - self.trq_dtLdm
+            self.trq_Lamdepm = self.trq_dtLdm + self.trq_drFdm
         except IOError:
             pass
 
@@ -1046,6 +1046,25 @@ class Sim(Mesh,Parameters):
 ##
 ##        self.A = self.dTr_total/self.mdoti
 ##        self.A_excl = self.dTr_tot_excl/self.mdoti
+    def calc_mdot(self):
+        dqm = zeros(self.dens.data.shape)
+        dqp = zeros(self.dens.data.shape)
+        slope = zeros(self.dens.data.shape)
+        mdot = zeros(self.dens.data.shape)
+        denstar = zeros(self.dens.data.shape)
+
+        dy = (self.dens.ym[1:]-self.dens.ym[:-1])
+        r = self.dens.ymed
+
+        dqm[1:-1,:] =(self.dens.data[1:-1,:]  - self.dens.data[:-2,:])/dy[1:-1,newaxis]
+        dqp[1:-1,:] =(self.dens.data[2:,:]  - self.dens.data[1:-1,:])/dy[2:,newaxis]
+        ind = sign(dqm*dqp)
+        slope = (ind>0).astype(int) * 2*dqm*dqp/(dqm+dqp)
+        denstar[1:-1,:] = (self.vr.data[1:-1,:]>0).astype(int)*(self.dens.data[:-2,:]+.5*slope[:-2,:]*dy[:-2,newaxis]) + (self.vr.data[1:-1,:]<=0).astype(int)*(self.dens.data[1:-1,:]-.5*slope[1:-1,:]*dy[1:-1,newaxis])
+
+        mdot = denstar * self.vr.data * -2*pi*self.dens.ym[:-1,newaxis]
+        return mdot
+
     def load_fluxes(self,i):
         execdir = self.fargodir+'utils/python/'
         execname = 'load_fluxes'
@@ -2787,6 +2806,23 @@ class Torque():
 
         for i,a in enumerate(attrs):
             setattr(self,'trq_'+a,dat[i*ny:(i+1)*ny])
+        dat = np.fromfile('torque_m%d.dat'%self.n)
+        attrs = ['y','dbar','Lt','Ltn','Ld','Ldn','Lw','Lwn',
+                'drFt','drFd','drFw',
+                'Lamex','indLam','Lamdep',
+                'dtLt','dtLd','dtLw','mdot']
+        self.mmax = 30
+        self.trq_drFdm = dat[:ny*(self.mmax+2)].reshape(self.mmax+2,ny)
+        self.trq_Lamexm = dat[ny*(self.mmax+2):2*ny*(self.mmax+2)].reshape(self.mmax+2,ny)
+
+        self.trq_dtLtm = dat[2*ny*(self.mmax+2):3*ny*(self.mmax+2)].reshape(self.mmax+2,ny)
+
+        self.trq_drFtm = self.trq_Lamexm - self.trq_dtLtm
+        self.trq_drFwm =self.trq_drFtm - self.trq_drFdm
+        self.trq_dtLdm = np.zeros(self.trq_drFdm.shape)
+        self.trq_dtLdm[0,:] = self.trq_dtLd
+        self.trq_dtLwm = self.trq_dtLt - self.trq_dtLdm
+        self.Lamdepm = self.trq_dtLdm + self.trq_drFdm
 
         #self.ymin = dat[-2*(ny+1):-(ny+1)]
         #self.mdot= dat[-(ny+1):]

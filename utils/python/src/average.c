@@ -10,7 +10,8 @@ void set_avg(int p) {
         resd = 0;
         resL = 0;
 
-        convolution(dens,vx,Lt,ymed(j),j,j,k);
+        i = k = 0;
+        convolution(&dens[l],&vx[l],Lt,ymed(j),j+p*size_y,size_y*2);
         for(i=0;i<size_x;i++) {
             resx += vx[l];
             resy += vy[l];
@@ -29,27 +30,3 @@ void set_avg(int p) {
     return;
 }
 
-void calc_modes(double *q, double *qmr, double *qmi, int m_max) {
-
-    int i,j,k;
-    int mi,lm; 
-    i = j = k = 0;
-
-
-#ifdef _OPENMP
-#pragma omp parallel for collapse(2) private(lm,i,j,mi)
-#endif
-    for(j=0;j<size_y;j++) {
-        for(mi=0;mi<m_max;mi++) {
-            lm = mi + j*m_max; 
-            for(i=0;i<size_x;i++) {
-                qmr[lm] += q[l] * cos(mi*xmed(i));
-                qmi[lm] += q[l] * sin(mi*xmed(i));
-            }
-            qmr[lm] /= (double)nx;
-            qmi[lm] /= (double)nx;
-        }
-    }
-
-    return;
-}

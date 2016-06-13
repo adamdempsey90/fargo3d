@@ -44,7 +44,6 @@ double cfl(void) {
 #else
                 cfl5 = 0;
 #endif
-
 	            fac = CFL/sqrt(cfl1*cfl1 + cfl2*cfl2 + 
                         cfl3*cfl3 + cfl5*cfl5 +  cfl7*cfl7);
 

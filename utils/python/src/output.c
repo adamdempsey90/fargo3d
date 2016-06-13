@@ -69,7 +69,7 @@ void output_torque(char *directory,int n) {
     fwrite(&drFd[NGHY],sizeof(double),ny,f);
     fwrite(&drFw[NGHY],sizeof(double),ny,f);
     fwrite(&Lamex[NGHY],sizeof(double),ny,f);
-    fwrite(&Lamex[NGHY+size_y],sizeof(double),ny,f);
+//    fwrite(&Lamex[NGHY+size_y],sizeof(double),ny,f);
     fwrite(&Lamdep[NGHY],sizeof(double),ny,f);
     fwrite(&dtLt[NGHY],sizeof(double),ny,f);
     fwrite(&dtLd[NGHY],sizeof(double),ny,f);
@@ -77,5 +77,23 @@ void output_torque(char *directory,int n) {
     fwrite(&mdotavg[NGHY],sizeof(double),ny,f);
 
     fclose(f);
+
+    sprintf(fname,"%storque_m%d.dat",directory,n);
+    f = fopen(fname,"w");
+    int mi;
+    for(mi=0;mi<MMAX+2;mi++) {
+        fwrite(&drFd[NGHY+size_y*mi],sizeof(double),ny,f);
+    }
+    for(mi=0;mi<MMAX+2;mi++) {
+        fwrite(&Lamex[NGHY+size_y*mi],sizeof(double),ny,f);
+    }
+    for(mi=0;mi<MMAX+2;mi++) {
+        fwrite(&dtLt[NGHY+size_y*mi],sizeof(double),ny,f);
+    }
+
+
+    fclose(f);
+
+
     return;
 }
