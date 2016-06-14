@@ -21,8 +21,9 @@ int ny,nx,size_x,size_y;
 int NEVEN;
 
 
-void convolution(const double *fld1, const double *fld2, double *res, double fac, int jres, int ncols);
-void convolution_deriv(const double *fld1, const double *fld2, double *res, double fac, int jres,int ncols);
+void convolution_deriv_2d( double *fld1,  double *fld2, double *res, double *fac, int ncols);
+void convolution_2d( double *fld1,  double *fld2, double *res, double *fac,int ncols);
+void convolution( double *fld1,  double *fld2, double *res, double fac, int jres, int ncols);
+void convolution_deriv( double *fld1,  double *fld2, double *res, double fac, int jres,int ncols);
 void free_conv(void);
 void allocate_conv(void);
-void fft1d(const double *fld, double *res);

@@ -29,6 +29,7 @@
 #define FARGO
 #define STOCKHOLMACC
 #define NOWAVEKILLRHO
+#define FFTW
 
 
 #define MALLOC_SAFE(ptr) if (ptr == NULL) printf("Malloc error at line %d!\n",__LINE__);
@@ -126,6 +127,7 @@ double *qR, *qL;
 double *dens0, *vx0, *vy0;
 double *dbar,*dbart, *vxbar, *vybar, *dbarstar;
 double *mdotavg;
+double *conv_prefac;
 double *vx_temp, *vy_temp;
 double *Pixp, *Pixm, *Piym, *Piyp;
 double *slope, *divrho, *denstar, *Qs;
@@ -138,8 +140,10 @@ int *nshift;
 double dt,omf,dx,time_step,omf0;
 double CFL;
 int nx, ny, nz, size_x, size_y, size_z,stride,pitch,pitch2d,pitch2d_int,nsteps;
+int NEVEN;
 int nb;
 int IndirectTerm;
+int num_threads;
 
 Parameters params;
 Planet psys[2];
@@ -215,7 +219,10 @@ void output_stock(char *directory);
 void read_stockholm(char *directory);
 void output_psys(char *directory, int n);
 void compute_vmed(double *vt);
-void convolution(const double *fld1, const double *fld2, double *result, double fac, int jres,int ncols);
-void convolution_deriv(const double *fld1, const double *fld2, double *res, double fac, int jres,int ncols);
+void convolution( double *fld1,  double *fld2, double *result, double fac, int jres,int ncols);
+void convolution_deriv( double *fld1,  double *fld2, double *res, double fac, int jres,int ncols);
 void free_conv(void);
 void allocate_conv(void);
+void convolution_2d( double *fld1,  double *fld2, double *res, double *fac, int jstart, int ncols,int ntrans);
+void convolution_deriv_2d( double *fld1,  double *fld2, double *res, double *fac, int jstart, int ncols,int ntrans);
+void set_dtLt(double fac);

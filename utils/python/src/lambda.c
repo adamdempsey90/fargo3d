@@ -26,14 +26,22 @@ void set_Lamex(void) {
     i=j=k=0;
     
     double res; //,resi;
+
+#ifdef FFTW
+    for(j=NGHY;j<size_y-NGHY;j++) {
+        conv_prefac[j] = dt;
+    }
+    convolution_deriv_2d(&dens[NGHY*nx],&Pot[NGHY*nx],&Lamex[NGHY],&conv_prefac[NGHY],0,size_y,size_y-2*NGHY);
+#endif
+
 #ifdef _OPENMP
     #pragma omp parallel for private(i,j,k,res)
 #endif
     for(j=NGHY;j<size_y-NGHY;j++) {
         res = 0;
         //resi = 0;
-        i = k = 0;
-        convolution_deriv(&dens[l],&Pot[l],Lamex,-dt,j,size_y);
+    //    i = k = 0;
+   //     convolution_deriv(&dens[l],&Pot[l],Lamex,-dt,j,size_y);
 
         for(i=0;i<size_x;i++) {
             res -= dens[l]*(Pot[lxp]-Pot[lxm])/(2*dx);

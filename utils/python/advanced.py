@@ -964,7 +964,7 @@ class Sim(Mesh,Parameters):
 
     	self.a = sqrt(self.px**2  + self.py**2)
         self.K = self.mp**2 / (self.dens.alpha * self.dens.aspectratio**5)
-
+        self.torque_norm = .266 * self.params.aspectratio**3 * self.params.mdot * self.K
       #  self.load_fluxes(i)
         self.vp = copy.deepcopy(self.vx)
         self.vp.data += self.vp.y[:,newaxis]*self.omf
@@ -998,14 +998,18 @@ class Sim(Mesh,Parameters):
             dat = np.fromfile(self.directory+'torque_m%d.dat'%self.n)
             self.mmax = 30
             self.trq_drFdm = dat[:self.params.ny*(self.mmax+2)].reshape(self.mmax+2,self.params.ny)
+            self.trq_drFdm[1,:] = self.trq_drFd - self.trq_drFdm[2:,:].sum(axis=0)
+
             self.trq_Lamexm = dat[self.params.ny*(self.mmax+2):2*self.params.ny*(self.mmax+2)].reshape(self.mmax+2,self.params.ny)
 
             self.trq_dtLtm = dat[2*self.params.ny*(self.mmax+2):3*self.params.ny*(self.mmax+2)].reshape(self.mmax+2,self.params.ny)
+            self.trq_dtLtm[1,:] = self.trq_dtLt - self.trq_dtLtm[2:,:].sum(axis=0)
 
             self.trq_drFtm = self.trq_Lamexm - self.trq_dtLtm
             self.trq_drFwm =self.trq_drFtm - self.trq_drFdm
             self.trq_dtLdm = np.zeros(self.trq_drFdm.shape)
             self.trq_dtLdm[0,:] = self.trq_dtLd
+            self.trq_dtLdm[1,:] = self.trq_dtLd
             self.trq_dtLwm = self.trq_dtLt - self.trq_dtLdm
             self.trq_Lamdepm = self.trq_dtLdm + self.trq_drFdm
         except IOError:

@@ -19,16 +19,26 @@ void updateX(double *q, double *qs,double dt,double *vxt) {
 }
 void update_flux_avg(double *qs) {
     int i,j,k;
-    int indx;
     i=j=k=0;
     double res;
+#ifdef FFTW
+    for(j=0;j<size_y-1;j++) {
+        conv_prefac[j] = -dt*qs[j]*SurfY(j,k)*InvVol(j,k);
+    }
+    convolution_2d(vy_temp,denstar,drFd,conv_prefac,0,size_y,size_y-1);
+
+    for(j=0;j<size_y-1;j++) {
+        conv_prefac[j] = dt*qs[j+1]*SurfY(j+1,k)*InvVol(j,k);
+    }
+    convolution_2d(&vy_temp[size_x],&denstar[size_x],drFd,conv_prefac,0,size_y,size_y-1);
+#endif
 #ifdef _OPENMP
     #pragma omp parallel for private(i,j,k,res)
 #endif
     for(j=0;j<size_y-1;j++) {
         i = 0;
-        convolution(&vy_temp[l],&denstar[l],drFd,-dt*qs[j]*SurfY(j,k)*InvVol(j,k),j,size_y);
-        convolution(&vy_temp[lyp],&denstar[lyp],drFd,dt*qs[j+1]*SurfY(j+1,k)*InvVol(j,k),j,size_y);
+     //   convolution(&vy_temp[l],&denstar[l],drFd,-dt*qs[j]*SurfY(j,k)*InvVol(j,k),j,size_y);
+    //    convolution(&vy_temp[lyp],&denstar[lyp],drFd,dt*qs[j+1]*SurfY(j+1,k)*InvVol(j,k),j,size_y);
     
         
         res = 0;
@@ -78,23 +88,20 @@ void updateY(double *q, double *qs,double dt) {
 void update_density_Y(double dt) {
     int i,j,k;
     i=j=k=0;
-    double fac,res;
+    double res;
 #ifdef _OPENMP
-    #pragma omp parallel for collapse(2) private(i,j,k,res,fac)
+    #pragma omp parallel for collapse(2) private(i,j,k,res)
 #endif
     for(k=0;k<size_z;k++) {
         for(j=0;j<size_y-1;j++) {
             res = 0;
-            fac = 0;
             for(i=0;i<size_x;i++) {
-
-                fac = ((vy_temp[l]*denstar[l]*SurfY(j,k)-vy_temp[lyp]*denstar[lyp]*SurfY(j+1,k))*InvVol(j,k));
-                dens[l] += fac*dt;
-                res += fac;
+                res += vy_temp[l]*denstar[l];
+                dens[l] += dt*((vy_temp[l]*denstar[l]*SurfY(j,k)-vy_temp[lyp]*denstar[lyp]*SurfY(j+1,k))*InvVol(j,k));
 
             }
             res /= (double)nx;
-            mdotavg[j] += res;
+            mdotavg[j] += res * -2*M_PI*ymin(j)*dt;
         }
     }
     return;

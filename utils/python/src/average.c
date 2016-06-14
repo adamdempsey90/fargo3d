@@ -4,6 +4,14 @@ void set_avg(int p) {
     i=j=k=0;
     double resx,resy,resd;
     double resL;
+/*
+    for(j=0;i<size_y;j++) {
+        conv_prefac[j] = ymed(j);
+    }
+
+    convolution_2d(dens,vx,Lt,conv_prefac,p*size_y,2*size_y,size_y);
+    */
+
     for(j=0;j<size_y;j++) {
         resx = 0;
         resy = 0;
@@ -11,7 +19,7 @@ void set_avg(int p) {
         resL = 0;
 
         i = k = 0;
-        convolution(&dens[l],&vx[l],Lt,ymed(j),j+p*size_y,size_y*2);
+        //convolution(&dens[l],&vx[l],Lt,ymed(j),j+p*size_y,size_y*2);
         for(i=0;i<size_x;i++) {
             resx += vx[l];
             resy += vy[l];
@@ -30,3 +38,13 @@ void set_avg(int p) {
     return;
 }
 
+void set_dtLt(double fac) {
+    int j;
+
+    for(j=0;j<size_y;j++) {
+        conv_prefac[j] = ymed(j)*fac;
+    }
+
+    convolution_2d(dens,vx,dtLt,conv_prefac,0,size_y,size_y);
+    return;
+}

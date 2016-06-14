@@ -43,9 +43,20 @@ int main(int argc, char *argv[]) {
     pitch2d_int = 0 ;//pitch*(int)double_to_int;
     dx = 2*M_PI/nx;
 
+    if (size_x % 2 == 0) NEVEN = TRUE;
+    else NEVEN = FALSE;
+
+    num_threads = 1;
+
+#ifdef _OPENMP
+    //omp_set_num_threads(8);
+    num_threads = omp_get_max_threads();
+    printf("Using %d threads\n",num_threads);
+#endif
     allocate_all();
+#ifdef FFTW
     allocate_conv();
-    
+#endif
     read_domain(directory);
     
     
@@ -85,9 +96,10 @@ int main(int argc, char *argv[]) {
     double tstart = psys[0].t;
     double tend = psys[0].t + time_step;
     double time = tstart;
-#ifdef _OPENMP
-    //omp_set_num_threads(8);
-    printf("Using %d threads\n",omp_get_max_threads());
+
+
+#ifdef FFTW
+    printf("Using FFTW to compute fourier transforms\n");
 #endif
 #ifdef ARTIFICIALVISCOSITY
     printf("Using ARTIFICIAL VISCOSITY\n");
@@ -106,6 +118,9 @@ int main(int argc, char *argv[]) {
 #endif
     printf("Starting time = %.3f\nEnding time = %.3f\n",tstart,tend);
     set_bc();
+
+    set_dtLt(-1.0);
+
     while ((time < tend) && nsteps<MAXSTEPS) {
 #ifdef FARGO
         compute_vmed(vx);
@@ -160,6 +175,9 @@ int main(int argc, char *argv[]) {
     }
 //    temp_to_vel();   
 
+    set_dtLt(1.0);
+
+    
     dt = tend - tstart;
     for(j=0;j<size_y;j++) {
         dbart[j]/=dt;
@@ -180,8 +198,7 @@ int main(int argc, char *argv[]) {
         dtLt[j]/=dt;
         dtLd[j]/=dt;
         dtLw[j]/=dt;
-
-
+        mdotavg[j] /= dt;
     }
     int mi;
     for(mi=1;mi<MMAX+2;mi++) {
@@ -197,7 +214,9 @@ int main(int argc, char *argv[]) {
     output_torque(directory,n);
     output_torque(outputdir,n);
     free_rk5();
+#ifdef FFTW
     free_conv();
+#endif
     //free_all();
     return 0;
 }

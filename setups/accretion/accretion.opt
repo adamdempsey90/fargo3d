@@ -18,6 +18,7 @@ FARGO_OPT += -DNOWAVEKILLRHO
 FARGO_OPT += -DNOWAVEKILLVPHI
 #FARGO_OPT += -DNOSTOCKHOLMRIGHT
 FARGO_OPT += -DSTOCKHOLMACC
+FARGO_OPT += -DUSERWKZ
 
 #Time the first time-step, excluding all startup and shutdown procedures
 #FARGO_OPT += -DTIMER
