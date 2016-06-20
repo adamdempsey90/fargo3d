@@ -88,13 +88,13 @@ void transportY(void) {
     DividebyRho(Pixm);
     vanleer_y_a(divrho);
     vanleer_y_b(divrho,Qs,dt);
-    update_flux(Qs);
+    update_flux(Qs,divrho);
     updateY(Pixm,Qs,dt);
 
     DividebyRho(Pixp);
     vanleer_y_a(divrho);
     vanleer_y_b(divrho,Qs,dt);
-    update_flux(Qs);
+    update_flux(Qs,divrho);
     updateY(Pixp,Qs,dt);
 
     DividebyRho(Piym);
@@ -116,7 +116,7 @@ void transportY(void) {
     DividebyRhoavg(Ld);
     vanleer_y_a_avg(divrho);
     vanleer_y_b_avg(divrho,Qs,dt);
-    update_flux_avg(Qs);
+    update_flux_avg(Qs,divrho);
 
 
 

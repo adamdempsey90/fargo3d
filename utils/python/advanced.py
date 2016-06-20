@@ -964,14 +964,21 @@ class Sim(Mesh,Parameters):
 
     	self.a = sqrt(self.px**2  + self.py**2)
         self.K = self.mp**2 / (self.dens.alpha * self.dens.aspectratio**5)
+        self.sig0  = self.dens.mdot/(3*pi*self.nu(self.dens.y))
         self.torque_norm = .266 * self.params.aspectratio**3 * self.params.mdot * self.K
+        self.wkb_torque = (self.a/abs(self.dens.y-self.a))**4
+        self.wkb_torque[self.dens.y <  self.a] *= -1
+        self.wkb_torque[abs(self.dens.y-self.a)<=1.3*self.scaleH(self.a)] = 0
+        self.wkb_torque *= 1e-2*self.sig0 *pi*self.a *self.mp**2
+
+        self.wkb_torque /= (self.dens.y*2*pi)
+
       #  self.load_fluxes(i)
         self.vp = copy.deepcopy(self.vx)
         self.vp.data += self.vp.y[:,newaxis]*self.omf
         self.vp.recalculate()
 
         #self.mdot,self.rhos,self.rhosp = self.calc_flux()
-        self.sig0  = self.dens.mdot/(3*pi*self.nu(self.dens.y))
         try:
             self.nu0 = self.dens.alpha*self.dens.aspectratio*self.dens.aspectratio
         except AttributeError:
@@ -984,6 +991,7 @@ class Sim(Mesh,Parameters):
         self.rh = (self.mp/3)**(1./3) * self.a
         self.safety_fac  = .5
 
+
         try:
             trqname = 'torque%d.dat'%self.n
             dat = np.fromfile(self.directory+trqname)
@@ -991,10 +999,16 @@ class Sim(Mesh,Parameters):
             attrs = ['y','dbar','Lt','Ltn','Ld','Ldn','Lw','Lwn',
                     'drFt','drFd','drFw',
                     'Lamex','Lamdep',
-                    'dtLt','dtLd','dtLw','mdot']
+                    'dtLt','dtLd','dtLw','mdot',
+                    'Lamdep1','Lamdep2','Lamdep3','Lamdep4','Lamdep5',
+                    'dtLd_rhs']
 
             for i,a in enumerate(attrs):
                 setattr(self,'trq_'+a,dat[i*self.params.ny:(i+1)*self.params.ny])
+            self.trq_Lamdep2 = np.zeros(self.trq_Lamdep.shape)
+            for i in range(1,6):
+                self.trq_Lamdep2 += getattr(self,'trq_Lamdep%d'%i)
+
             dat = np.fromfile(self.directory+'torque_m%d.dat'%self.n)
             self.mmax = 30
             self.trq_drFdm = dat[:self.params.ny*(self.mmax+2)].reshape(self.mmax+2,self.params.ny)
@@ -2946,4 +2960,117 @@ def make_summary_plots(dirlist):
         else:
             print 'No outputs in %s'%dirname
     return
+
+def make_ss_plots(sim1,sim2,ylims=None,savefig=None):
+
+    sims = [sim1,sim2]
+
+    fig,axes=plt.subplots(3,2,sharex='col',sharey='row',figsize=(20,10))
+
+    for i,s in enumerate(sims):
+        ind = (s.trq_y > s.dens.wkz)&(s.trq_y < s.dens.wkzr)
+        indL = (s.trq_y <= s.dens.wkz + s.dlr[0]*s.dens.wkz)
+        indR = (s.trq_y >= s.dens.wkzr - s.dlr[0]*s.dens.wkzr)
+
+        intLam = (s.trq_y*s.dens.dy*2*pi*s.trq_Lamdep).cumsum()
+        intLam -= intLam[0]
+        intLam2 = (s.trq_y*s.dens.dy*2*pi*s.trq_Lamdep)[ind].cumsum()
+        intLam2 -= intLam2[0]
+
+        sig = 1 + intLam/(s.dens.mdot *np.sqrt(s.trq_y))
+        sig2 = 1 + intLam2/(s.dens.mdot *np.sqrt(s.trq_y[ind]))
+
+        mdot = s.trq_mdot/s.params.mdot
+        mdot2 = s.trq_mdot[ind]/s.params.mdot
+        mdotL = s.trq_mdot[indL]/s.params.mdot
+        mdotR = s.trq_mdot[indR]/s.params.mdot
+
+        ldep = s.trq_Lamdep.copy()
+        ldep2 = s.trq_Lamdep[ind]
+        ldepR = s.trq_Lamdep[indR]
+        ldepL = s.trq_Lamdep[indL]
+        lex = s.trq_Lamex.copy()
+        lex2 = s.trq_Lamex[ind]
+        lexL = s.trq_Lamex[indL]
+        lexR = s.trq_Lamex[indR]
+
+        drFw = s.trq_drFw.copy()
+        drFw2 = s.trq_drFw[ind]
+        drFwL = s.trq_drFw[indL]
+        drFwR = s.trq_drFw[indR]
+
+        y = s.trq_y.copy()
+        y2 = s.trq_y[ind]
+        yL = s.trq_y[indL]
+        yR = s.trq_y[indR]
+
+        dbar = s.dens.avg/s.sig0
+
+        wkzL = s.dens.wkz
+        wkzR = s.dens.wkzr
+
+
+        axes[0,i].plot(y,dbar,'.k',label='Fargo')
+        axes[0,i].plot(y2,sig2,'-b',linewidth=2,label='Excluding WKZ')
+        axes[0,i].plot(y,sig,'--r',linewidth=2,label='Including WKZ')
+
+        axes[1,i].plot(y2,lex2,'-k',label='$\\Lambda_{ex}$')
+        axes[1,i].plot(y2,ldep2,'-b',label='$\\Lambda_{dep}$')
+        axes[1,i].plot(y2,drFw2,'-r',label='$\\frac{1}{r}\\partial_r(r F_w)$')
+
+        axes[1,i].plot(yL,lexL,'--k')
+        axes[1,i].plot(yL,ldepL,'--b')
+        axes[1,i].plot(yL,drFwL,'--r')
+        axes[1,i].plot(yR,lexR,'--k')
+        axes[1,i].plot(yR,ldepR,'--b')
+        axes[1,i].plot(yR,drFwR,'--r')
+
+        axes[2,i].plot(y2,mdot2,'-k')
+        axes[2,i].plot(yL,mdotL,'-k')
+        axes[2,i].plot(yR,mdotR,'-k')
+        axes[2,i].axhline(1,color='k',linestyle='--')
+
+        axes[2,i].set_xlabel('$r$',fontsize=20)
+        axes[2,i].set_ylim(0,3)
+        axes[0,i].axvline(wkzL,linestyle='--',color='k')
+        axes[1,i].axvline(wkzL,linestyle='--',color='k')
+        axes[2,i].axvline(wkzL,linestyle='--',color='k')
+        axes[0,i].axvline(wkzR,linestyle='--',color='k')
+        axes[1,i].axvline(wkzR,linestyle='--',color='k')
+        axes[2,i].axvline(wkzR,linestyle='--',color='k')
+
+        axes[0,i].set_xlim(0,s.dens.ymax)
+
+
+
+
+
+
+    axes[0,0].set_ylabel('$\\Sigma/\\Sigma_0$',fontsize=20)
+    axes[1,0].set_ylabel('Torque density',fontsize=15)
+    axes[2,0].set_ylabel('$\\dot{M}/\\dot{M}_o$',fontsize=20)
+
+    axes[0,0].set_title('Damping $v_R$ and $\\Sigma$',fontsize=20)
+    axes[0,1].set_title('Damping $v_R$',fontsize=20)
+
+    axes[0,1].legend(loc='lower right')
+    axes[1,1].legend(loc='upper right')
+    if ylims is not None:
+        axes[1,0].set_ylim(ylims)
+        axes[1,1].set_ylim(ylims)
+
+
+    for ax in axes.flatten():
+        ax.minorticks_on()
+    plt.subplots_adjust(wspace=0)
+    plt.setp(axes[2,0].get_xticklabels()[-1],visible=False)
+
+    if savefig is not None:
+        fig.savefig(savefig)
+
+
+
+
+
+
 

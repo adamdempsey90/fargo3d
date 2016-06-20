@@ -4,6 +4,10 @@ void viscosity(void) {
     i=j=k=0;
     double visc, viscm,div_v;
     double res,fac,facp;
+    double res2,fac2;
+    double res3,fac3;
+    double resd,facd;
+    double res4;
     visc = 0;
     viscm = 0;
     compute_energy();
@@ -45,27 +49,50 @@ void viscosity(void) {
     }
 #ifdef _OPENMP
 #pragma omp barrier
-#pragma omp for collapse(2) private(i,j,k,res,fac,facp)
+#pragma omp for collapse(2) private(i,j,k,res,fac,facp,resd,res2,res3,fac2,fac3,facd,res4)
 #endif
     for(k=0;k<size_z;k++) {
         for(j=1;j<size_y-2;j++) {
             res = 0;
+            resd = 0;
+            res3 = 0;
+            res2 = 0;
+            res4 = 0;
             for(i=0;i<size_x;i++) {
                 // X
-
-                vx_temp[l] += 2.0*(tauxx[l]-tauxx[lxm])/(zone_size_x(j,k)*(dens[l]+dens[lxm]))*dt;
+                resd += dens[l];
+                fac3 = 2.0*(tauxx[l]-tauxx[lxm])/(zone_size_x(j,k)*(dens[l]+dens[lxm]))*dt;
+                res3 += fac3;
+                vx_temp[l] += fac3;
                 fac =  (ymin(j+1)*ymin(j+1)*tauxy[lyp]-ymin(j)*ymin(j)*tauxy[l])/((ymin(j+1)-ymin(j))*ymed(j));
                 facp =  (ymin(j+1)*ymin(j+1)*tauxy[lxp+pitch]-ymin(j)*ymin(j)*tauxy[lxp])/((ymin(j+1)-ymin(j))*ymed(j));
-                vx_temp[l] += dt*fac*2.0/(ymed(j)*(dens[l]+dens[lxm]));
+
+                fac2 = dt*fac*2.0/(ymed(j)*(dens[l]+dens[lxm]));
+                res2 += .5*fac2 + .5*dt*facp*2.0/(ymed(j)*(dens[lxp]+dens[l]));
+
+                vx_temp[l] += fac2; 
+                res4 += fac2+fac3;
                 // Y
                 vy_temp[l] += 2.0*(ymed(j)*tauyy[l]-ymed(j-1)*tauyy[lym])/((ymed(j)-ymed(j-1))*(dens[l]+dens[lym])*ymin(j))*dt;
                 vy_temp[l] += 2.0*(tauxy[lxp]-tauxy[l])/(dx*ymin(j)*(dens[l]+dens[lym]))*dt;
                 vy_temp[l] -= (tauxx[l]+tauxx[lym])/(ymin(j)*(dens[l]+dens[lym]))*dt;
                 res += .5*(fac+facp);
             }
-             drFt[j] += -dt*res/(double)nx;
+            res2 /= (double)nx;
+            res3 /= (double)nx;
+            resd /= (double)nx;
+            res /= (double)nx;
+            res4 /= (double)nx;
+
+            LamdepS[j + size_y*3] += res3*ymed(j)*resd;
+            LamdepS[j + size_y*4] += res2*ymed(j)*resd;
+             drFt[j] += -dt*res;
+             dtLd_rhs[j] += res*ymed(j);
             //drFd[j] = -(ymin(j+1)*ymin(j+1)*tauxyavg[j+1]*SurfY(j+1,k) - ymin(j)*ymin(j)*tauxyavg[j]*SurfY(j,k))*InvVol(j,k);
-            drFd[j]  +=  -dt*(ymin(j+1)*ymin(j+1)*tauxyavg[j+1]-ymin(j)*ymin(j)*tauxyavg[j])/((ymin(j+1)-ymin(j))*ymed(j));
+            
+            facd  =  -dt*(ymin(j+1)*ymin(j+1)*tauxyavg[j+1]-ymin(j)*ymin(j)*tauxyavg[j])/((ymin(j+1)-ymin(j))*ymed(j));
+            LamdepS[j + size_y*5] += facd;
+            drFd[j]  +=  facd;             
 
         }
     }

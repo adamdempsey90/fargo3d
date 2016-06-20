@@ -8,13 +8,13 @@ MATHLIB=-lm
 WARNFLAG=-Wall -Wextra -std=c99
 OPTFLAG=-O3
 
-OMPLIB=-lgomp
+OMPLIB=-lrfftw_threads -lfftw_threads -lgomp
 OMPFLAG=-fopenmp
 
-FFTWLIB=-L/software/FFTW/2.1.5-gcc/lib/ -lrfftw_threads -lfftw_threads -lrfftw -lfftw
+FFTWLIB=-L/software/FFTW/2.1.5-gcc/lib/  -lrfftw -lfftw
 FFTWINC=-I/software/FFTW/2.1.5-gcc/include/
 
-LDFLAGS= $(OMPLIB) $(FFTWLIB) $(MATHLIB)
+LDFLAGS= $(FFTWLIB) $(OMPLIB) $(MATHLIB)
 CFLAGS=-c $(OPTFLAG) $(WARNFLAG) $(OMPFLAG) $(FFTWINC)
 
 FBIN=bin/fixed/

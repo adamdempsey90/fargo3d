@@ -134,6 +134,7 @@ double *slope, *divrho, *denstar, *Qs;
 double *Ymed, *Xmed, *Ymin, *Xmin;
 double *tauxx, *tauxy, *tauyy, *tauxyavg;
 double *Lt, *Ld, *Lw, *drFw, *drFd, *drFt, *Lamdep, *Lamex;
+double *LamdepS, *dtLd_rhs;
 double *dtLt, *dtLd, *dtLw;
 int *nshift;
 
@@ -177,8 +178,8 @@ void vanleer_y_b_avg(double *q, double *qs, double dt);
 void vanleer_x_b(double *q, double *qs, double dt,double *vxt);
 void updateX(double *q, double *qs,double dt,double *vxt);
 void updateY(double *q, double *qs,double dt);
-void update_flux(double *qs);
-void update_flux_avg(double *qs);
+void update_flux(double *qs,double *q);
+void update_flux_avg(double *qs, double *q);
 void update_density_X(double dt,double *vxt);
 void update_density_Y(double dt);
 void set_bc(void);

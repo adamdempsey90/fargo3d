@@ -40,7 +40,10 @@ void read_domain(char *directory) {
 
     sprintf(filename,"%sdomain_x.dat",directory);
     fx = fopen(filename,"r");
-    if (fx == NULL) printf("Error reading %s\n",filename);
+    if (fx == NULL) {
+        printf("Error reading %s\n",filename);
+        exit(1);
+    }
 
     for(i=0;i<size_x+1;i++) {
         fscanf(fx,"%lg\n",&Xmin[i]);
@@ -48,7 +51,10 @@ void read_domain(char *directory) {
     fclose(fx);
     sprintf(filename2,"%sdomain_y.dat",directory);
     fy = fopen(filename2,"r");
-    if (fy == NULL) printf("Error reading %s\n",filename);
+    if (fy == NULL) {
+        printf("Error reading %s\n",filename);
+        exit(1);
+    }
     for(j=0;j<size_y+1;j++) {
             fscanf(fy,"%lg\n",&Ymin[j]);
     }
@@ -69,7 +75,10 @@ void read_single_file(int n, int i,char *directory) {
     FILE *f;
     sprintf(filename,"%ssubstep_%d_%d.dat",directory,i,n);
     f = fopen(filename,"r");
-    if (f == NULL) printf("Error loading %s\n",filename); 
+    if (f == NULL) {
+        printf("Error loading %s\n",filename); 
+        exit(1);
+    }
     fread(dens,sizeof(double),size_x*size_y*size_z,f);
     fread(vy,sizeof(double),size_x*size_y*size_z,f);
     fread(vx,sizeof(double),size_x*size_y*size_z,f);
@@ -85,19 +94,31 @@ void read_files(int n, char *directory) {
     int i,j,k;
     sprintf(filename,"%sgasdens%d.dat",directory,n);
     fd = fopen(filename,"r");
-    if (fd == NULL) printf("Error loading %s\n",filename); 
+    if (fd == NULL) {
+        printf("Error loading %s\n",filename); 
+        exit(1);
+    }
 
     sprintf(filename,"%sgasvx%d.dat",directory,n);
     fx = fopen(filename,"r");
-    if (fx == NULL) printf("Error loading %s\n",filename); 
+    if (fx == NULL) {
+        printf("Error loading %s\n",filename); 
+        exit(1);
+    }
 
     sprintf(filename,"%sgasvy%d.dat",directory,n);
     fy = fopen(filename,"r");
-    if (fy == NULL) printf("Error loading %s\n",filename); 
+    if (fy == NULL) {
+        printf("Error loading %s\n",filename); 
+        exit(1);
+    }
 
     sprintf(filename,"%sgasenergy%d.dat",directory,n);
     fe = fopen(filename,"r");
-    if (fe == NULL) printf("Error loading %s\n",filename); 
+    if (fe == NULL) {
+        printf("Error loading %s\n",filename); 
+        exit(1);
+    }
     i=j=k=0;
     for(k=0;k<size_z;k++) {
         for(j =NGHY; j<size_y-NGHY;j++) {
