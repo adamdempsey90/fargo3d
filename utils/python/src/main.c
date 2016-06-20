@@ -200,12 +200,12 @@ int main(int argc, char *argv[]) {
         dtLw[j]/=dt;
         dtLd_rhs[j]/=dt;
         mdotavg[j] /= dt;
-        Lamdep[j] /= dt;
-        Lamdep[j + size_y*1] /= dt;
-        Lamdep[j + size_y*2] /= dt;
-        Lamdep[j + size_y*3] /= dt;
-        Lamdep[j + size_y*4] /= dt;
-        Lamdep[j + size_y*5] /= dt;
+        LamdepS[j] /= dt;
+        LamdepS[j + size_y*1] /= dt;
+        LamdepS[j + size_y*2] /= dt;
+        LamdepS[j + size_y*3] /= dt;
+        LamdepS[j + size_y*4] /= dt;
+        LamdepS[j + size_y*5] /= dt;
     }
     int mi;
     for(mi=1;mi<MMAX+2;mi++) {

@@ -12,7 +12,7 @@ OMPLIB=-lrfftw_threads -lfftw_threads -lgomp
 OMPFLAG=-fopenmp
 
 FFTWLIB=-L/software/FFTW/2.1.5-gcc/lib/  -lrfftw -lfftw
-FFTWINC=-I/software/FFTW/2.1.5-gcc/include/
+FFTWINC=-I/software/FFTW/2.1.5-gcc/include/ -D_FFTW
 
 LDFLAGS= $(FFTWLIB) $(OMPLIB) $(MATHLIB)
 CFLAGS=-c $(OPTFLAG) $(WARNFLAG) $(OMPFLAG) $(FFTWINC)

@@ -1,5 +1,6 @@
 #include "evolve.h"
 
+#ifdef _FFTW
 #ifdef _OPENMP
 #include "rfftw_threads.h"
 #else
@@ -9,17 +10,10 @@
 int size_f;
 double fft_norm_fac;
 rfftw_plan fplan;
-
-/*
-void fft1d(const double *fld1, double *res) {
-    memcpy(&in1[0],&fld1[0],sizeof(double)*size_x);
-    rfftw_one(fplan,in1,out1);
-    memcpy(&res[0],&out1[0],sizeof(double)*size_x);
-    return;
-}
-*/
+#endif
 
 void convolution_2d( double *fld1,  double *fld2, double *res, double *fac, int jstart,int ncols,int ntrans) {
+#ifdef _FFTW
     fftw_real *out1, *out2;
     int mi;
     double temp;
@@ -59,10 +53,12 @@ void convolution_2d( double *fld1,  double *fld2, double *res, double *fac, int 
 
     fftw_free(out1);
     fftw_free(out2);
+#endif // _FFTW
     return;
 }
 
 void convolution( double *fld1,  double *fld2, double *res, double fac, int jres, int ncols) {
+#ifdef _FFTW
     fftw_real *out1, *out2;
     int mi;
     double temp;
@@ -97,9 +93,12 @@ void convolution( double *fld1,  double *fld2, double *res, double fac, int jres
 
     fftw_free(out1);
     fftw_free(out2);
+
+#endif // _FFTW
     return;
 }
 void convolution_deriv_2d( double *fld1,  double *fld2, double *res, double *fac, int jstart,int ncols,int ntrans) {
+#ifdef _FFTW
     int mi;
     fftw_real *out1, *out2;
 
@@ -131,9 +130,11 @@ void convolution_deriv_2d( double *fld1,  double *fld2, double *res, double *fac
 
     fftw_free(out1);
     fftw_free(out2);
+#endif
     return;
 }
 void convolution_deriv( double *fld1,  double *fld2, double *res, double fac, int jres,int ncols) {
+#ifdef _FFTW
     int mi;
     fftw_real *out1, *out2;
 
@@ -162,10 +163,12 @@ void convolution_deriv( double *fld1,  double *fld2, double *res, double fac, in
 
     fftw_free(out1);
     fftw_free(out2);
+#endif // _FFTW
     return;
 }
 
 void allocate_conv(void) {
+#ifdef _FFTW
     size_f = (size_x + 1)/2;
 
 #ifdef _OPENMP
@@ -176,9 +179,12 @@ void allocate_conv(void) {
 
     fft_norm_fac = (double)size_x*size_x;
 
+#endif // _FFTW
     return;
 }
 void free_conv(void) {
+#ifdef _FFTW
     rfftw_destroy_plan(fplan);
+#endif // _FFTW
     return;
 }

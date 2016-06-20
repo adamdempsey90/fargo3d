@@ -1000,14 +1000,14 @@ class Sim(Mesh,Parameters):
                     'drFt','drFd','drFw',
                     'Lamex','Lamdep',
                     'dtLt','dtLd','dtLw','mdot',
-                    'Lamdep1','Lamdep2','Lamdep3','Lamdep4','Lamdep5',
+                    'Lamdep1','Lamdep2','Lamdep3','Lamdep4','Lamdep5','Lamdep6',
                     'dtLd_rhs']
 
             for i,a in enumerate(attrs):
                 setattr(self,'trq_'+a,dat[i*self.params.ny:(i+1)*self.params.ny])
-            self.trq_Lamdep2 = np.zeros(self.trq_Lamdep.shape)
-            for i in range(1,6):
-                self.trq_Lamdep2 += getattr(self,'trq_Lamdep%d'%i)
+            self.trq_Lamtot = np.zeros(self.trq_Lamdep.shape)
+            for i in range(1,7):
+                self.trq_Lamtot += getattr(self,'trq_Lamdep%d'%i)
 
             dat = np.fromfile(self.directory+'torque_m%d.dat'%self.n)
             self.mmax = 30
@@ -3068,6 +3068,30 @@ def make_ss_plots(sim1,sim2,ylims=None,savefig=None):
     if savefig is not None:
         fig.savefig(savefig)
 
+def torque_balance(sim):
+    fig,axes=plt.subplots(5,1,sharex=True)
+
+    axes[0].plot(sim.trq_y,sim.trq_Lamex)
+    axes[0].plot(sim.trq_y,sim.trq_drFt + sim.trq_dtLt)
+    axes[1].plot(sim.trq_y,sim.trq_Lamex-sim.trq_Lamdep)
+    axes[1].plot(sim.trq_y,sim.trq_drFw + sim.trq_dtLw)
+    axes[2].plot(sim.trq_y,sim.trq_Lamdep)
+    axes[2].plot(sim.trq_y,sim.trq_drFd + sim.trq_dtLd)
+
+    for i in range(1,7):
+        axes[3].plot(sim.trq_y,getattr(sim,'trq_Lamdep%d'%i),label=str(i))
+
+    axes[3].legend(loc='best')
+
+    axes[4].plot(sim.trq_y,sim.trq_Lamtot)
+    axes[4].plot(sim.trq_y,sim.trq_Lamdep)
+
+
+    axes[-1].set_xlabel('$r$',fontsize=20)
+
+    axes[0].set_ylabel('Total',fontsize=15)
+    axes[1].set_ylabel('Waves',fontsize=15)
+    axes[2].set_ylabel('Disk',fontsize=15)
 
 
 

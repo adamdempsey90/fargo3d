@@ -44,8 +44,9 @@ void update_flux_avg(double *qs, double *q) {
         res = 0;
         fac = 0;
         for(i=0;i<size_x;i++) {    
-            fac += (denstar[lyp]*vy_temp[lyp]*(qs[j+1] - q[j+1]) - denstar[l]*vy_temp[l]*(qs[j] - q[j]))/(ymin(j+1)-ymin(j));
+            fac += (denstar[lyp]*vy_temp[lyp]*SurfY(j+1,k)*(qs[j+1] - q[j+1]) - denstar[l]*vy_temp[l]*SurfY(j,k)*(qs[j] - q[j]))*InvVol(j,k);
             res += ((vy_temp[l]*qs[j]*denstar[l]*SurfY(j,k)-vy_temp[lyp]*qs[j+1]*denstar[lyp]*SurfY(j+1,k))*InvVol(j,k));
+            //res += ((vy_temp[l]*qs[j]*denstar[l]*ymin(j)-vy_temp[lyp]*qs[j+1]*denstar[lyp]*ymin(j+1)))/(ymin(j+1)-ymin(j));
         }
         res /=(double)nx;
         fac /=(double)nx;
@@ -60,7 +61,7 @@ void update_flux(double *qs,double *q) {
     i=j=k=0;
     double res,fac,facd;
 #ifdef _OPENMP
-    #pragma omp parallel for private(i,j,res,fac,facd)
+    #pragma omp parallel for private(i,j,k,res,fac,facd)
 #endif
     for(j=0;j<size_y-1;j++) {
         res = 0;
@@ -68,14 +69,14 @@ void update_flux(double *qs,double *q) {
         facd = 0;
         for(i=0;i<size_x;i++) {    
             facd += dens[l];
-            fac += (vy_temp[lyp]*(qs[lyp]-q[lyp]) - vy_temp[l]*(qs[l]-q[l]))/(ymin(j+1)-ymin(j));
+            fac += (SurfY(j+1,k)*vy_temp[lyp]*(qs[lyp]-q[lyp]) - SurfY(j,k)*vy_temp[l]*(qs[l]-q[l]))*InvVol(j,k);
             res += ((vy_temp[l]*qs[l]*denstar[l]*SurfY(j,k)-vy_temp[lyp]*qs[lyp]*denstar[lyp]*SurfY(j+1,k))*InvVol(j,k));
         }
         res /=(double)nx;
         fac /=(double)nx;
         facd /=(double)nx;
         drFt[j] -= dt*res*.5;
-        LamdepS[j+size_y] -= facd*fac*dt*.5; 
+        LamdepS[j + size_y] -= facd*fac*dt*.5; 
         dtLd_rhs[j] -= fac*dt*.5;
     }
     return;

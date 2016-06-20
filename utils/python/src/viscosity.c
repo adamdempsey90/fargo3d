@@ -61,17 +61,18 @@ void viscosity(void) {
             for(i=0;i<size_x;i++) {
                 // X
                 resd += dens[l];
-                fac3 = 2.0*(tauxx[l]-tauxx[lxm])/(zone_size_x(j,k)*(dens[l]+dens[lxm]))*dt;
+                fac3 = 2.0*(tauxx[l]-tauxx[lxm])/(zone_size_x(j,k)*(dens[l]+dens[lxm]));
                 res3 += fac3;
-                vx_temp[l] += fac3;
+                vx_temp[l] += fac3*dt;
                 fac =  (ymin(j+1)*ymin(j+1)*tauxy[lyp]-ymin(j)*ymin(j)*tauxy[l])/((ymin(j+1)-ymin(j))*ymed(j));
                 facp =  (ymin(j+1)*ymin(j+1)*tauxy[lxp+pitch]-ymin(j)*ymin(j)*tauxy[lxp])/((ymin(j+1)-ymin(j))*ymed(j));
 
-                fac2 = dt*fac*2.0/(ymed(j)*(dens[l]+dens[lxm]));
-                res2 += .5*fac2 + .5*dt*facp*2.0/(ymed(j)*(dens[lxp]+dens[l]));
+                fac2 = fac*2.0/(ymed(j)*(dens[l]+dens[lxm]));
+                //res2 += .5*fac2 + .5*facp*2.0/(ymed(j)*(dens[lxp]+dens[l]));
+                res2 += fac2;
 
-                vx_temp[l] += fac2; 
-                res4 += fac2+fac3;
+                vx_temp[l] += fac2*dt; 
+                res4 += fac;
                 // Y
                 vy_temp[l] += 2.0*(ymed(j)*tauyy[l]-ymed(j-1)*tauyy[lym])/((ymed(j)-ymed(j-1))*(dens[l]+dens[lym])*ymin(j))*dt;
                 vy_temp[l] += 2.0*(tauxy[lxp]-tauxy[l])/(dx*ymin(j)*(dens[l]+dens[lym]))*dt;
@@ -84,15 +85,15 @@ void viscosity(void) {
             res /= (double)nx;
             res4 /= (double)nx;
 
-            LamdepS[j + size_y*3] += res3*ymed(j)*resd;
-            LamdepS[j + size_y*4] += res2*ymed(j)*resd;
+            LamdepS[j + size_y*3] += dt*res3*ymed(j)*resd;
+            LamdepS[j + size_y*2] += dt*res2*ymed(j)*resd;
              drFt[j] += -dt*res;
              dtLd_rhs[j] += res*ymed(j);
             //drFd[j] = -(ymin(j+1)*ymin(j+1)*tauxyavg[j+1]*SurfY(j+1,k) - ymin(j)*ymin(j)*tauxyavg[j]*SurfY(j,k))*InvVol(j,k);
             
             facd  =  -dt*(ymin(j+1)*ymin(j+1)*tauxyavg[j+1]-ymin(j)*ymin(j)*tauxyavg[j])/((ymin(j+1)-ymin(j))*ymed(j));
-            LamdepS[j + size_y*5] += facd;
-            drFd[j]  +=  facd;             
+            LamdepS[j + size_y*5] += -dt*res;
+            drFd[j]  +=  -dt*res;             
 
         }
     }
