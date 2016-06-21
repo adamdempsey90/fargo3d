@@ -77,7 +77,8 @@ void viscosity(void) {
                 vy_temp[l] += 2.0*(ymed(j)*tauyy[l]-ymed(j-1)*tauyy[lym])/((ymed(j)-ymed(j-1))*(dens[l]+dens[lym])*ymin(j))*dt;
                 vy_temp[l] += 2.0*(tauxy[lxp]-tauxy[l])/(dx*ymin(j)*(dens[l]+dens[lym]))*dt;
                 vy_temp[l] -= (tauxx[l]+tauxx[lym])/(ymin(j)*(dens[l]+dens[lym]))*dt;
-                res += .5*(fac+facp);
+                //res += .5*(fac+facp);
+                res += fac;
             }
             res2 /= (double)nx;
             res3 /= (double)nx;

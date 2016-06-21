@@ -16,13 +16,13 @@ void source_step(void) {
             resd = 0;
             for(i=0;i<size_x;i++) {
                 resd += dens[l];
-                res +=  -dt*2.0/(dens[l]+dens[lxm]) *(Pres[l]-Pres[lxm])/zone_size_x(j,k);
+                res +=  -2.0/(dens[l]+dens[lxm]) *(Pres[l]-Pres[lxm])/zone_size_x(j,k);
                 //res += -dt/(dens[lym] + dens[lxm - pitch]) *(Pres[lym] - Pres[lxm-pitch])/zone_size_x(j-1,k);
             }
             res /=(double)nx;
             resd /= (double)nx;
-            dtLd_rhs[j] += res*ymed(j);
-            LamdepS[j + size_y*4] += resd*res*ymed(j);
+            dtLd_rhs[j] += dt*res*ymed(j);
+            LamdepS[j + size_y*4] += dt*res*ymed(j)*resd;
         }
     }
 

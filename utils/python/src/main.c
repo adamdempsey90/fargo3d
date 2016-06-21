@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
     printf("Using %d threads\n",num_threads);
 #endif
     allocate_all();
-#ifdef FFTW
+#ifdef _FFTW
     allocate_conv();
 #endif
     read_domain(directory);
@@ -98,7 +98,7 @@ int main(int argc, char *argv[]) {
     double time = tstart;
 
 
-#ifdef FFTW
+#ifdef _FFTW
     printf("Using FFTW to compute fourier transforms\n");
 #endif
 #ifdef ARTIFICIALVISCOSITY
@@ -200,12 +200,13 @@ int main(int argc, char *argv[]) {
         dtLw[j]/=dt;
         dtLd_rhs[j]/=dt;
         mdotavg[j] /= dt;
-        LamdepS[j] /= dt;
+        LamdepS[j + size_y*0] /= dt;
         LamdepS[j + size_y*1] /= dt;
         LamdepS[j + size_y*2] /= dt;
         LamdepS[j + size_y*3] /= dt;
         LamdepS[j + size_y*4] /= dt;
         LamdepS[j + size_y*5] /= dt;
+        LamdepS[j + size_y*6] /= dt;
     }
     int mi;
     for(mi=1;mi<MMAX+2;mi++) {
@@ -221,7 +222,7 @@ int main(int argc, char *argv[]) {
     output_torque(directory,n);
     output_torque(outputdir,n);
     free_rk5();
-#ifdef FFTW
+#ifdef _FFTW
     free_conv();
 #endif
     //free_all();

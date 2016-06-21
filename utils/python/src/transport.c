@@ -107,8 +107,6 @@ void transportY(void) {
     vanleer_y_b(divrho,Qs,dt);
     updateY(Piyp,Qs,dt);
 
-    update_density_Y(dt);
-
 
     vanleer_y_a_avg(dbar);
     vanleer_y_b_avg(dbar,dbarstar,dt);
@@ -117,6 +115,9 @@ void transportY(void) {
     vanleer_y_a_avg(divrho);
     vanleer_y_b_avg(divrho,Qs,dt);
     update_flux_avg(Qs,divrho);
+
+    
+    update_density_Y(dt);
 
 
 
@@ -139,10 +140,28 @@ void DividebyRho(double *q) {
     return;
 }
 void DividebyRhoavg(double *q) {
+    int i,j,k;
+    double resv;
+    i=j=k=0;
+#ifdef _OPENMP
+    #pragma omp parallel for collapse(2) private(i,j,k,resv)
+#endif
+    for(k=0;k<size_z;k++) {
+        for(j=0;j<size_y;j++) {
+            resv  = 0;
+            for(i=0;i<size_x;i++) {
+                resv += ( .5*(vx_temp[l]+vx_temp[lxp]) + ymed(j)*omf)*ymed(j);
+            }
+            resv /= (double)nx;
+            divrho[j] = resv;
+        }
+    }
+    /*
     int j;
     for(j=0;j<size_y;j++) {
         divrho[j] = q[j]/dbar[j];
     }
+    */
     return;
 }
 void transportX(double *vxt, int ppa) {

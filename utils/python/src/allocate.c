@@ -38,12 +38,14 @@ void allocate_all(void) {
 
     MALLOC_SAFE((Lt = (double *)malloc(sizeof(double)*(size_y*2))));
     MALLOC_SAFE((Ld = (double *)malloc(sizeof(double)*(size_y*2))));
+    MALLOC_SAFE((LdS = (double *)malloc(sizeof(double)*(size_y*2))));
+    MALLOC_SAFE((dbarS = (double *)malloc(sizeof(double)*(size_y*2))));
     MALLOC_SAFE((Lw = (double *)malloc(sizeof(double)*(size_y*2))));
     MALLOC_SAFE((drFt = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((drFd = (double *)malloc(sizeof(double)*(size_y*(MMAX+2)))));
     MALLOC_SAFE((drFw = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((Lamdep = (double *)malloc(sizeof(double)*(size_y))));
-    MALLOC_SAFE((LamdepS = (double *)malloc(sizeof(double)*(size_y*6))));
+    MALLOC_SAFE((LamdepS = (double *)malloc(sizeof(double)*(size_y*7))));
     MALLOC_SAFE((Lamex = (double *)malloc(sizeof(double)*(size_y*(MMAX+2)))));
     MALLOC_SAFE((tauxyavg = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((dbar = (double *)malloc(sizeof(double)*(size_y))));
@@ -54,6 +56,8 @@ void allocate_all(void) {
     MALLOC_SAFE((dbarstar = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((dtLt = (double *)malloc(sizeof(double)*(size_y*(MMAX+2)))));
     MALLOC_SAFE((dtLd = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((dtLdS = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((dtdbar = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((dtLd_rhs = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((dtLw = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((conv_prefac = (double *)malloc(sizeof(double)*(size_y))));
@@ -74,14 +78,19 @@ void allocate_all(void) {
         drFw[j] = 0;
         Lamex[j] = 0;
         Lamex[j+size_y] = 0;
+        LdS[j] = 0;
+        LdS[j+size_y] = 0;
+        dbarS[j] = 0;
+        dbarS[j+size_y] = 0;
 
         Lamdep[j] = 0;
-        LamdepS[j] = 0;
-        LamdepS[j + size_y] = 0;
+        LamdepS[j + size_y*0] = 0;
+        LamdepS[j + size_y*1] = 0;
         LamdepS[j + size_y*2] = 0;
         LamdepS[j + size_y*3] = 0;
         LamdepS[j + size_y*4] = 0;
         LamdepS[j + size_y*5] = 0;
+        LamdepS[j + size_y*6] = 0;
         tauxyavg[j] = 0;
         vxbar[j] = 0;
         vybar[j] = 0;
@@ -92,6 +101,8 @@ void allocate_all(void) {
         dtLt[j] = 0;
         dtLd_rhs[j] = 0;
         dtLd[j] = 0;
+        dtLdS[j] = 0;
+        dtdbar[j] = 0;
         dtLw[j] = 0;
         conv_prefac[j] = 0;
     }

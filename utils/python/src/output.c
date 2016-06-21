@@ -65,6 +65,8 @@ void output_torque(char *directory,int n) {
     fwrite(&Ld[NGHY+size_y],sizeof(double),ny,f);
     fwrite(&Lw[NGHY],sizeof(double),ny,f);
     fwrite(&Lw[NGHY+size_y],sizeof(double),ny,f);
+    fwrite(&LdS[NGHY],sizeof(double),ny,f);
+    fwrite(&LdS[NGHY+size_y],sizeof(double),ny,f);
     fwrite(&drFt[NGHY],sizeof(double),ny,f);
     fwrite(&drFd[NGHY],sizeof(double),ny,f);
     fwrite(&drFw[NGHY],sizeof(double),ny,f);
@@ -74,6 +76,8 @@ void output_torque(char *directory,int n) {
     fwrite(&dtLt[NGHY],sizeof(double),ny,f);
     fwrite(&dtLd[NGHY],sizeof(double),ny,f);
     fwrite(&dtLw[NGHY],sizeof(double),ny,f);
+    fwrite(&dtLdS[NGHY],sizeof(double),ny,f);
+    fwrite(&dtdbar[NGHY],sizeof(double),ny,f);
     fwrite(&mdotavg[NGHY],sizeof(double),ny,f);
     fwrite(&LamdepS[NGHY + size_y*0],sizeof(double),ny,f);
     fwrite(&LamdepS[NGHY + size_y*1],sizeof(double),ny,f);
@@ -81,6 +85,7 @@ void output_torque(char *directory,int n) {
     fwrite(&LamdepS[NGHY + size_y*3],sizeof(double),ny,f);
     fwrite(&LamdepS[NGHY + size_y*4],sizeof(double),ny,f);
     fwrite(&LamdepS[NGHY + size_y*5],sizeof(double),ny,f);
+    fwrite(&LamdepS[NGHY + size_y*6],sizeof(double),ny,f);
     fwrite(&dtLd_rhs[NGHY],sizeof(double),ny,f);
 
     fclose(f);

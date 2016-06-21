@@ -29,7 +29,6 @@
 #define FARGO
 #define STOCKHOLMACC
 #define NOWAVEKILLRHO
-#define FFTW
 
 
 #define MALLOC_SAFE(ptr) if (ptr == NULL) printf("Malloc error at line %d!\n",__LINE__);
@@ -41,10 +40,10 @@
 #define xmin(i) Xmed[(i)]
 #define zone_size_x(j,k) (dx*ymed(j))
 #define zone_size_y(j,k) (ymin(j+1)-ymin(j))
-#define SurfY(j,k) ymin(j)*dx
+#define SurfY(j,k) (ymin(j)*dx)
 #define SurfX(j,k) (ymin(j+1)-ymin(j))
-#define InvVol(j,k) 2/(dx*(ymin(j+1)*ymin(j+1) - ymin(j)*ymin(j)))
-#define Vol(j,k) 0.5*(dx*(ymin(j+1)*ymin(j+1) - ymin(j)*ymin(j)))
+#define InvVol(j,k) (2/(dx*(ymin(j+1)*ymin(j+1) - ymin(j)*ymin(j))))
+#define Vol(j,k) (0.5*(dx*(ymin(j+1)*ymin(j+1) - ymin(j)*ymin(j))))
 #define XC ymed(j)*cos(xmed(i))
 #define YC ymed(j)*sin(xmed(i))
 
@@ -134,6 +133,7 @@ double *slope, *divrho, *denstar, *Qs;
 double *Ymed, *Xmed, *Ymin, *Xmin;
 double *tauxx, *tauxy, *tauyy, *tauxyavg;
 double *Lt, *Ld, *Lw, *drFw, *drFd, *drFt, *Lamdep, *Lamex;
+double *LdS, *dtLdS, *dbarS, *dtdbar;
 double *LamdepS, *dtLd_rhs;
 double *dtLt, *dtLd, *dtLw;
 int *nshift;

@@ -997,16 +997,18 @@ class Sim(Mesh,Parameters):
             dat = np.fromfile(self.directory+trqname)
             print 'Loaded torque file from %s'%trqname
             attrs = ['y','dbar','Lt','Ltn','Ld','Ldn','Lw','Lwn',
+                    'LdS','LdSn',
                     'drFt','drFd','drFw',
                     'Lamex','Lamdep',
-                    'dtLt','dtLd','dtLw','mdot',
-                    'Lamdep1','Lamdep2','Lamdep3','Lamdep4','Lamdep5','Lamdep6',
+                    'dtLt','dtLd','dtLw',
+                    'dtLds','dtdbar','mdot',
+                    'Lamdep1','Lamdep2','Lamdep3','Lamdep4','Lamdep5','Lamdep6','Lamdep7',
                     'dtLd_rhs']
 
             for i,a in enumerate(attrs):
                 setattr(self,'trq_'+a,dat[i*self.params.ny:(i+1)*self.params.ny])
             self.trq_Lamtot = np.zeros(self.trq_Lamdep.shape)
-            for i in range(1,7):
+            for i in range(1,8):
                 self.trq_Lamtot += getattr(self,'trq_Lamdep%d'%i)
 
             dat = np.fromfile(self.directory+'torque_m%d.dat'%self.n)

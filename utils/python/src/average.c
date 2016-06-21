@@ -29,10 +29,13 @@ void set_avg(int p) {
         vxbar[j] = resx/(double)nx;
         vybar[j] = resy/(double)nx;
         dbar[j] = resd/(double)nx;
+
+        dbarS[j + p*size_y] = dbar[j];
         Lt[j + p*size_y] = resL/(double)nx;
         if (p==1) dbart[j] += dbar[j]*dt;
 
         Ld[j + p*size_y] = ymed(j)*( vxbar[j] + omf*ymed(j))*dbar[j];
+        LdS[j + p*size_y] = ymed(j)*( vxbar[j] + omf*ymed(j));
         Lw[j + p*size_y] = Lt[j + p*size_y] - Ld[j + p*size_y];
     }
     return;

@@ -21,7 +21,7 @@ void update_flux_avg(double *qs, double *q) {
     int i,j,k;
     i=j=k=0;
     double res, fac;
-#ifdef FFTW
+#ifdef _FFTW
     for(j=0;j<size_y-1;j++) {
         conv_prefac[j] = -dt*qs[j]*SurfY(j,k)*InvVol(j,k);
     }
@@ -44,7 +44,7 @@ void update_flux_avg(double *qs, double *q) {
         res = 0;
         fac = 0;
         for(i=0;i<size_x;i++) {    
-            fac += (denstar[lyp]*vy_temp[lyp]*SurfY(j+1,k)*(qs[j+1] - q[j+1]) - denstar[l]*vy_temp[l]*SurfY(j,k)*(qs[j] - q[j]))*InvVol(j,k);
+            fac += (denstar[lyp]*vy_temp[lyp]*SurfY(j+1,k)*(qs[j+1] - q[j]) - denstar[l]*vy_temp[l]*SurfY(j,k)*(qs[j] - q[j]))*InvVol(j,k);
             res += ((vy_temp[l]*qs[j]*denstar[l]*SurfY(j,k)-vy_temp[lyp]*qs[j+1]*denstar[lyp]*SurfY(j+1,k))*InvVol(j,k));
             //res += ((vy_temp[l]*qs[j]*denstar[l]*ymin(j)-vy_temp[lyp]*qs[j+1]*denstar[lyp]*ymin(j+1)))/(ymin(j+1)-ymin(j));
         }
@@ -69,14 +69,14 @@ void update_flux(double *qs,double *q) {
         facd = 0;
         for(i=0;i<size_x;i++) {    
             facd += dens[l];
-            fac += (SurfY(j+1,k)*vy_temp[lyp]*(qs[lyp]-q[lyp]) - SurfY(j,k)*vy_temp[l]*(qs[l]-q[l]))*InvVol(j,k);
+            fac += (SurfY(j+1,k)*vy_temp[lyp]*(qs[lyp]-q[l]) - SurfY(j,k)*vy_temp[l]*(qs[l]-q[l]))*InvVol(j,k);
             res += ((vy_temp[l]*qs[l]*denstar[l]*SurfY(j,k)-vy_temp[lyp]*qs[lyp]*denstar[lyp]*SurfY(j+1,k))*InvVol(j,k));
         }
         res /=(double)nx;
         fac /=(double)nx;
         facd /=(double)nx;
         drFt[j] -= dt*res*.5;
-        LamdepS[j + size_y] -= facd*fac*dt*.5; 
+        LamdepS[j + size_y] -= .5*fac*dt*facd; 
         dtLd_rhs[j] -= fac*dt*.5;
     }
     return;

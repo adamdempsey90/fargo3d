@@ -8,11 +8,31 @@ MATHLIB=-lm
 WARNFLAG=-Wall -Wextra -std=c99
 OPTFLAG=-O3
 
+UNAME := $(shell echo $(USER))
+OMPLIB=
+OMPFLAG=
+FFTWLIB=
+FFTWINC=
+
+ifeq ($(UNAME),amd616)
+
 OMPLIB=-lrfftw_threads -lfftw_threads -lgomp
 OMPFLAG=-fopenmp
 
 FFTWLIB=-L/software/FFTW/2.1.5-gcc/lib/  -lrfftw -lfftw
 FFTWINC=-I/software/FFTW/2.1.5-gcc/include/ -D_FFTW
+endif
+
+ifeq ($(UNAME),jupiter)
+CC=gcc-6
+OMPLIB=-lgomp
+OMPFLAG=-fopenmp
+endif
+
+ifeq ($(UNAME),zeus)
+OMPLIB=-lgomp
+OMPFLAG=-fopenmp
+endif
 
 LDFLAGS= $(FFTWLIB) $(OMPLIB) $(MATHLIB)
 CFLAGS=-c $(OPTFLAG) $(WARNFLAG) $(OMPFLAG) $(FFTWINC)

@@ -31,16 +31,25 @@ void artificial_visc(void) {
     }
 
 
+    double res,fac,resd;
 #ifdef _OPENMP
-    #pragma omp parallel for collapse(3) private(i,j,k)
+    #pragma omp parallel for collapse(2) private(i,j,k,res,fac,resd)
 #endif
     for(k=0;k<size_z;k++) {
         for(j=1;j<size_y-1;j++) {
+            res = 0;
+            resd = 0;
+            fac = 0;
             for(i=0;i<size_x;i++) {
-
-	            vx_temp[l] += - 2.0*(Piym[l]-Piym[lxm])/(dens[l]+dens[lxm])*dt/zone_size_x(j,k);
+                fac =  - 2.0*(Piym[l]-Piym[lxm])/(dens[l]+dens[lxm])/zone_size_x(j,k);
+                res += fac;
+                resd += dens[l];
+	            vx_temp[l] += fac*dt; 
                 vy_temp[l] += - 2.0*(Piyp[l]-Piyp[lym])/(dens[l]+dens[lym])*dt/zone_size_y(j,k);           
             }
+            res /= (double)nx;
+            resd /= (double)nx;
+            LamdepS[j + size_y*6] += ymed(j)*res*resd*dt;
         }
     }
 
