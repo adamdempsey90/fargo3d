@@ -4,20 +4,20 @@ Setup			p3diso
 
 AspectRatio     	0.05            Thickness over Radius in the disc
 Sigma0			6.3661977237e-4	Surface Density at r=1
-Nu			1.0e-5		Uniform kinematic viscosity
+Alpha			1.0e-3		Uniform kinematic viscosity
 SigmaSlope		1.0		Slope of surface
 FlaringIndex		0.5
 
 ### Planet parameters
 
-PlanetConfig		planets/SuperEarth.cfg
+PlanetConfig		planets/jupiter.cfg
 ThicknessSmoothing 	0.1		Smoothing parameters in disk thickness
 
 ### Numerical method parameters
 
 Disk			YES
 OmegaFrame     		1.0
-Frame			F
+Frame			C
 IndirectTerm		No
 
 ### Mesh parameters
@@ -34,10 +34,10 @@ Xmax			3.141592653589793
 
 ### Output control parameters
 
-Ntot			10001		Total number of time steps
-Ninterm	 		10		Time steps between outputs
-DT			0.314159265359	Time step length. 2PI = 1 orbit
-OutputDir		@outputs/p3diso
+Ntot			100		Total number of time steps
+Ninterm	 		1		Time steps between outputs
+DT			3.14159265359	Time step length. 2PI = 1 orbit
+OutputDir		outputs/p3diso2
 
 
 Field 			gasdens

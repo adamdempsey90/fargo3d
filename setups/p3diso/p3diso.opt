@@ -23,8 +23,9 @@
 #----------------------------------------------------------------------
 #TestProblems
 
-MONITOR_2D = MASS | MOM_X
-MONITOR_SCALAR = TORQ
+#MONITOR_2D = MASS | MOM_X
+
+#MONITOR_SCALAR = TORQ
 
 #Dimension(s) of Simulation. Here 3D (Phi,r,theta)
 
@@ -33,7 +34,7 @@ FARGO_OPT +=  -DY
 FARGO_OPT +=  -DZ
 
 FARGO_OPT += -DSTOCKHOLM
-FARGO_OPT += -DVISCOSITY
+FARGO_OPT += -DALPHAVISCOSITY
 FARGO_OPT += -DPOTENTIAL
 FARGO_OPT += -DHALFDISK
 

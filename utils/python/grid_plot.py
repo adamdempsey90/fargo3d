@@ -6,7 +6,7 @@ from matplotlib.mlab import griddata
 
 class grid:
     """Clase para manejar outputs de FARGO. """
-    def __init__(self, input_file, nrad, nsec, rmin, rmax):
+    def __init__(self, input_file, nrad, nsec, rmin, rmax,zmin,zmax):
 
         self.input = input_file
         self.nrad = nrad
@@ -36,7 +36,7 @@ class grid:
         ax1.imshow(self.data, origin="lower", \
                        extent=[0,2*np.pi,self.rmin,self.rmax])
         plt.show()
-    
+
     def polar(self, n, file='None'):
         r = np.arange(self.rmin,self.rmax,(self.rmax-self.rmin)/self.nrad)
         t = np.arange(0.,2.*np.pi,2.*np.pi/self.nsec)
@@ -51,12 +51,12 @@ class grid:
                 z[k] = self.data[i,j]
                 k +=1
         xx = np.arange(-self.rmax, self.rmax, (self.rmax-self.rmin)/n)
-        yy = np.arange(-self.rmax, self.rmax, (self.rmax-self.rmin)/n)        
-        zz = griddata(x,y,z,xx,yy)                
+        yy = np.arange(-self.rmax, self.rmax, (self.rmax-self.rmin)/n)
+        zz = griddata(x,y,z,xx,yy)
         fig_pol = plt.figure()
         ax1 = fig_pol.add_subplot(111, axisbg='k')
         ax1.set_xlabel("X")
-        ax1.set_ylabel("Y")       
+        ax1.set_ylabel("Y")
         if(self.zmax!='None' and self.zmin!='None'):
             ax1.imshow(zz, cmap=cm.hot, origin="lower", \
                            extent=[-self.rmax,self.rmax, \
@@ -91,20 +91,20 @@ class grid:
                 z[k] = self.data[i,j]
                 k +=1
         xx = np.arange(-self.rmax, self.rmax, (self.rmax-self.rmin)/n)
-        yy = np.arange(-self.rmax, self.rmax, (self.rmax-self.rmin)/n)        
-        zz = griddata(x,y,z,xx,yy)                
+        yy = np.arange(-self.rmax, self.rmax, (self.rmax-self.rmin)/n)
+        zz = griddata(x,y,z,xx,yy)
         ax2 = fig.add_subplot(122, axisbg='k')
         ax2.set_xlabel("X")
         ax2.set_ylabel("Y")
         ax2.imshow(zz, cmap=cm.hot,origin="lower" \
                        , extent=[-self.rmax,self.rmax,-self.rmax,self.rmax])
         plt.show()
-        
+
 if (__name__ == "__main__"):
     grilla_ref = grid("gasdens228.dat",306,384, 0.1,3.5)
     zmin = grilla_ref.minval
     zmax = grilla_ref.maxval
-    for i in range(10): 
+    for i in range(10):
         name = 'gasdens'+str(i)+'.dat'
         if(i<1000):
             name_out = 'gasdens'+str(i)

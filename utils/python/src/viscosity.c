@@ -61,24 +61,33 @@ void viscosity(void) {
             for(i=0;i<size_x;i++) {
                 // X
                 resd += dens[l];
+                
                 fac3 = 2.0*(tauxx[l]-tauxx[lxm])/(zone_size_x(j,k)*(dens[l]+dens[lxm]));
                 res3 += fac3;
+                
                 vx_temp[l] += fac3*dt;
+                
                 fac =  (ymin(j+1)*ymin(j+1)*tauxy[lyp]-ymin(j)*ymin(j)*tauxy[l])/((ymin(j+1)-ymin(j))*ymed(j));
-                facp =  (ymin(j+1)*ymin(j+1)*tauxy[lxp+pitch]-ymin(j)*ymin(j)*tauxy[lxp])/((ymin(j+1)-ymin(j))*ymed(j));
+
+                
+                //facp =  (ymin(j+1)*ymin(j+1)*tauxy[lxp+pitch]-ymin(j)*ymin(j)*tauxy[lxp])/((ymin(j+1)-ymin(j))*ymed(j));
 
                 fac2 = fac*2.0/(ymed(j)*(dens[l]+dens[lxm]));
+
                 //res2 += .5*fac2 + .5*facp*2.0/(ymed(j)*(dens[lxp]+dens[l]));
+
                 res2 += fac2;
 
                 vx_temp[l] += fac2*dt; 
-                res4 += fac;
+
+                res += fac;
+
+                //res4 += fac;
                 // Y
                 vy_temp[l] += 2.0*(ymed(j)*tauyy[l]-ymed(j-1)*tauyy[lym])/((ymed(j)-ymed(j-1))*(dens[l]+dens[lym])*ymin(j))*dt;
                 vy_temp[l] += 2.0*(tauxy[lxp]-tauxy[l])/(dx*ymin(j)*(dens[l]+dens[lym]))*dt;
                 vy_temp[l] -= (tauxx[l]+tauxx[lym])/(ymin(j)*(dens[l]+dens[lym]))*dt;
                 //res += .5*(fac+facp);
-                res += fac;
             }
             res2 /= (double)nx;
             res3 /= (double)nx;
@@ -93,8 +102,8 @@ void viscosity(void) {
             //drFd[j] = -(ymin(j+1)*ymin(j+1)*tauxyavg[j+1]*SurfY(j+1,k) - ymin(j)*ymin(j)*tauxyavg[j]*SurfY(j,k))*InvVol(j,k);
             
             facd  =  -dt*(ymin(j+1)*ymin(j+1)*tauxyavg[j+1]-ymin(j)*ymin(j)*tauxyavg[j])/((ymin(j+1)-ymin(j))*ymed(j));
-            LamdepS[j + size_y*5] += -dt*res;
-            drFd[j]  +=  -dt*res;             
+            //LamdepS[j + size_y*5] += -dt*res;
+            //drFd[j]  +=  -dt*res;             
 
         }
     }

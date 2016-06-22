@@ -4,7 +4,7 @@ Setup			p3diso
 
 AspectRatio     	0.05            Thickness over Radius in the disc
 Sigma0			6.3661977237e-4	Surface Density at r=1
-Nu			1.0e-5		Uniform kinematic viscosity
+Alpha			1.0e-2		Uniform kinematic viscosity
 SigmaSlope		1.0		Slope of surface
 FlaringIndex		0.5
 

@@ -14,6 +14,14 @@
 void boundary_zmax_cpu () {
 
 //<USER_DEFINED>
+INPUT(Density);
+INPUT(Vx);
+INPUT(Vy);
+INPUT(Vz);
+OUTPUT(Density);
+OUTPUT(Vx);
+OUTPUT(Vy);
+OUTPUT(Vz);
 //<\USER_DEFINED>
 
 //<INTERNAL>
@@ -24,12 +32,21 @@ void boundary_zmax_cpu () {
   int jgh;
   int kact;
   int kgh;
+  int lgh;
+  int lghs;
+  int lact;
+  int lacts;
+  int lacts_null;
 //<\INTERNAL>
 
 //<EXTERNAL>
+  real* density = Density->field_cpu;
+  real* vx = Vx->field_cpu;
+  real* vy = Vy->field_cpu;
+  real* vz = Vz->field_cpu;
   int size_x = Nx+2*NGHX;
-  int size_y = 1;
-  int size_z = 1;
+  int size_y = Ny+2*NGHY;
+  int size_z = NGHZ;
   int nx = Nx;
   int ny = Ny;
   int nz = Nz;
@@ -60,6 +77,21 @@ void boundary_zmax_cpu () {
       for(i=0; i<size_x; i++) {
 #endif
 //<#>
+
+	lgh = i + j*pitch + (nz+nghz+k)*stride;
+	lghs = i + j*pitch + (nz+nghz+1+k)*stride;
+	lact = i + j*pitch + (nz+nghz-1-k)*stride;
+	lacts = i + j*pitch + (nz+nghz-1-k)*stride;
+	lacts_null = i + j*pitch + (nz+nghz)*stride;
+	kgh = (nz+nghz+k);
+	kact = (nz+nghz-1-k);
+
+	density[lgh] = density[lact];
+	vx[lgh] = vx[lact];
+	vy[lgh] = vy[lact];
+	if (k<size_z-1)
+		vz[lghs] = -vz[lacts];
+	vz[lacts_null] = 0;
 //<\#>
 #ifdef X
       }
