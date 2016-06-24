@@ -998,8 +998,8 @@ class Sim(Mesh,Parameters):
             print 'Loaded torque file from %s'%trqname
             attrs = ['y','dbar','Lt','Ltn','Ld','Ldn','Lw','Lwn',
                     'LdS','LdSn',
-                    'drFt','drFd','drFw',
-                    'Lamex','Lamdep',
+                    'drFt','drFd','drFdB','drFw', 'drFwB',
+                    'Lamex','Lamdep','LamdepB',
                     'dtLt','dtLd','dtLw',
                     'dtLds','dtdbar','mdot',
                     'Lamdep1','Lamdep2','Lamdep3','Lamdep4','Lamdep5','Lamdep6','Lamdep7',
@@ -3095,8 +3095,78 @@ def torque_balance(sim):
     axes[1].set_ylabel('Waves',fontsize=15)
     axes[2].set_ylabel('Disk',fontsize=15)
 
+def compare_torque_ab(sim,savefig=None):
+    y = sim.trq_y[ind].copy()
+    lamdepA = sim.trq_Lamdep[ind].copy()
+    lamdepB = sim.trq_LamdepB[ind].copy()
+
+    drFwA = sim.trq_drFw[ind].copy()
+    drFwB = sim.trq_drFwB[ind].copy()
+
+    lamex = sim.trq_Lamex[ind].copy()
+
+    dR = (sim.trq_y*sim.dens.dy)[ind]
+    intLA = (dR * lamdepA).cumsum()
+    intLB = (dR * lamdepB).cumsum()
+
+    intLex = (dR * lamex).cumsum()
+    intLex -= intLex[0];
+    intFwA = (dR * drFwA).cumsum()
+    intFwA -= intFwA[0]
+
+    intRA = (dR * lamex - dR * drFwA).cumsum()
+    intRB = (dR * lamex - dR * drFwB).cumsum()
+
+    intFwB = (dR * drFwB).cumsum()
+    intFwB -= intFwB[0]
 
 
+    intLA -= intLA[0]
+    intLB -= intLB[0]
+    intRA -= intRA[0]
+    intRB -= intRB[0]
+
+
+    fig,axes = plt.subplots(2,2,sharex=True,figsize=(25,15))
+    plt.subplots_adjust(hspace=0)
+
+    axes[0,0].plot(y,lamex,'-k',label='$\\Lambda_{ex}$')
+    axes[0,0].plot(y,drFwA,'-r',label='$\\nabla_r (F_w)$')
+    axes[0,0].plot(y,lamdepA,'-b',label='$\\Lambda_{dep}$')
+
+    axes[0,1].plot(y,lamex,'-k',label='$\\Lambda_{ex}$')
+    axes[0,1].plot(y,drFwB,'-r',label='$\\nabla_r (F_w)$')
+    axes[0,1].plot(y,lamdepB,'-b',label='$\\Lambda_{dep}$')
+
+    axes[1,0].plot(y,intRA,'-m',label='$\\int \, dr \\, r \\Lambda_{ex} - r \\nabla_r(F_w)$')
+    axes[1,0].plot(y,intLA,'-b',label='$\\int \, dr \\, r \\Lambda_{dep}$')
+    axes[1,0].plot(y,intLex,'-k',label='$\\int \, dr \\, r \\Lambda_{ex}$')
+    axes[1,0].plot(y,intFwA,'-r',label='$\\int \, dr \\, r \\nabla_r(F_w)$')
+
+    axes[1,1].plot(y,intRB,'-m',label='$\\int \, dr \\, r \\Lambda_{ex} - r \\nabla_r(F_w)$')
+    axes[1,1].plot(y,intLB,'-b',label='$\\int \, dr \\, r \\Lambda_{dep}$')
+    axes[1,1].plot(y,intLex,'-k',label='$\\int \, dr \\, r \\Lambda_{ex}$')
+    axes[1,1].plot(y,intFwB,'-r',label='$\\int \, dr \\, r \\nabla_r(F_w)$')
+
+
+    axes[1,0].set_xlabel('$r$',fontsize=20)
+    axes[1,1].set_xlabel('$r$',fontsize=20)
+
+    axes[0,0].set_title('Option A, $ \\langle \\Sigma v_r \\rangle$',fontsize=20)
+    axes[0,1].set_title('Option B, $ \\langle \\Sigma \\rangle \\langle v_r \\rangle$',fontsize=20)
+
+    axes[0,0].legend(loc='lower right')
+    axes[1,0].legend(loc='lower right')
+
+    plt.setp(axes[1,0].get_yticklabels()[-1],visible=False)
+    plt.setp(axes[1,1].get_yticklabels()[-1],visible=False)
+    plt.setp(axes[0,0].get_yticklabels()[0],visible=False)
+    plt.setp(axes[0,1].get_yticklabels()[0],visible=False)
+    fig.canvas.draw()
+
+    if savefig is not None:
+        fig.savefig(savefig)
+    return
 
 
 

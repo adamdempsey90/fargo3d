@@ -191,10 +191,13 @@ int main(int argc, char *argv[]) {
         Lw[j+size_y] = Lt[j+size_y] - Ld[j+size_y];
         drFt[j]/=dt;
         drFd[j]/=dt;
+        drFdB[j]/=dt;
         drFw[j]/=dt;
+        drFwB[j]/=dt;
         Lamex[j]/=dt;
         //Lamex[j+size_y]/=dt;
         Lamdep[j]/=dt;
+        LamdepB[j]/=dt;
         dtLt[j]/=dt;
         dtLd[j]/=dt;
         dtLw[j]/=dt;

@@ -43,8 +43,11 @@ void allocate_all(void) {
     MALLOC_SAFE((Lw = (double *)malloc(sizeof(double)*(size_y*2))));
     MALLOC_SAFE((drFt = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((drFd = (double *)malloc(sizeof(double)*(size_y*(MMAX+2)))));
+    MALLOC_SAFE((drFdB = (double *)malloc(sizeof(double)*(size_y*(MMAX+2)))));
     MALLOC_SAFE((drFw = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((drFwB = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((Lamdep = (double *)malloc(sizeof(double)*(size_y))));
+    MALLOC_SAFE((LamdepB = (double *)malloc(sizeof(double)*(size_y))));
     MALLOC_SAFE((LamdepS = (double *)malloc(sizeof(double)*(size_y*7))));
     MALLOC_SAFE((Lamex = (double *)malloc(sizeof(double)*(size_y*(MMAX+2)))));
     MALLOC_SAFE((tauxyavg = (double *)malloc(sizeof(double)*(size_y))));
@@ -75,7 +78,9 @@ void allocate_all(void) {
         Lw[j+size_y] = 0;
         drFt[j] = 0;
         drFd[j] = 0;
+        drFdB[j] = 0;
         drFw[j] = 0;
+        drFwB[j] = 0;
         Lamex[j] = 0;
         Lamex[j+size_y] = 0;
         LdS[j] = 0;
@@ -84,6 +89,7 @@ void allocate_all(void) {
         dbarS[j+size_y] = 0;
 
         Lamdep[j] = 0;
+        LamdepB[j] = 0;
         LamdepS[j + size_y*0] = 0;
         LamdepS[j + size_y*1] = 0;
         LamdepS[j + size_y*2] = 0;

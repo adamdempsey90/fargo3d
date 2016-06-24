@@ -132,7 +132,7 @@ double *Pixp, *Pixm, *Piym, *Piyp;
 double *slope, *divrho, *denstar, *Qs;
 double *Ymed, *Xmed, *Ymin, *Xmin;
 double *tauxx, *tauxy, *tauyy, *tauxyavg;
-double *Lt, *Ld, *Lw, *drFw, *drFd, *drFt, *Lamdep, *Lamex;
+double *Lt, *Ld, *Lw, *drFw, *drFwB, *drFd, *drFdB, *drFt, *Lamdep,*LamdepB, *Lamex;
 double *LdS, *dtLdS, *dbarS, *dtdbar;
 double *LamdepS, *dtLd_rhs;
 double *dtLt, *dtLd, *dtLw;

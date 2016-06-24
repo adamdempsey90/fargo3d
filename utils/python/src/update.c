@@ -20,7 +20,9 @@ void updateX(double *q, double *qs,double dt,double *vxt) {
 void update_flux_avg(double *qs, double *q) {
     int i,j,k;
     i=j=k=0;
-    double res, res2,fac;
+    double res, res1,res2,fac;
+    double vravg, vravgp;
+    double davg, davgp;
 #ifdef _FFTW
     for(j=0;j<size_y-1;j++) {
         conv_prefac[j] = -dt*qs[j]*SurfY(j,k)*InvVol(j,k);
@@ -33,7 +35,7 @@ void update_flux_avg(double *qs, double *q) {
     convolution_2d(&vy_temp[size_x],&denstar[size_x],drFd,conv_prefac,0,size_y,size_y-1);
 #endif
 #ifdef _OPENMP
-    #pragma omp parallel for private(i,j,k,res,fac,res2)
+    //#pragma omp parallel for private(i,j,k,res,fac,res2,res1,vravg,vravgp,davg,davgp)
 #endif
     for(j=0;j<size_y-1;j++) {
         i = 0;
@@ -42,10 +44,20 @@ void update_flux_avg(double *qs, double *q) {
     
         
         res = 0;
+        res1 = 0;
         res2 = 0;
         fac = 0;
+        vravg = 0;
+        vravgp = 0;
+        davg = 0;
+        davgp = 0;
         for(i=0;i<size_x;i++) {    
 //            fac += (denstar[lyp]*vy_temp[lyp]*SurfY(j+1,k)*(qs[j+1] - q[j]) - denstar[l]*vy_temp[l]*SurfY(j,k)*(qs[j] - q[j]))*InvVol(j,k);
+            vravg += vy_temp[l];
+            vravgp += vy_temp[lyp];
+            davg += denstar[l];
+            davgp += denstar[lyp];
+
             fac = ((vy_temp[l]*qs[j]*denstar[l]*SurfY(j,k)-vy_temp[lyp]*qs[j+1]*denstar[lyp]*SurfY(j+1,k))*InvVol(j,k));
             res += fac;
             //res2 += fac - .5*(qs[j] + qs[j+1])*((vy_temp[l]*denstar[l]*SurfY(j,k)-vy_temp[lyp]*denstar[lyp]*SurfY(j+1,k))*InvVol(j,k));
@@ -59,8 +71,15 @@ void update_flux_avg(double *qs, double *q) {
         res /=(double)nx;
         res2 /= (double)nx;
         fac /=(double)nx;
+        vravg /= (double)nx;
+        vravgp /= (double)nx;
+        davg /= (double)nx;
+        davgp /= (double)nx;
+        
+        res1 = ((vravg*qs[j]*davg*SurfY(j,k)-vravgp*qs[j+1]*davgp*SurfY(j+1,k))*InvVol(j,k));
 
         drFd[j] -= dt*res;
+        drFdB[j] -= dt*res1;
         LamdepS[j] += dt*res2;
     }
     return;

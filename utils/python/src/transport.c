@@ -143,6 +143,7 @@ void DividebyRhoavg(double *q) {
     int i,j,k;
     double resv;
     i=j=k=0;
+    /*
 #ifdef _OPENMP
     #pragma omp parallel for collapse(2) private(i,j,k,resv)
 #endif
@@ -156,12 +157,12 @@ void DividebyRhoavg(double *q) {
             divrho[j] = resv;
         }
     }
-    /*
-    int j;
+    */
+    
     for(j=0;j<size_y;j++) {
         divrho[j] = q[j]/dbar[j];
     }
-    */
+
     return;
 }
 void transportX(double *vxt, int ppa) {

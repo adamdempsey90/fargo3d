@@ -11,7 +11,9 @@ void set_Lamdep(void) {
         dtdbar[j] += (dbarS[j+size_y]-dbarS[j]);
         dtLw[j] = dtLt[j] - dtLd[j];
         Lamdep[j] = dtLd[j] + drFd[j];
+        LamdepB[j] = dtLd[j] + drFdB[j];
         drFw[j] = drFt[j] - drFd[j];
+        drFwB[j] = drFt[j] - drFdB[j];
 
     }
     int mi;
