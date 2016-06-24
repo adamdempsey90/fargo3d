@@ -49,7 +49,11 @@ void update_flux_avg(double *qs, double *q) {
             fac = ((vy_temp[l]*qs[j]*denstar[l]*SurfY(j,k)-vy_temp[lyp]*qs[j+1]*denstar[lyp]*SurfY(j+1,k))*InvVol(j,k));
             res += fac;
             //res2 += fac - .5*(qs[j] + qs[j+1])*((vy_temp[l]*denstar[l]*SurfY(j,k)-vy_temp[lyp]*denstar[lyp]*SurfY(j+1,k))*InvVol(j,k));
-            res2 += fac - q[j]*((vy_temp[l]*denstar[l]*SurfY(j,k)-vy_temp[lyp]*denstar[lyp]*SurfY(j+1,k))*InvVol(j,k));
+            
+            res2 += dens[l]*.5*(vy_temp[l]+vy_temp[lyp])*(qs[j+1]-qs[j])/(ymin(j+1)-ymin(j));
+
+            //res2 += (vy_temp[lyp]*denstar[lyp]*(qs[j+1]-q[j]) - vy_temp[l]*denstar[l]*(qs[j]-q[j]))/(ymin(j+1)-ymin(j));
+        //    res2 += fac - q[j]*((vy_temp[l]*denstar[l]*SurfY(j,k)-vy_temp[lyp]*denstar[lyp]*SurfY(j+1,k))*InvVol(j,k));
             //res += ((vy_temp[l]*qs[j]*denstar[l]*ymin(j)-vy_temp[lyp]*qs[j+1]*denstar[lyp]*ymin(j+1)))/(ymin(j+1)-ymin(j));
         }
         res /=(double)nx;
@@ -57,7 +61,7 @@ void update_flux_avg(double *qs, double *q) {
         fac /=(double)nx;
 
         drFd[j] -= dt*res;
-        LamdepS[j] -= dt*res2;
+        LamdepS[j] += dt*res2;
     }
     return;
 }
@@ -78,15 +82,21 @@ void update_flux(double *qs,double *q) {
             //fac += (SurfY(j+1,k)*vy_temp[lyp]*(qs[lyp]-q[l]) - SurfY(j,k)*vy_temp[l]*(qs[l]-q[l]))*InvVol(j,k);
             fac = ((vy_temp[l]*qs[l]*denstar[l]*SurfY(j,k)-vy_temp[lyp]*qs[lyp]*denstar[lyp]*SurfY(j+1,k))*InvVol(j,k));
             res += fac;
-            res2 += ((vy_temp[l]*qs[l]*SurfY(j,k)-vy_temp[lyp]*qs[lyp]*SurfY(j+1,k))*InvVol(j,k));
-            res2 -= q[l]*((vy_temp[l]*SurfY(j,k) - vy_temp[lyp]*SurfY(j+1,k)))*InvVol(j,k);
+
+            //res2 += (( vy_temp[lyp]*(qs[lyp]-q[l]) - vy_temp[l]*(qs[l]-q[l]))/(ymin(j+1)-ymin(j)));
+            
+            res2 += .5*(vy_temp[l]+vy_temp[lyp])*(qs[lyp]-qs[l])/(ymin(j+1)-ymin(j));
+
+
+            //res2 += ((vy_temp[l]*qs[l]*SurfY(j,k)-vy_temp[lyp]*qs[lyp]*SurfY(j+1,k))*InvVol(j,k));
+            //res2 -= q[l]*((vy_temp[l]*SurfY(j,k) - vy_temp[lyp]*SurfY(j+1,k)))*InvVol(j,k);
         }
         res /=(double)nx;
         res2 /= (double)nx;
         fac /=(double)nx;
         facd /=(double)nx;
         drFt[j] -= dt*res*.5;
-        LamdepS[j + size_y] += .5*res2*dt*facd; 
+        LamdepS[j + size_y] -= .5*res2*dt*facd; 
         dtLd_rhs[j] -= fac*dt*.5;
     }
     return;

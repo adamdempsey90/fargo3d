@@ -102,8 +102,8 @@ void viscosity(void) {
             //drFd[j] = -(ymin(j+1)*ymin(j+1)*tauxyavg[j+1]*SurfY(j+1,k) - ymin(j)*ymin(j)*tauxyavg[j]*SurfY(j,k))*InvVol(j,k);
             
             facd  =  -dt*(ymin(j+1)*ymin(j+1)*tauxyavg[j+1]-ymin(j)*ymin(j)*tauxyavg[j])/((ymin(j+1)-ymin(j))*ymed(j));
-            //LamdepS[j + size_y*5] += -dt*res;
-            //drFd[j]  +=  -dt*res;             
+            LamdepS[j + size_y*5] += -dt*res;
+            drFd[j]  +=  -dt*res;             
 
         }
     }

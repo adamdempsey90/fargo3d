@@ -43,11 +43,12 @@ void set_avg(int p) {
 
 void set_dtLt(double fac) {
     int j;
-
+#ifdef _FFTW
     for(j=0;j<size_y;j++) {
         conv_prefac[j] = ymed(j)*fac;
     }
 
     convolution_2d(dens,vx,dtLt,conv_prefac,0,size_y,size_y);
+#endif
     return;
 }
