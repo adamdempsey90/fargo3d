@@ -94,8 +94,8 @@ OUTPUT(Vz);
 	density[lgh] = density[lact]*pow(ymed(jact)/ymed(jgh),sigmaslope+flaringindex+1.)*exp(-pow(cos(zmed(k)),2.)/(aspectratio*aspectratio)*(1.-ymed(jgh)/(.5*(ymed(jact)+ymed(jgh))))*flaringindex*pow(.5*(ymed(jgh)+ymed(jact))/r0,-2.*flaringindex-1.));
 	vx[lgh] = (vx[lact]+omegaframe*ymed(jact)*sin(zmed(k)))*sqrt(ymed(jact)/ymed(jgh))*(1.+(2.+sigmaslope-flaringindex)*(ymed(jact)-ymed(jgh))/r0*flaringindex*aspectratio*aspectratio*pow((ymed(jgh)+ymed(jact))/(2.*r0),2.*flaringindex-1.))-ymed(jgh)*omegaframe*sin(zmed(k));
 	if (j<size_y-1)
-		vy[lghs] = -vy[lacts];
-	vy[lacts_null] = 0;
+		vy[lghs] = vy[lacts];
+	vy[lacts_null] = vy[lacts];
 	vz[lgh] = vz[lact];
 //<\#>
 #ifdef X

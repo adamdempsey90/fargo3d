@@ -30,6 +30,7 @@ OMPFLAG=-fopenmp
 endif
 
 ifeq ($(UNAME),zeus)
+CC=gcc-6
 OMPLIB=-lgomp
 OMPFLAG=-fopenmp
 endif
