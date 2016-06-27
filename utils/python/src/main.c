@@ -133,7 +133,8 @@ int main(int argc, char *argv[]) {
         if (time + dt > tend) {
             dt = tend-time;
         }
-        printf("Time %.3f dt = %.16f\n",time,dt);
+        printf("\r t=%.3f, dt = %.8f,  %02d%% complete...",time,dt,(int)(100*(time-tstart)/(tend-tstart)));
+        fflush(stdout);
         set_avg(0);
     
         potential();
