@@ -1,11 +1,11 @@
-import visit_writer as vw
 import numpy as np
 import sys
 from matplotlib.mlab import griddata
 import multiprocessing as mp
 
 
-def write_vtk_file(n,option):
+def write_vtk_file((n,option)):
+    print 'Converting number %d'%n
     ifile_dens = "gasdens" + "{:d}".format(n) + '.dat'
     ifile_ener = "gasenergy" + "{:d}".format(n) + '.dat'
     ifile_vx   = "gasvx" + "{:d}".format(n) + '.dat'
@@ -132,8 +132,26 @@ def write_vtk_file(n,option):
     vw.WriteUnstructuredMesh("vwucd3d{:d}.vtk".format(n), 1, tuple(mesh),connectivity, var)
 
 
+if __name__ == "__main__":
+    try:
+        import visit_writer as vw
+    except ImportError:
+        sys.path.append('/home/amd616/lib/python')
+        import visit_writer as vw
 
-n = int(sys.argv[1])  #input from term
-option = int(sys.argv[2]) #1 = Cilindrical, 0 = Spherical
+    nstart = int(sys.argv[1])  #input from term
+    nend = int(sys.argv[2]) + 1  #input from term
+    option = int(sys.argv[3]) #1 = Cilindrical, 0 = Spherical
 
-write_vtk_file(n,option)
+    print 'Converting outputs %d to %d'%(nstart,nend-1)
+    if len(sys.argv) > 3:
+        numprocs = int(sys.argv[4])
+        print 'Using %d procs'%numprocs
+        p = mp.Pool(numprocs)
+        args = [(i,option) for i in range(nstart,nend)]
+        p.map(write_vtk_file,args)
+    else:
+        args = [(i,option) for i in range(nstart,nend)]
+        for a in args:
+            write_vtk_file(a)
+

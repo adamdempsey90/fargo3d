@@ -165,12 +165,12 @@ int main(int argc, char *argv[]) {
         
         time += dt;
       
-        stockholm();
-        set_bc();
         set_avg(1);
 
         set_Lamdep();
 
+        set_bc();
+        stockholm();
         //output_psys(outputdir,nsteps);
         nsteps++;
     }

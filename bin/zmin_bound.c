@@ -14,14 +14,6 @@
 void boundary_zmin_cpu () {
 
 //<USER_DEFINED>
-INPUT(Density);
-INPUT(Vx);
-INPUT(Vy);
-INPUT(Vz);
-OUTPUT(Density);
-OUTPUT(Vx);
-OUTPUT(Vy);
-OUTPUT(Vz);
 //<\USER_DEFINED>
 
 //<INTERNAL>
@@ -32,21 +24,12 @@ OUTPUT(Vz);
   int jgh;
   int kact;
   int kgh;
-  int lgh;
-  int lghs;
-  int lact;
-  int lacts;
-  int lacts_null;
 //<\INTERNAL>
 
 //<EXTERNAL>
-  real* density = Density->field_cpu;
-  real* vx = Vx->field_cpu;
-  real* vy = Vy->field_cpu;
-  real* vz = Vz->field_cpu;
   int size_x = Nx+2*NGHX;
-  int size_y = Ny+2*NGHY;
-  int size_z = NGHZ;
+  int size_y = 1;
+  int size_z = 1;
   int nx = Nx;
   int ny = Ny;
   int nz = Nz;
@@ -55,11 +38,6 @@ OUTPUT(Vz);
   int pitch  = Pitch_cpu;
   int stride = Stride_cpu;
   real dx = Dx;
-  real r0 = R0;
-  real aspectratio = ASPECTRATIO;
-  real flaringindex = FLARINGINDEX;
-  real sigmaslope = SIGMASLOPE;
-  real omegaframe = OMEGAFRAME;
 //<\EXTERNAL>
 
 //<CONSTANT>
@@ -82,20 +60,6 @@ OUTPUT(Vz);
       for(i=0; i<size_x; i++) {
 #endif
 //<#>
-
-	lgh = l;
-	lghs = l;
-	lact = i + j*pitch + (2*nghz-k-1)*stride;
-	lacts = i + j*pitch + (2*nghz-k)*stride;
-	lacts_null = i + j*pitch + nghz*stride;
-	kgh = k;
-	kact = (2*nghz-k-1);
-
-	density[lgh] = density[lact]*pow(sin(zmed(kgh))/sin(zmed(kact)),flaringindex-2.-sigmaslope+1./(aspectratio*aspectratio)*pow(ymed(j)/r0,-2.*flaringindex));
-	vx[lgh] = (vx[lact]+omegaframe*ymed(j)*sin(zmed(kact)))*(1.+flaringindex*cos(.5*(zmed(kgh)+zmed(kact)))*(zmed(kact)-zmed(kgh))) -ymed(j)*omegaframe*sin(zmed(kgh));
-	vy[lgh] = vy[lact];
-	vz[lghs] = -vz[lacts];
-	vz[lacts_null] = 0;
 //<\#>
 #ifdef X
       }

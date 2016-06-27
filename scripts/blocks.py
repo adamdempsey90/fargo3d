@@ -40,6 +40,7 @@ def opt_reader():
         if opt in ('-f', '--force'):
             force = True
             continue
+        force = True
     global SETUPNAME; SETUPNAME = setup
     global FORCE; FORCE = force
 

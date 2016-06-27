@@ -17,11 +17,9 @@ void boundary_ymin_cpu () {
 INPUT(Density);
 INPUT(Vx);
 INPUT(Vy);
-INPUT(Vz);
 OUTPUT(Density);
 OUTPUT(Vx);
 OUTPUT(Vy);
-OUTPUT(Vz);
 //<\USER_DEFINED>
 
 //<INTERNAL>
@@ -37,13 +35,17 @@ OUTPUT(Vz);
   int lact;
   int lacts;
   int lacts_null;
+  real sig1;
+ real vr1;
+ real ri1;
+ real fh1;
+ real rm1;
 //<\INTERNAL>
 
 //<EXTERNAL>
   real* density = Density->field_cpu;
   real* vx = Vx->field_cpu;
   real* vy = Vy->field_cpu;
-  real* vz = Vz->field_cpu;
   int size_x = Nx+2*NGHX;
   int size_y = NGHY;
   int size_z = Nz+2*NGHZ;
@@ -55,11 +57,13 @@ OUTPUT(Vz);
   int pitch  = Pitch_cpu;
   int stride = Stride_cpu;
   real dx = Dx;
-  real r0 = R0;
-  real aspectratio = ASPECTRATIO;
-  real flaringindex = FLARINGINDEX;
-  real sigmaslope = SIGMASLOPE;
   real omegaframe = OMEGAFRAME;
+  real nu_0 = ALPHA*ASPECTRATIO*ASPECTRATIO;
+  real m3p = MDOT/(3*M_PI);
+  real nu_index = 0.5 + 2*FLARINGINDEX;
+  real vnorm = -1.5*ALPHA*ASPECTRATIO*ASPECTRATIO;
+  real vr_index = -0.5 + 2*FLARINGINDEX;
+  real pi = M_PI;
 //<\EXTERNAL>
 
 //<CONSTANT>
@@ -91,11 +95,14 @@ OUTPUT(Vz);
 	jgh = j;
 	jact = (2*nghy-j-1);
 
-	density[lgh] = density[lact]*pow(ymed(jact)/ymed(jgh),sigmaslope+flaringindex+1.)*exp(-pow(cos(zmed(k)),2.)/(aspectratio*aspectratio)*(1.-ymed(jgh)/(.5*(ymed(jact)+ymed(jgh))))*flaringindex*pow(.5*(ymed(jgh)+ymed(jact))/r0,-2.*flaringindex-1.));
-	vx[lgh] = (vx[lact]+omegaframe*ymed(jact)*sin(zmed(k)))*sqrt(ymed(jact)/ymed(jgh))*(1.+(2.+sigmaslope-flaringindex)*(ymed(jact)-ymed(jgh))/r0*flaringindex*aspectratio*aspectratio*pow((ymed(jgh)+ymed(jact))/(2.*r0),2.*flaringindex-1.))-ymed(jgh)*omegaframe*sin(zmed(k));
-	vy[lghs] = vy[lacts];
-	vy[lacts_null] = vy[lacts];
-	vz[lgh] = vz[lact];
+	sig1 = density[ i + (nghy)*pitch + k*stride];
+	ri1 = ymed(nghy);
+	rm1 = ymin(nghy);
+	vr1 = vy[ i + (nghy)*pitch + k*stride];
+	density[lgh] = sig1*pow(ri1/ymed(jgh),nu_index);
+	vx[lgh] = (vx[lact]+ymed(jact)*omegaframe)*sqrt(ymed(jact)/ymed(jgh))-ymed(jgh)*omegaframe;
+	vy[lghs] = vr1*pow(ymed(jgh)/ri1,vr_index);
+	vy[lacts_null] = vr1*pow(rm1/ri1,vr_index);
 //<\#>
 #ifdef X
       }

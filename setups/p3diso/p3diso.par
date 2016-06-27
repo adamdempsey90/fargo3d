@@ -23,11 +23,11 @@ IndirectTerm		NO
 
 ### Mesh parameters
 
-Nx			100		Azimuthal number of zones 
-Ny               	80		Radial number of zones
-Nz			20		Number of zones in colatitude
+Nx			200		Azimuthal number of zones 
+Ny               	150		Radial number of zones
+Nz			30		Number of zones in colatitude
 Ymin			12.0		Inner boundary radius
-Ymax			124.0		Outer boundary radius
+Ymax			70.0		Outer boundary radius
 Zmin			1.1902899496825317
 #Zmin			1.42079632679489661922
 Zmax			1.57079632679489661922
