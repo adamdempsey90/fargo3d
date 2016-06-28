@@ -2,7 +2,7 @@ import numpy as np
 import sys
 from matplotlib.mlab import griddata
 import multiprocessing as mp
-import visit_writer as vw
+#import visit_writer as vw
 
 
 def write_vtk_file((n,option)):
@@ -25,59 +25,30 @@ def write_vtk_file((n,option)):
     vz      = np.fromfile(ifile_vz  , "d")
 
 
-    try:
-        domain_x = open("domain_x.dat",'r')
-    except:
-        print 'Error!!!',domain_x.dat, 'cannot be opened.'
-    try:
-        domain_y = open("domain_y.dat",'r')
-    except:
-        print 'Error!!!',domain_y.dat, 'cannot be opened.'
-    try:
-        domain_z = open("domain_z.dat",'r')
-    except:
-        print 'Error!!!',domain_y.dat, 'cannot be opened.'
-    try:
-        dims = open("dimensions.dat",'r')
-    except:
-        print 'Error!!!',dimensions.dat, 'cannot be opened.'
 
-    DIMS = dims.readlines() #Read all dims file
-    DIMS = DIMS[1].split()
-
-    DOMAIN_X = domain_x.readlines()
-    DOMAIN_Y = domain_y.readlines()
-    DOMAIN_Z = domain_z.readlines()
-
-    domain_x.close()
-    domain_y.close()
-    domain_z.close()
-    dims.close()
 
     NGHY = 3
     NGHZ = 3
 
-    Nx = int(DIMS[6])#+1 # Add a point to avoid border discontinuity
-    Ny = int(DIMS[7])
-    Nz = int(DIMS[8])
+    x_arr = np.loadtxt('domain_x.dat')
+    y_arr = np.loadtxt('domain_y.dat')[NGHY:-NGHY]
+    z_arr = np.loadtxt('domain_z.dat')[NGHZ:-NGHZ]
 
-    x_arr = np.ndarray([Nx], dtype = float)
-    y_arr = np.ndarray([Ny], dtype = float)
-    z_arr = np.ndarray([Nz], dtype = float)
+    Nx = len(x_arr)-1
+    Ny = len(y_arr)-1
+    Nz = len(z_arr)-1
+
+    print Nx,Ny,Nz
+
+
+
+
     mesh  = np.ndarray([3*Nx*Ny*Nz], dtype = float)
     var1  = np.ndarray([Nx*Ny*Nz], dtype = float)
 
-    #for i in range(Nx-1):
-    for i in range(Nx):
-        x_arr[i] = float(DOMAIN_X[i])
-    #x_arr[Nx-1] = x_arr[0]  #Periodic boundary
-    for i in range(Ny):
-        y_arr[i] = float(DOMAIN_Y[i+NGHY])
-    for i in range(Nz):
-        z_arr[i] = float(DOMAIN_Z[i+NGHZ])
-
 
     l = 0
+    stride = Nx*Ny
     for k in range(Nz):
         for j in range(Ny):
             for i in range(Nx):
@@ -89,21 +60,22 @@ def write_vtk_file((n,option)):
                     mesh[l] = np.cos(x_arr[i])*y_arr[j];
                     mesh[l+1] = np.sin(x_arr[i])*y_arr[j];
                     mesh[l+2] = z_arr[k];
+
+             #   if k < Nz:
+             #       density[l1] = density0[i + j*Nx + k*stride]
+             #       energy[l1] = energy0[i + j*Nx + k*stride]
+             #       vx[l1] = vx0[i + j*Nx + k*stride]
+             #       vy[l1] = vy0[i + j*Nx + k*stride]
+             #       vz[l1] = vz0[i + j*Nx + k*stride]
+             #   else:
+             #       density[l1] = density0[i + j*Nx + (Nz-1 - (k-Nz) )*stride]
+             #       energy[l1] = energy0[i + j*Nx + (Nz-1 - (k-Nz) )*stride]
+             #       vx[l1] = vx0[i + j*Nx + (Nz-1 - (k-Nz) )*stride]
+             #       vy[l1] = vy0[i + j*Nx + (Nz-1 - (k-Nz) )*stride]
+             #       vz[l1] = -vz0[i + j*Nx + (Nz-1 - (k-Nz) )*stride]
+
                 l+=3;
 
-    #data1  = np.ndarray([(Nx-1)*(Ny-1)*(Nz-1)], dtype = float)
-    #l=0
-    #for k in range(Nz-1):
-    #    for j in range(Ny-1):
-    #        for i in range(Nx-1):
-    #            if(i < Nx-1):
-    #                data1[l] = data[l];
-    #                l+=1;
-    #            else:
-    #                data1[l] = data[l-(Nx-1)]
-    #
-    #data1 = tuple(data1)
-    #var = (("Density", 1, 0, data1),) #NODAL
 
     #Mesh construction--------------------------------------
     connectivity = [] #Unstructured Mesh!, avoid periodic problem!
@@ -116,9 +88,15 @@ def write_vtk_file((n,option)):
                     lxp = l+1
                 else:
                     lxp = l-(Nx-1) #WARNINR Nx-1?
-                connectivity += [[12,l,lxp,lxp+Nx,l+Nx,
-                                  l+stride, lxp+stride,
-                                  lxp+Nx+stride, l+Nx+stride]]
+                connectivity += [[12,
+                    l, #  i,j,k
+                    lxp, # i+1, j, k
+                    lxp+Nx,  # i+1, j+1, k
+                    l+Nx, # i, j+1, k
+                    l+stride, # i, j, k+1
+                    lxp+stride, # i+1, j, k+1
+                    lxp+Nx+stride, #  i+1, j+1, k+1
+                    l+Nx+stride]] # i, j+1, k+1
     #Mesh construction--------------------------------------
     #print connectivity[0], connectivity[Nx-1]
 
