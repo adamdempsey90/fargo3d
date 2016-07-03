@@ -193,6 +193,8 @@ int main(int argc, char *argv[]) {
         drFt[j]/=dt;
         drFd[j]/=dt;
         drFdB[j]/=dt;
+        mdotl[j]/=dt;
+        drFnu[j]/=dt;
         drFw[j]/=dt;
         drFwB[j]/=dt;
         Lamex[j]/=dt;

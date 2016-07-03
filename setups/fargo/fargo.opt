@@ -10,17 +10,18 @@
 # From the list below, activate/deactivate the options that apply to your run.
 #-------------------------------------------------------------------------------
 #Problem
-MONITOR_SCALAR = MASS | MOM_X | TORQ
-MONITOR_Y_RAW  = TORQ
+#MONITOR_SCALAR = MASS | MOM_X | TORQ
+#MONITOR_Y_RAW  = TORQ
 
-#FARGO_OPT += -DSTOCKHOLM
+FARGO_OPT += -DSTOCKHOLM
 
 #Dimension(s) of Simulation. Here 2D (r,Phi) like the former FARGO code
 FARGO_OPT +=  -DX #X --> PHI
 FARGO_OPT +=  -DY #Y --> R
 
 #Equation of State			# ONLY ONE OF THEM
-FARGO_OPT +=  -DISOTHERMAL		# ISOTHERMAL EQUATION OF STATE
+#FARGO_OPT +=  -DISOTHERMAL		# ISOTHERMAL EQUATION OF STATE
+FARGO_OPT +=  -DADIABATIC		# ADIABATIC EQUATION OF STATE
 
 #Coordinate System.
 FARGO_OPT +=  -DCYLINDRICAL		# COORDINATE SYSTEM. IN FARGO SETUP, ALWAYS IS 
@@ -32,7 +33,7 @@ FARGO_OPT +=  -DCYLINDRICAL		# COORDINATE SYSTEM. IN FARGO SETUP, ALWAYS IS
 FARGO_OPT += -DLEGACY
 
 #Algorithms
-FARGO_OPT += -DNOSUBSTEP2		# DISABLES ARTIFICIAL VISCOSITY.
+FARGO_OPT += -DSTRONGSHOCK		# DISABLES ARTIFICIAL VISCOSITY.
 
 #Gravity
 FARGO_OPT += -DPOTENTIAL

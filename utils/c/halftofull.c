@@ -19,6 +19,7 @@ void read_dims(char *directory);
 int main(int argc, char *argv[]) {
     
     int n = atoi(argv[1]);
+    printf("%d\t%s\n",n,argv[2]);
 
     read_dims(argv[2]);
     printf("Detected grid with nx = %d, ny = %d, nz = %d\n",nx,ny,nz);

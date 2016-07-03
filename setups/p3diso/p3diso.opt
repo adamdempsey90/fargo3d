@@ -41,6 +41,7 @@ FARGO_OPT += -DHALFDISK
 #Equation of State
 
 FARGO_OPT +=  -DISOTHERMAL
+#FARGO_OPT +=  -DADIABATIC
 
 #Coordinate System.
 

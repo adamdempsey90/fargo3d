@@ -126,9 +126,15 @@ if __name__ == "__main__":
     if len(sys.argv) > 3:
         numprocs = int(sys.argv[4])
         print 'Using %d procs'%numprocs
-        p = mp.Pool(numprocs)
-        args = [(i,option) for i in range(nstart,nend)]
-        p.map(write_vtk_file,args)
+        if numprocs > 1:
+            p = mp.Pool(numprocs)
+            args = [(i,option) for i in range(nstart,nend)]
+            p.map(write_vtk_file,args)
+        else:
+            args = [(i,option) for i in range(nstart,nend)]
+            for a in args:
+                write_vtk_file(a)
+
     else:
         args = [(i,option) for i in range(nstart,nend)]
         for a in args:

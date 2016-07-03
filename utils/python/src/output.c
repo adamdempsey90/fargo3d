@@ -69,6 +69,8 @@ void output_torque(char *directory,int n) {
     fwrite(&LdS[NGHY+size_y],sizeof(double),ny,f);
     fwrite(&drFt[NGHY],sizeof(double),ny,f);
     fwrite(&drFd[NGHY],sizeof(double),ny,f);
+    fwrite(&mdotl[NGHY],sizeof(double),ny,f);
+    fwrite(&drFnu[NGHY],sizeof(double),ny,f);
     fwrite(&drFdB[NGHY],sizeof(double),ny,f);
     fwrite(&drFw[NGHY],sizeof(double),ny,f);
     fwrite(&drFwB[NGHY],sizeof(double),ny,f);

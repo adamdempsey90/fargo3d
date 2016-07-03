@@ -16,11 +16,12 @@ FFTWINC=
 
 ifeq ($(UNAME),amd616)
 
-OMPLIB=-lrfftw_threads -lfftw_threads -lgomp
+OMPLIB=-lgomp
+#OMPLIB=-lrfftw_threads -lfftw_threads -lgomp
 OMPFLAG=-fopenmp
 
-FFTWLIB=-L/software/FFTW/2.1.5-gcc/lib/  -lrfftw -lfftw
-FFTWINC=-I/software/FFTW/2.1.5-gcc/include/ -D_FFTW
+#FFTWLIB=-L/software/FFTW/2.1.5-gcc/lib/  -lrfftw -lfftw
+#FFTWINC=-I/software/FFTW/2.1.5-gcc/include/ -D_FFTW
 endif
 
 ifeq ($(UNAME),jupiter)

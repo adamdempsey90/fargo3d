@@ -79,6 +79,7 @@ void update_flux_avg(double *qs, double *q) {
         res1 = ((vravg*qs[j]*davg*SurfY(j,k)-vravgp*qs[j+1]*davgp*SurfY(j+1,k))*InvVol(j,k));
 
         drFd[j] -= dt*res;
+        mdotl[j] -= dt*res;
         drFdB[j] -= dt*res1;
         LamdepS[j] += dt*res2;
     }

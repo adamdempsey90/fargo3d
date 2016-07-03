@@ -991,6 +991,32 @@ class Sim(Mesh,Parameters):
         self.rh = (self.mp/3)**(1./3) * self.a
         self.safety_fac  = .5
 
+        self.rayleigh = np.zeros(self.vp.data.shape)
+        dat = self.vp.data*self.vp.y[:,newaxis]
+        self.rayleigh[1:-1,:] = (dat[2:,:] - dat[:-2,:])/((self.vp.y[2:]-self.vp.y[:-2])[:,newaxis])
+        self.rayleigh[0,:] = (dat[1,:]-dat[0,:])/(self.vp.y[1]-self.vp.y[0])
+        self.rayleigh[-1,:] = (dat[-1,:]-dat[-2,:])/(self.vp.y[-1]-self.vp.y[-2])
+        self.rayleigh = self.rayleigh.mean(axis=1)
+
+
+        self.vortensity = np.zeros(self.vp.data.shape)
+        dx = self.dens.dx[0]
+        dat = self.vp.data*self.vp.y[:,newaxis]
+        self.vortensity[1:-1,:] = (dat[2:,:] - dat[:-2,:])/((self.vp.y[2:]-self.vp.y[:-2])[:,newaxis])
+        self.vortensity[0,:] = (dat[1,:]-dat[0,:])/(self.vp.y[1]-self.vp.y[0])
+        self.vortensity[-1,:] = (dat[-1,:]-dat[-2,:])/(self.vp.y[-1]-self.vp.y[-2])
+        dat = self.vr.data
+        self.vortensity[:,1:-1] -= (dat[:,2:] - dat[:,:-2])/(2*dx)
+        self.vortensity[:,0] -= (dat[:,1]-dat[:,0])/dx
+        self.vortensity[:,-1] -= (dat[:,-1]-dat[:,-2])/dx
+
+        self.vortensity /= (self.dens.data*self.dens.y[:,newaxis])
+
+        self.rwi = (.5/self.vortensity).mean(axis=1)
+
+
+
+
 
         try:
             trqname = 'torque%d.dat'%self.n
@@ -998,7 +1024,7 @@ class Sim(Mesh,Parameters):
             print 'Loaded torque file from %s'%trqname
             attrs = ['y','dbar','Lt','Ltn','Ld','Ldn','Lw','Lwn',
                     'LdS','LdSn',
-                    'drFt','drFd','drFdB','drFw', 'drFwB',
+                    'drFt','drFd','mdotl','drFnu','drFdB','drFw', 'drFwB',
                     'Lamex','Lamdep','LamdepB',
                     'dtLt','dtLd','dtLw',
                     'dtLds','dtdbar','mdot',
@@ -1010,6 +1036,32 @@ class Sim(Mesh,Parameters):
             self.trq_Lamtot = np.zeros(self.trq_Lamdep.shape)
             for i in range(1,8):
                 self.trq_Lamtot += getattr(self,'trq_Lamdep%d'%i)
+
+
+
+            ind = (self.trq_y>self.dens.wkz)&(self.trq_y<self.dens.wkzr)
+            indL = (self.trq_y <= self.dens.wkz + self.dlr[0]*self.dens.wkz)
+            indR = (self.trq_y >= self.dens.wkzr - self.dlr[0]*self.dens.wkzr)
+            self.trq_intLam = np.zeros(self.trq_y.shape)
+            self.trq_intLam[ind] = (2*np.pi*self.dens.y*self.dens.dy*self.trq_Lamdep)[ind].cumsum()
+            self.trq_intLam[ind] -= self.trq_intLam[ind][0]
+            self.trq_intLam[indR] = self.trq_intLam[ind][-1]
+            self.sig_ss = 1 + self.trq_intLam/(self.params.mdot * np.sqrt(self.trq_y))
+
+            self.trq_intmdotl = np.zeros(self.trq_y.shape)
+            self.trq_intmdotl[ind] = (2*np.pi*self.dens.y*self.dens.dy*self.trq_mdotl)[ind].cumsum()
+            self.trq_intmdotl[ind] -= self.trq_intmdotl[ind][0]
+            self.trq_intmdotl[self.trq_y>=self.dens.wkzr] = self.trq_intmdotl[ind][-1]
+
+            self.trq_intdrFnu = np.zeros(self.trq_y.shape)
+            self.trq_intdrFnu[ind] = (2*np.pi*self.dens.y*self.dens.dy*self.trq_drFnu)[ind].cumsum()
+            self.trq_intdrFnu[ind] -= self.trq_intdrFnu[ind][0]
+            self.trq_intdrFnu[self.trq_y>=self.dens.wkzr] = self.trq_intdrFnu[ind][-1]
+
+            self.trq_intdtLd = np.zeros(self.trq_y.shape)
+            self.trq_intdtLd[ind] = (2*np.pi*self.dens.y*self.dens.dy*self.trq_dtLd)[ind].cumsum()
+            self.trq_intdtLd[ind] -= self.trq_intdtLd[ind][0]
+            self.trq_intdtLd[self.trq_y>=self.dens.wkzr] = self.trq_intdtLd[ind][-1]
 
             dat = np.fromfile(self.directory+'torque_m%d.dat'%self.n)
             self.mmax = 30
@@ -1066,6 +1118,170 @@ class Sim(Mesh,Parameters):
 ##
 ##        self.A = self.dTr_total/self.mdoti
 ##        self.A_excl = self.dTr_tot_excl/self.mdoti
+
+    def steadystate_plot(self,ylims=None,savefig=None,logx=False,logy=False):
+        fig,axes = plt.subplots(3,1,sharex=True,figsize=(10,10))
+
+        ind = (self.trq_y > self.dens.wkz)&(self.trq_y < self.dens.wkzr)
+        indL = (self.trq_y <= self.dens.wkz + self.dlr[0]*self.dens.wkz)
+        indR = (self.trq_y >= self.dens.wkzr - self.dlr[0]*self.dens.wkzr)
+
+        intLam = (self.trq_y*self.dens.dy*2*pi*self.trq_Lamdep).cumsum()
+        intLam -= intLam[0]
+        temp2 = (self.trq_y*self.dens.dy*2*pi*self.trq_Lamdep)[ind].cumsum()
+        temp2 -= temp2[0]
+        intLam2 = np.zeros(self.trq_y.shape)
+        intLam2[ind] = temp2
+        intLam2[indR] = temp2[-1]
+
+        sig = 1 + intLam/(self.dens.mdot *np.sqrt(self.trq_y))
+        sig2 = 1 + intLam2/(self.dens.mdot *np.sqrt(self.trq_y))
+
+        mdot = self.trq_mdot/self.params.mdot
+        mdot2 = self.trq_mdot[ind]/self.params.mdot
+        mdotL = self.trq_mdot[indL]/self.params.mdot
+        mdotR = self.trq_mdot[indR]/self.params.mdot
+
+        ldep = self.trq_Lamdep.copy()
+        ldep2 = self.trq_Lamdep[ind]
+        ldepR = self.trq_Lamdep[indR]
+        ldepL = self.trq_Lamdep[indL]
+        lex = self.trq_Lamex.copy()
+        lex2 = self.trq_Lamex[ind]
+        lexL = self.trq_Lamex[indL]
+        lexR = self.trq_Lamex[indR]
+
+        drFw = self.trq_drFw.copy()
+        drFw2 = self.trq_drFw[ind]
+        drFwL = self.trq_drFw[indL]
+        drFwR = self.trq_drFw[indR]
+
+        y = self.trq_y.copy()
+        y2 = self.trq_y[ind]
+        yL = self.trq_y[indL]
+        yR = self.trq_y[indR]
+
+        dbar = self.dens.avg/self.sig0
+        wkzL = self.dens.wkz
+        wkzR = self.dens.wkzr
+
+
+        axes[0].plot(y,dbar,'.k',label='Fargo, $t=%.3f t_{visc}^p$'%(s.t/s.tviscp))
+        axes[0].plot(y,sig2,'-b',linewidth=2,label='Steady State')
+
+        axes[1].plot(y2,lex2,'-k',label='$\\Lambda_{ex}$')
+        axes[1].plot(y2,ldep2,'-b',label='$\\Lambda_{dep}$')
+        axes[1].plot(y2,drFw2,'-r',label='$\\nabla_rF_w$')
+
+        axes[1].plot(yL,lexL,'--k')
+        axes[1].plot(yL,ldepL,'--b')
+        axes[1].plot(yL,drFwL,'--r')
+        axes[1].plot(yR,lexR,'--k')
+        axes[1].plot(yR,ldepR,'--b')
+        axes[1].plot(yR,drFwR,'--r')
+
+        axes[2].plot(y2,mdot2,'-k')
+        axes[2].plot(yL,mdotL,'-k')
+        axes[2].plot(yR,mdotR,'-k')
+        axes[2].axhline(1,color='k',linestyle='--')
+
+        axes[2].set_xlabel('$r$',fontsize=20)
+        axes[2].set_ylim(-4,4)
+        axes[0].axvline(wkzL,linestyle='--',color='k')
+        axes[1].axvline(wkzL,linestyle='--',color='k')
+        axes[2].axvline(wkzL,linestyle='--',color='k')
+        axes[0].axvline(wkzR,linestyle='--',color='k')
+        axes[1].axvline(wkzR,linestyle='--',color='k')
+        axes[2].axvline(wkzR,linestyle='--',color='k')
+
+        axes[0].set_xlim(0,self.dens.ymax)
+
+
+        axes[0].set_ylabel('$\\Sigma/\\Sigma_0$',fontsize=20)
+        axes[2].set_ylabel('$\\dot{M}/\\dot{M}_o$',fontsize=20)
+
+        axes[0].legend(loc='lower right')
+        axes[1].legend(loc='lower right')
+
+        if ylims is not None:
+            axes[1].set_ylim(ylims)
+        if logy:
+            axes[0].set_yscale('log')
+
+        if logx:
+            for ax in axes.flatten():
+                ax.set_xscale('log')
+
+
+        for ax in axes.flatten():
+            ax.minorticks_on()
+        plt.subplots_adjust(wspace=0)
+        plt.setp(axes[2].get_xticklabels()[-1],visible=False)
+
+        if savefig is not None:
+            fig.savefig(savefig)
+
+    def torque_summary(self,axes=None,log=False,logx=False,logy=True,savefig=None,tstr=None,exclude=True,ylims=None):
+        if axes is None:
+            fig,axes=plt.subplots(2,2,sharex='col',figsize=(14,9))
+
+        #if tstr is None:
+        #    tstr = '$q=%.e, \\alpha=%.e, K = %.2e$'%(self.mp,self.params.alpha,self.K)
+
+        if exclude:
+            ind = (self.dens.y > self.dens.wkz)&(self.dens.y<self.dens.wkzr)
+        else:
+            ind = np.ones(self.dens.y.shape).astype(bool)
+
+        axes[0,0].plot(self.dens.y[ind],self.dens.avg[ind]/self.sig0[ind])
+        axes[0,1].plot(self.trq_y[ind],self.trq_mdot[ind]/self.params.mdot)
+
+        axes[1,0].plot(self.trq_y[ind],self.trq_Lamdep[ind],'-b')
+        axes[1,0].plot(self.trq_y[ind],self.trq_Lamex[ind],'-k')
+        axes[1,0].plot(self.trq_y[ind],self.trq_drFw[ind],'-r')
+        axes[1,0].plot(self.trq_y[ind],self.trq_dtLw[ind],'-m')
+
+        axes[1,1].plot(self.trq_y[ind],self.trq_Lamdep[ind],'-b')
+        #axes[1,1].plot(self.trq_y[ind],self.trq_mdotl[ind],'-g')
+        axes[1,1].plot(self.trq_y[ind],self.trq_drFnu[ind],'-r')
+        #axes[1,1].plot(self.trq_y[ind],self.trq_dtLd[ind],'-m')
+        axes[1,1].plot(self.trq_y[ind],self.trq_mdotl[ind]+self.trq_dtLd[ind],'-k')
+
+        axes[1,0].set_xlabel('$r$',fontsize=20)
+        axes[1,1].set_xlabel('$r$',fontsize=20)
+
+        axes[0,1].set_ylim(-5,5)
+
+        #axes[0,0].set_title(tstr,fontsize=20)
+
+        axes[0,1].axhline(1,color='k')
+
+        axes[0,0].set_ylabel('$\\Sigma/\\Sigma_0$',fontsize=20)
+        axes[0,1].set_ylabel('$\\dot{M}/\\dot{M}_0$',fontsize=20)
+
+        axes[1,0].set_ylabel('Torques',fontsize=15)
+
+        if ylims is not None:
+            axes[1,0].set_ylim(ylims)
+
+        if log or logy:
+            axes[0,0].set_yscale('log')
+
+        if log or logx:
+            for ax in axes.flatten():
+                ax.set_xscale('log')
+
+        for ax in axes.flatten():
+            ax.minorticks_on()
+
+        fig.canvas.draw()
+
+        if savefig is not None:
+            print 'Saving figure to ', savefig
+            fig.savefig(savefig)
+
+        return
+
     def calc_mdot(self):
         dqm = zeros(self.dens.data.shape)
         dqp = zeros(self.dens.data.shape)
@@ -1084,6 +1300,18 @@ class Sim(Mesh,Parameters):
 
         mdot = denstar * self.vr.data * -2*pi*self.dens.ym[:-1,newaxis]
         return mdot
+
+    def dens_evolution(self):
+
+        dat = np.fromfile(self.directory + 'mass_1d_Y_raw.dat')
+        nt = len(dat)/self.params.ny
+        dat = dat.reshape(nt,self.params.ny)
+
+        for i in range(nt):
+            dat[i,:] /= (2*np.pi*self.vol[:,0] * self.sig0)
+
+
+        return self.params.dt*arange(nt), dat.min(axis=1)
 
     def load_fluxes(self,i):
         execdir = self.fargodir+'utils/python/'
@@ -2962,6 +3190,117 @@ def make_summary_plots(dirlist):
         else:
             print 'No outputs in %s'%dirname
     return
+
+
+def mdot_comparison(sims, ylims=(-5,5), savefig=None):
+    fig,axes=plt.subplots(1,3,figsize=(20,6))
+
+    alphas = np.array([ s.params.alpha for s in sims])
+    q = np.array([ s.mp for s in sims])
+    K = np.array([ s.K for s in sims])
+    h = np.array([ s.params.aspectratio for s in sims])
+    times = np.array([ s.t/s.tviscp for s in sims])
+    gdepthFL = .14* (alphas/1e-2)**1.41 * (q/1e-3)**(-2.16) * (h/.05)**(6.61)
+    gdepthFH  = 4.7e-3 * (q/5e-3)**(-1) * (alphas/1e-2)**(1.26) *(h/.05)**(6.12)
+    gdepthF = (q>=5e-3).astype(int) * gdepthFH + (q < 5e-3).astype(int)*gdepthFL
+
+    gdepthD = 1./(1 + (.451 + h*.561)*K/(3*np.pi))
+
+
+    for s in sims:
+        axes[0].plot(s.dens.y,s.dens.avg/s.sig0)
+        axes[1].plot(s.dens.y,s.trq_mdot/s.params.mdot)
+        t,d = s.dens_evolution()
+        axes[2].plot(t/(2*np.pi),d)
+
+    cvals = [ l.get_color() for l in axes[0].lines]
+    for g,gd,c in zip(gdepthF,gdepthD,cvals):
+        axes[0].axhline(g,color=c,linestyle='--')
+
+    axes[1].axhline(1,color='k')
+
+    axes[0].set_xlabel('$r$',fontsize=20)
+    axes[1].set_xlabel('$r$',fontsize=20)
+    axes[2].set_xlabel('t (yrs)',fontsize=15)
+
+    axes[0].set_ylabel('$\\Sigma/\\Sigma_0$',fontsize=20)
+    axes[1].set_ylabel('$\\dot{M}/\\dot{M}_0$',fontsize=20)
+    axes[2].set_ylabel('$\\left( \\Sigma / \\Sigma_0 \\right)_{min}$',fontsize=20)
+
+    axes[1].set_ylim(ylims)
+    axes[0].set_yscale('log')
+    axes[2].set_xscale('log')
+    axes[2].set_yscale('log')
+
+    if savefig:
+        fig.savefig(savefig)
+
+
+def make_comparison_plots(sim1,sim2,ylims=None,savefig=None):
+
+    sims = [sim1,sim2]
+
+    fig,axes=plt.subplots(3,2,sharex='col',figsize=(20,10))
+
+    for i,s in enumerate(sims):
+
+        axes[0,i].plot(y,dbar,'.k',label='Fargo')
+        axes[0,i].plot(y2,sig2,'-b',linewidth=2,label='Excluding WKZ')
+        axes[0,i].plot(y,sig,'--r',linewidth=2,label='Including WKZ')
+
+        axes[1,i].plot(y2,lex2,'-k',label='$\\Lambda_{ex}$')
+        axes[1,i].plot(y2,ldep2,'-b',label='$\\Lambda_{dep}$')
+        axes[1,i].plot(y2,drFw2,'-r',label='$\\frac{1}{r}\\partial_r(r F_w)$')
+
+        axes[1,i].plot(yL,lexL,'--k')
+        axes[1,i].plot(yL,ldepL,'--b')
+        axes[1,i].plot(yL,drFwL,'--r')
+        axes[1,i].plot(yR,lexR,'--k')
+        axes[1,i].plot(yR,ldepR,'--b')
+        axes[1,i].plot(yR,drFwR,'--r')
+
+        axes[2,i].plot(y2,mdot2,'-k')
+        axes[2,i].plot(yL,mdotL,'-k')
+        axes[2,i].plot(yR,mdotR,'-k')
+        axes[2,i].axhline(1,color='k',linestyle='--')
+
+        axes[2,i].set_xlabel('$r$',fontsize=20)
+        axes[2,i].set_ylim(0,3)
+        axes[0,i].axvline(wkzL,linestyle='--',color='k')
+        axes[1,i].axvline(wkzL,linestyle='--',color='k')
+        axes[2,i].axvline(wkzL,linestyle='--',color='k')
+        axes[0,i].axvline(wkzR,linestyle='--',color='k')
+        axes[1,i].axvline(wkzR,linestyle='--',color='k')
+        axes[2,i].axvline(wkzR,linestyle='--',color='k')
+
+        axes[0,i].set_xlim(0,s.dens.ymax)
+
+
+
+
+
+
+    axes[0,0].set_ylabel('$\\Sigma/\\Sigma_0$',fontsize=20)
+    axes[1,0].set_ylabel('Torque density',fontsize=15)
+    axes[2,0].set_ylabel('$\\dot{M}/\\dot{M}_o$',fontsize=20)
+
+    axes[0,0].set_title('Damping $v_R$ and $\\Sigma$',fontsize=20)
+    axes[0,1].set_title('Damping $v_R$',fontsize=20)
+
+    axes[0,1].legend(loc='lower right')
+    axes[1,1].legend(loc='upper right')
+    if ylims is not None:
+        axes[1,0].set_ylim(ylims)
+        axes[1,1].set_ylim(ylims)
+
+
+    for ax in axes.flatten():
+        ax.minorticks_on()
+    plt.subplots_adjust(wspace=0)
+    plt.setp(axes[2,0].get_xticklabels()[-1],visible=False)
+
+    if savefig is not None:
+        fig.savefig(savefig)
 
 def make_ss_plots(sim1,sim2,ylims=None,savefig=None):
 
