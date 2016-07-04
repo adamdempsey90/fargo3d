@@ -1,206 +1,266 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
+#include <stdlib.h>
 #include <math.h>
 #ifdef _OPENMP
 #include <omp.h>
 #endif
 
-
 #define DIMSLENGTH 14
 #define DIMSNXINDEX 6
 #define NGHY 3
-#define l ( (i) + nx*(j) + nx*ny*(k) )
-#define l2d ( (i) + nx*(j) )
+#define NGHZ 3
+#define TRUE 1
+#define FALSE 0
+#ifndef M_PI
+#define M_PI (3.14159265358979323846)
+#endif
 
-double zmin = .2;
-double h = .05;
-double *zm, *ym, *ymed, *zmed;
+#define l ( i + pitch*j + stride*k)
+#define ls ( i + pitch_s*j + stride_s*k)
+#define lxp (((i)<(nx-1)) ? ((l)+1) : ((l)-(nx-1)))
+#define lxm (((i)>0) ? ((l)-1) : ((l)+(nx-1)))
+#define lyp ((l)+nx)
+#define lym ((l)-nx)
+
+#define lzp (l+stride)
+#define lzm (l-stride)
+
+
 int nx,ny,nz;
+int nx_s, ny_s, nz_s;
+int  pitch, stride;
+int  pitch_s, stride_s;
+
+double *xmed, *ymed, *zmed;
+double *xm, *ym, *zm;
+
+double *xmed2d, *ymed2d;
+double *xm2d, *ym2d;
+
+double YMIN,YMAX;
+double ZMIN = .2;
+double h = .05;
 
 
-double scaleH(double r);
-void create_grid_file(char *directory);
-void create_z_grid(char *directory);
-void expand_field(char *name,char *directory, int n);
-void read_domain(char *directory);
 void read_dims(char *directory);
+void dump_domain(char *directory);
+void read_domain(char *directory);
+void expand_field(char *name, char *directory, int n);
+double bilinear(double *fld2d, double x, double y);
+double scaleH(double x);
 
 int main(int argc, char *argv[]) {
-    
     int n = atoi(argv[1]);
-    nz = atoi(argv[2]);
-    h = atof(argv[3]);
-    printf("%d\t%s\n",n,argv[4]);
+    printf("%d\t%s\n",n,argv[2]);
+    
+    nx_s = atoi(argv[2]);
+    ny_s = atoi(argv[3]);
+    nz_s = atoi(argv[4]);
 
-    read_dims(argv[4]);
+    read_dims(argv[5]);
+    nz = 1;
+    pitch = nx; stride = nx*ny;
+    pitch_s = nx_s; stride_s = nx_s*ny_s;
+
+    xm = (double *)malloc(sizeof(double)*(nx_s+1));
+    ym = (double *)malloc(sizeof(double)*(ny_s+1));
+    zm = (double *)malloc(sizeof(double)*(nz_s+1));
+    xmed = (double *)malloc(sizeof(double)*(nx_s));
+    ymed = (double *)malloc(sizeof(double)*(ny_s));
+    zmed = (double *)malloc(sizeof(double)*(nz_s));
+
+    xm2d = (double *)malloc(sizeof(double)*(nx+1));
+    ym2d = (double *)malloc(sizeof(double)*(ny+1));
+    xmed2d = (double *)malloc(sizeof(double)*(nx));
+    ymed2d = (double *)malloc(sizeof(double)*(ny));
+
     printf("Detected grid with nx = %d, ny = %d, nz = %d\n",nx,ny,nz);
+    printf("Converting to  grid with nx = %d, ny = %d, nz = %d\n",nx_s,ny_s,nz_s);
 
-    zm = (double *)malloc(sizeof(double)*(nz+1));
-    ym = (double *)malloc(sizeof(double)*(ny+1));
-    zmed = (double *)malloc(sizeof(double)*(nz));
-    ymed = (double *)malloc(sizeof(double)*(ny));
+    read_domain(argv[5]);
+    dump_domain(argv[5]);
 
-    read_domain(argv[4]);
 
-    create_z_grid(argv[4]);
     printf("Converting density\n");
-    expand_field("dens",argv[4],n);
-    printf("Converting energy\n");
-    expand_field("energy",argv[4],n);
+    expand_field("dens",argv[5],n);
+    printf("expanding energy\n");
+    expand_field("energy",argv[5],n);
 
-    printf("Converting grid\n");
-    create_grid_file(argv[4]);
 
-    free(ym); free(ymed);
-    free(zm); free(zmed);
+
     return 1;
 }
 
-double scaleH(double r) {
-    return h*r;
+double scaleH(double x) {
+    return h*x;
 }
 
-void create_grid_file(char *directory) {
-    FILE *f;
-
-    char fname[512];
-    int i,j,k;
-
-    double *xc = (double *)malloc(sizeof(double)*nx*(ny)*(nz));
-    double *yc = (double *)malloc(sizeof(double)*nx*(ny)*(nz));
-    double *zc = (double *)malloc(sizeof(double)*nx*(ny)*(nz));
-
-    sprintf(fname,"%scart_grid.dat",directory);
-
-
-#ifdef _OPENMP
-#pragma omp parallel for collapse(3) private(i,j,k)
-#endif
-    for(k=0;k<nz;k++) {
-        for(j=0;j<ny;j++) {
-            for(i=0;i<nx;i++) {
-               xc[l] = 
-                   ymed[j]*cos((i+.5)*2*M_PI/nx);
-               yc[l] = 
-                   ymed[j]*sin((i+.5)*2*M_PI/nx);
-               zc[l] = 
-                   ymed[j]/tan(zmed[k]);
-            }
-        }
-    }
-
-
-    f = fopen(fname,"w");
-    fwrite(xc,sizeof(double),nx*(ny)*(nz),f);
-    fwrite(yc,sizeof(double),nx*(ny)*(nz),f);
-    fwrite(zc,sizeof(double),nx*(ny)*(nz),f);
-    fclose(f);
-
-    free(xc); free(yc); free(zc);
-    return;
-}
-
-void create_z_grid(char *directory) {
-    FILE *f;
-    char fname[512];
-    int k;
-    sprintf(fname,"%sdomain_z.dat",directory);
-
-
-    f = fopen(fname,"r");
-    if (f == NULL) printf("Error finding grid file %s\n",fname);
-
-    for(k=0;k<nz+1;k++) {
-        fprintf(f,"%lg\n",&zm[k]);
-    }
-    fclose(f);
-
-    return;
-}
-
-
-
-void expand_field(char *name,char *directory, int n){
+void expand_field( char *name, char *directory, int n) {
     FILE *f;
     char fname[512];
     int i,j,k;
-    double zval,norm;
-    double *fld, *fld2d;
+    double R,phi,temp,zval,norm;
 
     sprintf(fname,"%sgas%s%d.dat",directory,name,n);
 
-    fld2d = (double *)malloc(sizeof(double)*nx*ny);
-    fld = (double *)malloc(sizeof(double)*nx*ny*nz);
-
-
     f = fopen(fname,"r");
 
+    double *fld = (double *)malloc(sizeof(double)*nx*ny);
+    double *fld2d = (double *)malloc(sizeof(double)*nx_s*ny_s*nz_s);
     fread(fld2d,sizeof(double),nx*ny,f);
     fclose(f);
 
 #ifdef _OPENMP
-#pragma omp parallel for collapse(3) private(i,j,k,zval,norm)
+#pragma omp parallel for collapse(3) private(i,j,k,R,phi,temp,zval,norm)
 #endif
-    for(k=0;k<nz;k++) {
-        for(j=0;j<ny;j++) {
-            for(i=0;i<nx;i++) {
-                zval = 1./tan(zmed[k]);
+    for(k=0;k<nz_s;k++) {
+        for(j=0;j<ny_s;j++) {
+            for(i=0;i<nx_s;i++) {
+                R = ymed[j]*cos(zmed[k]);
+                phi = xmed[i];
+
+                temp = bilinear(fld2d,phi,R);
+
+                zval = 1/tan(zmed[k]);
                 zval *= zval/2;
-                norm = scaleH(ymed[j])*sqrt(2*M_PI);
-                fld[l] = fld2d[l2d] * exp(-zval)/norm;
+                norm = sqrt(2*M_PI)*scaleH(R);
+
+                fld2d[ls] = temp * exp(-zval)/norm;
+
             }
         }
     }
 
-    f = fopen(fname,"w");
 
-    fwrite(fld,sizeof(double),nx*ny*nz,f);
+    f = fopen(fname,"r");
+
+    fwrite(fld,sizeof(double),nx_s*ny_s*nz_s,f);
     fclose(f);
 
-    free(fld);
-    free(fld2d);
+    free(fld); free(fld2d);
     return;
-}   
+}
+
+double bilinear(double *fld2d, double x, double y) {
+    int i,j,k,ii,jj;
+    double xL, xR, yL, yR;
+    double tempx, tempy,res;
+
+    i = j = k = 0;
+
+    i = nx-2;
+    for(ii=0;ii<nx;ii++) {
+        if (xmed2d[ii] >= x) {
+            i = ii;
+            break;
+        }
+    }
+    xL = xmed2d[i];
+    xR = xmed2d[i+1];
+
+    j = ny-2;
+    for(jj=0;jj<ny;jj++) {
+        if (ymed2d[jj] >= y) {
+            i = jj;
+            break;
+        }
+    }
+    yL = ymed2d[j];
+    yR = ymed2d[j+1];
+
+
+    tempx  = fld2d[l]*(xR-x)/(xR-xL) + fld2d[lxp]*(x - xL)/(xR-xL);
+    tempy = fld2d[lyp]*(xR-x)/(xR-xL) + fld2d[lxp+pitch]*(x-xL)/(xR-xL);
+
+    res = tempx*(yR-y)/(yR-yL) + tempy*(y-yL)/(yR-yL);
+
+    return res;
+}
+
+
+void dump_domain(char *directory) {
+    FILE *fx,*fy,*fz;
+    char fnamex[512];
+    char fnamey[512];
+    char fnamez[512];
+    int i,j,k;
+    double temp;
+
+    sprintf(fnamex,"%sdomain_x.dat",directory);
+    fx = fopen(fnamex,"w");
+    for(i=0;i<nx_s+1;i++) {
+        xm[i] = i*2*M_PI/nx_s;
+        fprintf(fx,"%lg\n",xm[i]);
+    }
+    for(i=0;i<nx_s;i++) {
+        xmed[i] = .5*(xm[i] + xm[i+1]);
+    }
+    fclose(fx);
+
+    sprintf(fnamey,"%sdomain_y.dat",directory);
+    fy = fopen(fnamey,"w");
+    for(j=-NGHY;j<ny_s+1+NGHY;j++) {
+        temp  = exp(log(YMIN) + j*log(YMAX/YMIN)/ny_s);
+        fprintf(fy,"%lg\n",temp);
+        if ( (j>=0) && (j < ny_s + 1)) {
+            ym[j] = temp;
+        }
+    }
+    for(j=0;j<ny_s;j++) {
+        ymed[j] = .5*(ym[j] + ym[j+1]);
+    }
+    fclose(fy);
+
+    sprintf(fnamez,"%sdomain_z.dat",directory);
+    fz = fopen(fnamez,"w");
+    for(k=-NGHZ;k<nz_s+1+NGHZ;k++) {
+        temp = M_PI + -ZMIN + k*ZMIN/(nz_s/2);
+        fprintf(fz,"%lg\n",temp);
+        if ( (k>=0) && (k < nz_s + 1)) {
+            zm[k] = temp;
+        }
+    }
+    for(k=0;k<nz_s;k++) {
+        zmed[k] = .5*(zm[k] + zm[k+1]);
+    }
+    fclose(fz);
+    return;
+}
 
 void read_domain(char *directory) {
-    char fname[512];
     FILE *f;
-    char tempstr[512];
+    char fname[512];
+    int i,j;
     double temp;
-    int i;
 
     sprintf(fname,"%sdomain_y.dat",directory);
 
     f = fopen(fname,"r");
+    if (f == NULL) printf("Error finding grid file %s\n",fname);
 
-    for(i=0;i<ny+NGHY+1;i++) {
-        if (i >= NGHY) {
-            fscanf(f,"%lg\n",&ym[i-NGHY]);
-        }
-
-    }
-
-    for(i=0;i<ny;i++) {
-        ymed[i] = .5*(ym[i] + ym[i+1]);
-    }
-
-
-    for(i=0;i<nz+1;i++) {
-        if (i <= nz/2) {
-            zm[i] = M_PI/2 + -zmin + i*zmin/(nz/2);
-        }
-        else {
-            zm[i] = M_PI/2 + i*zmin/(nz/2);
+    for(j=0;j<ny+1 +NGHY;j++) {
+        fscanf(f,"%lg\n",&temp);
+        if (j>=NGHY) {
+            ym2d[j-NGHY] = temp;
         }
     }
-    for(i=0;i<nz;i++) {
-        zmed[i] = .5*(zm[i]+zm[i+1]);
-    }
-
     fclose(f);
+
+
+    for(i=0;i<nx+1;i++) {
+        xm[i] = i*2*M_PI/nx;
+    }
+    for(j=0;j<ny;j++) {
+        ymed[j] = .5*(ym[j] + ym[j+1]);
+    }
+    for(i=0;i<ny;i++) {
+        xmed[i] = .5*(xm[i] + xm[i+1]);
+    }
+
     return;
 }
+
 
 void read_dims(char *directory) {
     char fname[512];
@@ -230,3 +290,6 @@ void read_dims(char *directory) {
     fclose(f);
     return;
 }
+
+
+
