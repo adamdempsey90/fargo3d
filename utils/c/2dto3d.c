@@ -37,17 +37,18 @@ double *xm, *ym, *zm;
 
 double *xmed2d, *ymed2d;
 double *xm2d, *ym2d;
+double *fld, *fld2d;
 
 double YMIN,YMAX;
-double ZMIN = .2;
+double ZMIN;
 double h = .05;
 
 
 void read_dims(char *directory);
 void dump_domain(char *directory);
 void read_domain(char *directory);
-void expand_field(char *name, char *directory, int n);
-double bilinear(double *fld2d, double x, double y);
+void interpolate(char *name, char *directory, int n);
+double bilinear( double x, double y);
 double scaleH(double x);
 
 int main(int argc, char *argv[]) {
@@ -75,20 +76,37 @@ int main(int argc, char *argv[]) {
     xmed2d = (double *)malloc(sizeof(double)*(nx));
     ymed2d = (double *)malloc(sizeof(double)*(ny));
 
+    fld = (double *)malloc(sizeof(double)*nx_s*ny_s*nz_s);
+    fld2d = (double *)malloc(sizeof(double)*(nx)*(ny+2));
+
     printf("Detected grid with nx = %d, ny = %d, nz = %d\n",nx,ny,nz);
     printf("Converting to  grid with nx = %d, ny = %d, nz = %d\n",nx_s,ny_s,nz_s);
 
     read_domain(argv[5]);
+
+    YMIN = ym2d[0];
+    YMAX = ym2d[ny];
+    ZMIN = atan(.25);
+
+    printf("Domain size, r=(%lg,%lg), Delta z = %lg\n",YMIN,YMAX,ZMIN);
+
     dump_domain(argv[5]);
 
 
+
     printf("Converting density\n");
-    expand_field("dens",argv[5],n);
+    interpolate("dens",argv[5],n);
     printf("expanding energy\n");
-    expand_field("energy",argv[5],n);
+    interpolate("energy",argv[5],n);
 
 
 
+    free(xm); free(xmed);
+    free(ym); free(ymed);
+    free(zm); free(zmed);
+    free(xm2d); free(xmed2d);
+    free(ym2d); free(ymed2d);
+    free(fld); free(fld2d); 
     return 1;
 }
 
@@ -96,6 +114,104 @@ double scaleH(double x) {
     return h*x;
 }
 
+
+void interpolate(char *name, char *directory, int n) {
+    int i,j,k;
+
+    int ii,jj;
+    int iR, iL, jR, jL;
+
+    double phi,R;
+    double zval,norm;
+
+    FILE *f;
+    char fname[512];
+
+    sprintf(fname,"%sgas%s%d.dat",directory,name,n);
+
+    f = fopen(fname,"r");
+
+    for(j=1;j<ny+1;j++) {
+        fread(&fld2d[nx*j],sizeof(double),nx,f);
+    }
+    fclose(f);
+
+    for(i=0;i<nx;i++) {
+        fld2d[i] = fld2d[i + nx];
+    }
+    for(i=0;i<nx;i++) {
+        fld2d[i + nx*(ny+1)] = fld2d[i + nx*(ny)];
+    }
+
+
+
+
+    for(k=0;k<nz_s;k++) {
+        for(j=0;j<ny_s;j++) {
+            for(i=0;i<nx_s;i++) {
+                R = sin(zmed[k]) * ymed[j];
+                phi = xmed[i];
+                
+                for(ii=0;ii<nx;ii++) {
+                    if ( xmed2d[ii]>= phi ) {
+                        iR = ii;
+                        if (xmed2d[ii] == phi) {
+                            iL = ii;
+                        }
+                        else {
+                            if (iR == 0) {
+                                iL = nx-1;
+                            }
+                            else {
+                                iL = iR - 1;
+                            }
+                        }
+                        break;
+                    }
+                }
+                
+                if (R < ymed2d[0]) {
+                    jR = 1;
+                    jL = 0;
+                }
+                else if (R > ymed2d[ny-1]) {
+                    jL = ny-1;
+                    jR = ny;
+                }
+                else {
+                    for(jj=0;jj<ny;jj++) {
+                        if ( ymed2d[jj]>= R ) {
+                            jR = jj+1;
+                            if (ymed2d[jj] == R) {
+                                jL = jR;
+                            }
+                            else {
+                                jL = jR-1;
+                            }
+                            break;
+                        }
+                    }
+                }
+
+                zval = 1/tan(zmed[k]);
+                zval *= zval/2;
+                norm = sqrt(2*M_PI)*scaleH(R);
+
+                fld[ls] = (fld2d[iL + jL*nx] + fld2d[iL + jR*nx] + fld2d[iR + jL*nx] + fld2d[iR + jR*nx])*.25 * exp(-zval)/norm;
+
+            }
+        }
+    }
+
+    f = fopen(fname,"w");
+    fwrite(fld,sizeof(double),nx_s*ny_s*nz_s,f);
+    fclose(f);
+
+    return;
+}
+
+
+/*
 void expand_field( char *name, char *directory, int n) {
     FILE *f;
     char fname[512];
@@ -106,10 +222,16 @@ void expand_field( char *name, char *directory, int n) {
 
     f = fopen(fname,"r");
 
-    double *fld = (double *)malloc(sizeof(double)*nx*ny);
-    double *fld2d = (double *)malloc(sizeof(double)*nx_s*ny_s*nz_s);
-    fread(fld2d,sizeof(double),nx*ny,f);
+    fread(&fld2d[nx],sizeof(double),nx*ny,f);
     fclose(f);
+
+
+    for(i=0;i<nx;i++) {
+        fld2d[i] = fld2d[i + nx];
+    }
+    for(i=0;i<nx;i++) {
+        fld2d[i+nx*ny] = fld2d[i + nx*(ny-1)];
+    }
 
 #ifdef _OPENMP
 #pragma omp parallel for collapse(3) private(i,j,k,R,phi,temp,zval,norm)
@@ -117,32 +239,33 @@ void expand_field( char *name, char *directory, int n) {
     for(k=0;k<nz_s;k++) {
         for(j=0;j<ny_s;j++) {
             for(i=0;i<nx_s;i++) {
-                R = ymed[j]*cos(zmed[k]);
+                R = ymed[j]*sin(zmed[k]);
                 phi = xmed[i];
+                printf("Interpolating to %lg\t%lg\n",R,phi);
 
-                temp = bilinear(fld2d,phi,R);
+                temp = bilinear(phi,R);
+                printf("Result %lg\n",temp);
 
                 zval = 1/tan(zmed[k]);
                 zval *= zval/2;
                 norm = sqrt(2*M_PI)*scaleH(R);
 
-                fld2d[ls] = temp * exp(-zval)/norm;
+                fld[i + nx_s*j + nx_s*ny_s*k] = temp * exp(-zval)/norm;
 
             }
         }
     }
 
 
-    f = fopen(fname,"r");
+    f = fopen(fname,"w");
 
     fwrite(fld,sizeof(double),nx_s*ny_s*nz_s,f);
     fclose(f);
 
-    free(fld); free(fld2d);
     return;
 }
-
-double bilinear(double *fld2d, double x, double y) {
+*/
+double bilinear(double x, double y) {
     int i,j,k,ii,jj;
     double xL, xR, yL, yR;
     double tempx, tempy,res;
@@ -152,28 +275,54 @@ double bilinear(double *fld2d, double x, double y) {
     i = nx-2;
     for(ii=0;ii<nx;ii++) {
         if (xmed2d[ii] >= x) {
-            i = ii;
+            i = ii-1;
             break;
         }
     }
-    xL = xmed2d[i];
-    xR = xmed2d[i+1];
+    if (i == nx-1) {
+        xL = xmed2d[i];
+        xR = xmed2d[i] + xmed2d[i]-xmed2d[i-1];
+    }
+    else {
+        if (i == -1) {
+            i = nx-1;
+            xL = xmed2d[0];
+            xR = xmed2d[i+1];
+        }
+
+    }
 
     j = ny-2;
     for(jj=0;jj<ny;jj++) {
         if (ymed2d[jj] >= y) {
-            i = jj;
+            j = jj-1;
             break;
         }
     }
-    yL = ymed2d[j];
-    yR = ymed2d[j+1];
+    if (j==ny-1) {
+        yL = ymed2d[j];
+        yR = ymed2d[j] + ymed2d[j]-ymed2d[j-1];
+    }
+    else {
+        if (j == -1) {
+            j = 0;
+            yL = ymed2d[0]-(ymed2d[1]-ymed2d[0]);
+            yR = ymed2d[0];
+        }
+        else {
+            yL = ymed2d[j];
+            yR = ymed2d[j+1];
+        }
+    }
 
+    tempx  = fld2d[l]*(xR-x)/(xR-xL) + fld2d[lxp]*(x - xL)/(xR-xL); 
+    tempy = fld2d[lyp]*(xR-x)/(xR-xL) + fld2d[lxp + pitch]*(x-xL)/(xR-xL);
 
-    tempx  = fld2d[l]*(xR-x)/(xR-xL) + fld2d[lxp]*(x - xL)/(xR-xL);
-    tempy = fld2d[lyp]*(xR-x)/(xR-xL) + fld2d[lxp+pitch]*(x-xL)/(xR-xL);
 
     res = tempx*(yR-y)/(yR-yL) + tempy*(y-yL)/(yR-yL);
+    printf("\n%lg %lg %lg %lg\n",xL,xR,yL,yR);
+    printf("%lg %lg %lg %lg\n",fld2d[l],fld2d[lxp],fld2d[lyp],fld2d[lxp+pitch]);
+    printf("%lg\n",res);
 
     return res;
 }
@@ -190,8 +339,8 @@ void dump_domain(char *directory) {
     sprintf(fnamex,"%sdomain_x.dat",directory);
     fx = fopen(fnamex,"w");
     for(i=0;i<nx_s+1;i++) {
-        xm[i] = i*2*M_PI/nx_s;
-        fprintf(fx,"%lg\n",xm[i]);
+        xm[i] = i*2*M_PI/nx_s - M_PI;
+        fprintf(fx,"%.16f\n",xm[i]);
     }
     for(i=0;i<nx_s;i++) {
         xmed[i] = .5*(xm[i] + xm[i+1]);
@@ -202,7 +351,7 @@ void dump_domain(char *directory) {
     fy = fopen(fnamey,"w");
     for(j=-NGHY;j<ny_s+1+NGHY;j++) {
         temp  = exp(log(YMIN) + j*log(YMAX/YMIN)/ny_s);
-        fprintf(fy,"%lg\n",temp);
+        fprintf(fy,"%.16f\n",temp);
         if ( (j>=0) && (j < ny_s + 1)) {
             ym[j] = temp;
         }
@@ -215,8 +364,8 @@ void dump_domain(char *directory) {
     sprintf(fnamez,"%sdomain_z.dat",directory);
     fz = fopen(fnamez,"w");
     for(k=-NGHZ;k<nz_s+1+NGHZ;k++) {
-        temp = M_PI + -ZMIN + k*ZMIN/(nz_s/2);
-        fprintf(fz,"%lg\n",temp);
+        temp = M_PI/2 + -ZMIN + k*ZMIN/(nz_s/2);
+        fprintf(fz,"%.16f\n",temp);
         if ( (k>=0) && (k < nz_s + 1)) {
             zm[k] = temp;
         }
@@ -249,13 +398,13 @@ void read_domain(char *directory) {
 
 
     for(i=0;i<nx+1;i++) {
-        xm[i] = i*2*M_PI/nx;
+        xm2d[i] = i*2*M_PI/(float)nx - M_PI;
     }
     for(j=0;j<ny;j++) {
-        ymed[j] = .5*(ym[j] + ym[j+1]);
+        ymed2d[j] = .5*(ym2d[j] + ym2d[j+1]);
     }
-    for(i=0;i<ny;i++) {
-        xmed[i] = .5*(xm[i] + xm[i+1]);
+    for(i=0;i<nx;i++) {
+        xmed2d[i] = .5*(xm2d[i] + xm2d[i+1]);
     }
 
     return;

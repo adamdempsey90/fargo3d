@@ -9,20 +9,17 @@ def write_vtk_file((n,option)):
     print 'Converting number %d'%n
     ifile_dens = "gasdens" + "{:d}".format(n) + '.dat'
     ifile_ener = "gasenergy" + "{:d}".format(n) + '.dat'
-    ifile_vx   = "gasvx" + "{:d}".format(n) + '.dat'
-    ifile_vy   = "gasvy" + "{:d}".format(n) + '.dat'
-    ifile_vz   = "gasvz" + "{:d}".format(n) + '.dat'
-    #ifile_dens = "Density" + "{:d}".format(n) + '.dat'
-    #ifile_ener = "Energy" + "{:d}".format(n) + '.dat'
-    #ifile_vx   = "Vx" + "{:d}".format(n) + '.dat'
-    #ifile_vy   = "Vy" + "{:d}".format(n) + '.dat'
-    #ifile_vz   = "Vz" + "{:d}".format(n) + '.dat'
+
+#    ifile_vx   = "gasvx" + "{:d}".format(n) + '.dat'
+#    ifile_vy   = "gasvy" + "{:d}".format(n) + '.dat'
+#    ifile_vz   = "gasvz" + "{:d}".format(n) + '.dat'
 
     density = np.fromfile(ifile_dens, "d")
     energy  = np.fromfile(ifile_ener, "d")
-    vx      = np.fromfile(ifile_vx  , "d")
-    vy      = np.fromfile(ifile_vy  , "d")
-    vz      = np.fromfile(ifile_vz  , "d")
+    mass = density.copy()
+#    vx      = np.fromfile(ifile_vx  , "d")
+#    vy      = np.fromfile(ifile_vy  , "d")
+#    vz      = np.fromfile(ifile_vz  , "d")
 
 
 
@@ -34,13 +31,15 @@ def write_vtk_file((n,option)):
     y_arr = np.loadtxt('domain_y.dat')[NGHY:-NGHY]
     z_arr = np.loadtxt('domain_z.dat')[NGHZ:-NGHZ]
 
+    dx = x_arr[1]-x_arr[0];
+
     Nx = len(x_arr)-1
     Ny = len(y_arr)-1
     Nz = len(z_arr)-1
 
+
     print Nx,Ny,Nz
-
-
+    print '%e total points'%(Nx*Ny*Nz)
 
 
     mesh  = np.ndarray([3*Nx*Ny*Nz], dtype = float)
@@ -53,27 +52,15 @@ def write_vtk_file((n,option)):
         for j in range(Ny):
             for i in range(Nx):
                 if(option == 0):
+                    mass[i + Nx*j +stride*k] *= (1./3.)*dx*(np.cos(z_arr[k+1])-np.cos(z_arr[k]))*(y_arr[j+1]**3  - y_arr[j]**3 )
                     mesh[l] = np.cos(x_arr[i])*np.sin(z_arr[k])*y_arr[j]
                     mesh[l+1] = np.sin(x_arr[i])*np.sin(z_arr[k])*y_arr[j]
                     mesh[l+2] = y_arr[j]*np.cos(z_arr[k])
                 if(option == 1):
+                    mass[i + Nx*j +stride*k] *= .5*dx*(y_arr[j+1]**2  - y_arr[j]**2 )
                     mesh[l] = np.cos(x_arr[i])*y_arr[j];
                     mesh[l+1] = np.sin(x_arr[i])*y_arr[j];
                     mesh[l+2] = z_arr[k];
-
-             #   if k < Nz:
-             #       density[l1] = density0[i + j*Nx + k*stride]
-             #       energy[l1] = energy0[i + j*Nx + k*stride]
-             #       vx[l1] = vx0[i + j*Nx + k*stride]
-             #       vy[l1] = vy0[i + j*Nx + k*stride]
-             #       vz[l1] = vz0[i + j*Nx + k*stride]
-             #   else:
-             #       density[l1] = density0[i + j*Nx + (Nz-1 - (k-Nz) )*stride]
-             #       energy[l1] = energy0[i + j*Nx + (Nz-1 - (k-Nz) )*stride]
-             #       vx[l1] = vx0[i + j*Nx + (Nz-1 - (k-Nz) )*stride]
-             #       vy[l1] = vy0[i + j*Nx + (Nz-1 - (k-Nz) )*stride]
-             #       vz[l1] = -vz0[i + j*Nx + (Nz-1 - (k-Nz) )*stride]
-
                 l+=3;
 
 
@@ -103,9 +90,10 @@ def write_vtk_file((n,option)):
     dims = (Nx,Ny,Nz)
     var = (("Density", 1, 1, tuple(density)),
            ("Energy" , 1, 1, tuple(energy )),
-           ("Vtheta" , 1, 1, tuple(vx     )),
-           ("Vrad"   , 1, 1, tuple(vy     )),
-           ("Vpolar" , 1, 1, tuple(vz     ))) #ZONAL
+           ("Mass", 1, 1, tuple(mass)))
+           #("Vtheta" , 1, 1, tuple(vx     )),
+           #("Vrad"   , 1, 1, tuple(vy     )),
+           #("Vpolar" , 1, 1, tuple(vz     ))) #ZONAL
 
     #vw.WriteCurvilinearMesh("vwcurv3d.vtk", 1, dims, tuple(mesh), var)
     vw.WriteUnstructuredMesh("vwucd3d{:d}.vtk".format(n), 1, tuple(mesh),connectivity, var)
