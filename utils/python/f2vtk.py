@@ -9,6 +9,7 @@ def write_vtk_file((n,option)):
     print 'Converting number %d'%n
     ifile_dens = "gasdens" + "{:d}".format(n) + '.dat'
     ifile_ener = "gasenergy" + "{:d}".format(n) + '.dat'
+    ifile_mass= "gasmass" + "{:d}".format(n) + '.dat'
 
 #    ifile_vx   = "gasvx" + "{:d}".format(n) + '.dat'
 #    ifile_vy   = "gasvy" + "{:d}".format(n) + '.dat'
@@ -62,7 +63,7 @@ def write_vtk_file((n,option)):
                     mesh[l+1] = np.sin(x_arr[i])*y_arr[j];
                     mesh[l+2] = z_arr[k];
                 l+=3;
-
+    mass.tofile(ifile_mass)
 
     #Mesh construction--------------------------------------
     connectivity = [] #Unstructured Mesh!, avoid periodic problem!
